@@ -62,9 +62,13 @@ class MySQL:
     @DB_EXISTS()
     def get_columns(self, tbl:str) -> typing.Any:
         self.cur.execute("""
-        select t.column_name, s.index_schema, s.index_name, s.seq_in_index, s.index_type from information_schema.columns t
-        left join information_schema.statistics s on t.table_name = s.table_name and lower(s.column_name) = lower(t.column_name)
-        where t.table_name = %s""", [tbl])
+        select t.table_schema, t.table_name, t.column_name, 
+            s.index_schema, s.index_name, s.seq_in_index, s.index_type 
+        from information_schema.columns t
+        left join information_schema.statistics s on t.table_name = s.table_name
+            and t.table_schema = s.table_schema 
+            and lower(s.column_name) = lower(t.column_name)
+        where t.table_schema = %s and t.table_name = %s""", [self.database, tbl])
         return [*self.cur]
 
     @DB_EXISTS()
@@ -93,6 +97,7 @@ if __name__ == '__main__':
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
+        conn.execute("create index another_index on test_stuff (second_col, third_col)")
         conn.commit()
         '''
         print(conn.get_columns('test_stuff'))
