@@ -5,3 +5,7 @@ password: Gobronxbombers2
 
 https://www.metricfire.com/blog/a-modern-guide-to-mysql-performance-monitoring/
 https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html
+https://stackoverflow.com/questions/1733507/how-to-get-size-of-mysql-database
+
+
+Knob params: https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
