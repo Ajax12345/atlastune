@@ -36,7 +36,7 @@ class MySQL:
             self.new_cur()
 
     def new_cur(self) -> 'cursor':
-        self.cur = self.conn.cursor()
+        self.cur = self.conn.cursor(dictionary = True)
         return self.cur
 
     @DB_EXISTS()
@@ -53,6 +53,24 @@ class MySQL:
     def execute(self, *args, **kwargs) -> 'cursor':
         self.cur.execute(*args, **kwargs)
         return self.cur
+
+    @DB_EXISTS()
+    def get_tables(self) -> typing.Any:
+        self.cur.execute("show tables")
+        return [*self.cur]
+
+    @DB_EXISTS()
+    def get_columns(self, tbl:str) -> typing.Any:
+        self.cur.execute("""
+        select t.column_name, s.index_schema, s.index_name, s.seq_in_index, s.index_type from information_schema.columns t
+        left join information_schema.statistics s on t.table_name = s.table_name and lower(s.column_name) = lower(t.column_name)
+        where t.table_name = %s""", [tbl])
+        return [*self.cur]
+
+    @DB_EXISTS()
+    def get_indices(self, tbl:str) -> typing.Any:
+        self.cur.execute(f"""show index from {tbl}""")
+        return [*self.cur]
 
     def commit(self) -> None:
         self.conn.commit()
@@ -71,6 +89,10 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL() as conn:
-        conn.use_db("grata_data")
-        print(conn.status())
+    with MySQL(database = "atlas_stuff") as conn:
+        '''
+        conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
+        conn.execute("create index test_index on test_stuff (first_col)")
+        conn.commit()
+        '''
+        print(conn.get_columns('test_stuff'))
