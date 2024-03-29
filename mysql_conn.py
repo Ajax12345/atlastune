@@ -1,5 +1,6 @@
 import mysql.connector, typing
-import contextlib, csv
+import contextlib, csv, time
+import collections
 
 #https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 
@@ -53,9 +54,23 @@ class MySQL:
 
 
     @DB_EXISTS(requires_db = False)
-    def metrics(self) -> typing.List[dict]:
+    def __metrics(self) -> typing.List[dict]:
         self.cur.execute('select name, count from information_schema.innodb_metrics where status="enabled" order by name;')
         return [*self.cur]
+
+    @DB_EXISTS(requires_db = False)
+    def metrics(self, total_time:int, interval:int = 5) -> list:
+        total_metrics = collections.defaultdict(list)
+        while total_time > 0:
+            for i in self.__metrics():
+                total_metrics[i['name']].append(int(i['count']))
+
+            time.sleep(interval)
+            total_time -= interval
+
+        return {a:sum(b)/len(b) if a in self.__class__.VALUE_METRICS else float(b[-1] - b[0])
+            for a, b in total_metrics.items()}
+        
 
 
     @DB_EXISTS(requires_db = False)
@@ -114,6 +129,4 @@ if __name__ == '__main__':
         conn.execute("create index another_index on test_stuff (second_col, third_col)")
         conn.commit()
         '''
-        with open('metrics.csv', 'w') as f:
-            write = csv.writer(f)
-            write.writerows([[i['name'], i['count']] for i in conn.metrics()])
+        print(conn.metrics(20))
