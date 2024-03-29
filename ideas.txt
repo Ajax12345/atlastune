@@ -1,3 +1,7 @@
 mysql -u root -p
 
 password: Gobronxbombers2
+
+
+https://www.metricfire.com/blog/a-modern-guide-to-mysql-performance-monitoring/
+https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html

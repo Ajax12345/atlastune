@@ -1,5 +1,5 @@
 import mysql.connector, typing
-import contextlib
+import contextlib, csv
 
 #https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 
@@ -20,6 +20,13 @@ def DB_EXISTS(requires_db = True) -> typing.Callable:
     return main_f
 
 class MySQL:
+    VALUE_METRICS = [
+        'lock_deadlocks', 'lock_timeouts', 'lock_row_lock_time_max',
+        'lock_row_lock_time_avg', 'buffer_pool_size', 'buffer_pool_pages_total',
+        'buffer_pool_pages_misc', 'buffer_pool_pages_data', 'buffer_pool_bytes_data',
+        'buffer_pool_pages_dirty', 'buffer_pool_bytes_dirty', 'buffer_pool_pages_free',
+        'trx_rseg_history_len', 'file_num_open_files', 'innodb_page_size'
+    ]
     def __init__(self, host:str = "localhost", user:str = "root", 
                 passwd:str = "Gobronxbombers2", database:typing.Union[str, None] = None,
                 create_cursor:bool = True) -> None:
@@ -40,9 +47,16 @@ class MySQL:
         return self.cur
 
     @DB_EXISTS()
-    def status(self) -> typing.List[tuple]:
-        self.cur.execute('show status')
+    def status(self) -> typing.List[dict]:
+        self.cur.execute('show global status')
         return [*self.cur]
+
+
+    @DB_EXISTS(requires_db = False)
+    def metrics(self) -> typing.List[dict]:
+        self.cur.execute('select name, count from information_schema.innodb_metrics where status="enabled" order by name;')
+        return [*self.cur]
+
 
     @DB_EXISTS(requires_db = False)
     def use_db(self, db:str) -> None:
@@ -100,4 +114,6 @@ if __name__ == '__main__':
         conn.execute("create index another_index on test_stuff (second_col, third_col)")
         conn.commit()
         '''
-        print(conn.get_columns('test_stuff'))
+        with open('metrics.csv', 'w') as f:
+            write = csv.writer(f)
+            write.writerows([[i['name'], i['count']] for i in conn.metrics()])
