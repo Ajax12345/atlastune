@@ -159,24 +159,22 @@ class MySQL:
 
 
     @DB_EXISTS(requires_db = False)
-    def __metrics(self) -> typing.List[dict]:
+    def _metrics(self) -> dict:
         self.cur.execute('select name, count from information_schema.innodb_metrics where status="enabled" order by name;')
-        return [*self.cur]
+        return {i['name']:int(i['count']) for i in self.cur}
 
     @DB_EXISTS(requires_db = False)
     def metrics(self, total_time:int, interval:int = 5) -> list:
         total_metrics = collections.defaultdict(list)
         while total_time > 0:
-            for i in self.__metrics():
-                total_metrics[i['name']].append(int(i['count']))
+            for a, b in self._metrics().items():
+                total_metrics[a].append(b)
 
             time.sleep(interval)
             total_time -= interval
 
         return {a:sum(b)/len(b) if a in self.__class__.VALUE_METRICS else float(b[-1] - b[0])
-            for a, b in total_metrics.items()}
-        
-
+            for a, b in total_metrics.items()}        
 
     @DB_EXISTS(requires_db = False)
     def use_db(self, db:str) -> None:
@@ -194,15 +192,16 @@ class MySQL:
         return [*self.cur]
 
     @DB_EXISTS()
-    def get_columns(self, tbl:str) -> typing.Any:
+    def get_columns(self, tbl:str) -> typing.List[dict]:
         self.cur.execute("""
-        select t.table_schema, t.table_name, t.column_name, 
+        select t.table_schema, t.table_name, t.column_name, t.ordinal_position,
             s.index_schema, s.index_name, s.seq_in_index, s.index_type 
         from information_schema.columns t
         left join information_schema.statistics s on t.table_name = s.table_name
             and t.table_schema = s.table_schema 
             and lower(s.column_name) = lower(t.column_name)
-        where t.table_schema = %s and t.table_name = %s""", [self.database, tbl])
+        where t.table_schema = %s and t.table_name = %s
+        order by t.ordinal_position""", [self.database, tbl])
         return [*self.cur]
 
     @DB_EXISTS()
@@ -214,6 +213,17 @@ class MySQL:
     def get_knobs(self) -> dict:
         self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
         return {i['Variable_name']:i['Value'] for i in self.cur}
+
+    @classmethod
+    def metrics_to_list(cls, metrics:dict) -> typing.List[int]:
+        assert metrics, "metrics must contain data"
+        return [metrics[i] for i in sorted(metrics)]
+
+    @classmethod
+    def col_indices_to_list(cls, cols:typing.List[dict]) -> typing.List:
+        assert cols, "table must contain columns"
+        return [int(i['INDEX_NAME'] is not None) for i in cols]
+
 
     def commit(self) -> None:
         self.conn.commit()
@@ -242,4 +252,7 @@ if __name__ == '__main__':
         #print(conn.metrics(20))
         #print(len(MySQL.KNOBS))
         #print(conn.memory_size())
-        print(conn.get_knobs())
+        #print(conn.get_knobs())
+        #print(MySQL.metrics_to_list(conn._metrics()))
+        #print(MySQL.metrics_to_list(conn.metrics(20)))
+        print(MySQL.col_indices_to_list(conn.get_columns("test_stuff")))
