@@ -9,3 +9,24 @@ https://stackoverflow.com/questions/1733507/how-to-get-size-of-mysql-database
 
 
 Knob params: https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
+
+Loss and gradients:
+    - https://stackoverflow.com/questions/73840143/in-pytorch-how-do-i-update-a-neural-network-via-the-average-gradient-from-a-lis
+    - https://discuss.pytorch.org/t/how-to-get-gradient-of-loss/16955
+    - https://stackoverflow.com/questions/57248777/backward-function-in-pytorch
+    - https://stackoverflow.com/questions/65947284/loss-with-custom-backward-function-in-pytorch-exploding-loss-in-simple-mse-exa
+    - https://pytorch.org/docs/stable/generated/torch.nn.MSELoss.html
+    - https://stackoverflow.com/questions/57580202/whats-the-purpose-of-torch-autograd-variable
+    
+
+Normalization:
+    - https://discuss.pytorch.org/t/best-way-to-normalize-the-input/139557
+
+
+Output layer activations:
+    - https://stackoverflow.com/questions/56415450/how-to-set-up-a-neural-network-so-that-it-have-in-output-only-0-or-1
+    - https://datascience.stackexchange.com/questions/92748/how-to-make-a-neural-network-output-a-specific-number-out-of-a-certain-range
+    - sigmoid: binary
+    - softmax: multiclass
+    - both between 0 and 1, however
+
