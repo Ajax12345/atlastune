@@ -13,6 +13,10 @@ TPC-H
     - https://www.tpc.org/tpc_documents_current_versions/current_specifications5.asp
     - https://dev.mysql.com/doc/heatwave/en/mys-hw-tpch-quickstart-create-database-import.html
 
+    - https://github.com/Percona-Lab/sysbench-tpcc
+    - https://github.com/akopytov/sysbench
+
+
 Indices:
     - https://stackoverflow.com/questions/14143813/find-out-usage-statistics-of-mysql-indices
     - https://dba.stackexchange.com/questions/20038/how-can-i-tell-if-an-index-is-being-used-to-sort-in-mysql
@@ -41,3 +45,11 @@ Output layer activations:
     - softmax: multiclass
     - both between 0 and 1, however
 
+
+Notes:
+    - created folder "lib" in /usr/local/
+    - sudo ln -s /usr/local/mysql/lib/libssl.1.1.dylib /usr/local/lib/libssl.1.1.dylib\n
+    - sudo ln -s /usr/local/mysql/lib/libcrypto.1.1.dylib /usr/local/lib/libcrypto.1.1.dylib\n
+
+
+    - ./tpcc_start -h 127.0.0.1 -d tpcc100 -uroot -p "Gobronxbombers2" -w 10 -c 6 -r 10 -l 30 -i 2 > /Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/run_test2.txt

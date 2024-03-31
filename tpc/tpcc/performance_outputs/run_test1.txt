@@ -1,0 +1,29 @@
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc100'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '10'
+option c with value '6'
+option r with value '10'
+option l with value '30'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc100
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 10
+ [connection]: 6
+     [rampup]: 10 (sec.)
+    [measure]: 30 (sec.)
+
+RAMP-UP TIME.(10 sec.)
+
+MEASURING START.
+
+   2, trx: 873, 95: 8.684, 99: 11.124, max_rt: 93.132, 871|49.803, 87|15.999, 87|68.555, 87|87.985
+   4, trx: 863, 95: 8.532, 99: 10.181, max_rt: 24.075, 867|24.557, 86|10.678, 87|28.485, 87|47.655
