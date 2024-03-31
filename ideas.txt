@@ -1,12 +1,23 @@
 mysql -u root -p
+export PATH=${PATH}:/usr/local/mysql/bin
+https://apple.stackexchange.com/questions/176786/how-to-add-mysql-to-path-variable-to-resolve-mysql-command-not-found
+
 
 password: Gobronxbombers2
 
+TPC-H
+    - https://www.metricfire.com/blog/a-modern-guide-to-mysql-performance-monitoring/
+    - https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html
+    - https://stackoverflow.com/questions/1733507/how-to-get-size-of-mysql-database
+    - https://docs.verdictdb.org/tutorial/tpch/
+    - https://www.tpc.org/tpc_documents_current_versions/current_specifications5.asp
+    - https://dev.mysql.com/doc/heatwave/en/mys-hw-tpch-quickstart-create-database-import.html
 
-https://www.metricfire.com/blog/a-modern-guide-to-mysql-performance-monitoring/
-https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html
-https://stackoverflow.com/questions/1733507/how-to-get-size-of-mysql-database
-
+Indices:
+    - https://stackoverflow.com/questions/14143813/find-out-usage-statistics-of-mysql-indices
+    - https://dba.stackexchange.com/questions/20038/how-can-i-tell-if-an-index-is-being-used-to-sort-in-mysql
+    - https://stackoverflow.com/questions/31372353/how-to-check-the-query-is-using-the-indexes-in-mysql
+    - https://dev.mysql.com/doc/refman/8.0/en/explain-output.html
 
 Knob params: https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
 

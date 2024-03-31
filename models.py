@@ -11,10 +11,14 @@ class Normalize:
         std = pow(sum(pow(i - mean, 2) for i in arr)/len(arr), 0.5)
         return [(i - mean)/std for i in arr]
 
-    
-if __name__ == '__main__':
+
+def perform_tests() -> None:
     with db.MySQL(database = "atlas_stuff") as conn:
         metrics = db.MySQL.metrics_to_list(conn._metrics())
         indices = db.MySQL.col_indices_to_list(conn.get_columns("test_stuff"))
         print(Normalize.normalize([*indices, *metrics]))
+
+
+if __name__ == '__main__':
+    perform_tests()
         

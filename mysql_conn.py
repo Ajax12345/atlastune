@@ -255,4 +255,6 @@ if __name__ == '__main__':
         #print(conn.get_knobs())
         #print(MySQL.metrics_to_list(conn._metrics()))
         #print(MySQL.metrics_to_list(conn.metrics(20)))
+        #TODO: explain query cost
+        #TODO: explain to check if query has utilized a specific column
         print(MySQL.col_indices_to_list(conn.get_columns("test_stuff")))
