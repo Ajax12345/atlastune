@@ -1,6 +1,7 @@
 import mysql.connector, typing
 import contextlib, csv, time
-import collections
+import collections, subprocess
+import datetime, re
 
 #https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 #https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
@@ -224,7 +225,28 @@ class MySQL:
         assert cols, "table must contain columns"
         return [int(i['INDEX_NAME'] is not None) for i in cols]
 
+    @classmethod
+    def tpcc_metrics(cls, l:int = 30) -> typing.List[float]:
+        
+        with open(f_name:=f'/Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/stress_test_{str(datetime.datetime.now()).replace(".", ":")}.txt', 'a') as f:
+            subprocess.run(['./tpcc_start', '-h', '127.0.0.1', 
+                '-d', 'tpcc100', '-uroot', 
+                '-p', 'Gobronxbombers2', '-w', '10', 
+                '-c', '6', '-r', '10', '-l', str(l), '-i', '2'], 
+            cwd = "tpcc-mysql", stdout = f)
+    
+        tps, latency, count = 0, 0, 0
+        with open(f_name) as f:
+            for i in f:
+                if (j:=re.findall('(?<=trx\:\s)\d+(?:\.\d+)*|(?<=,\s95\:\s)\d+\.\d+|(?<=,\s99\:\s)\d+\.\d+|(?<=,\smax_rt\:\s)\d+\.\d+', i)):
+                    _trx, _95, _99, _max_rt = map(float, j)
+                    tps += _trx
+                    latency += _99
+                    count += 1
+        
+        return [tps/count, latency/count]
 
+    
     def commit(self) -> None:
         self.conn.commit()
 
@@ -257,4 +279,5 @@ if __name__ == '__main__':
         #print(MySQL.metrics_to_list(conn.metrics(20)))
         #TODO: explain query cost
         #TODO: explain to check if query has utilized a specific column
-        print(MySQL.col_indices_to_list(conn.get_columns("test_stuff")))
+        #print(MySQL.col_indices_to_list(conn.get_columns("test_stuff")))
+        print(MySQL.tpcc_metrics())

@@ -51,5 +51,7 @@ Notes:
     - sudo ln -s /usr/local/mysql/lib/libssl.1.1.dylib /usr/local/lib/libssl.1.1.dylib\n
     - sudo ln -s /usr/local/mysql/lib/libcrypto.1.1.dylib /usr/local/lib/libcrypto.1.1.dylib\n
 
-
+    - throughput and latency is calculated on the tables in tpcc100
+    - need a table tpch for indices work
+    
     - ./tpcc_start -h 127.0.0.1 -d tpcc100 -uroot -p "Gobronxbombers2" -w 10 -c 6 -r 10 -l 30 -i 2 > /Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/run_test2.txt
