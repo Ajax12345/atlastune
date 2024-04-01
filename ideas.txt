@@ -16,6 +16,10 @@ TPC-H
     - https://github.com/Percona-Lab/sysbench-tpcc
     - https://github.com/akopytov/sysbench
 
+    - https://github.com/electrum/tpch-dbgen
+    - https://github.com/dhuny/tpch/tree/main VERY USEFUL
+    https://github.com/pola-rs/tpch/tree/700a440212aada40fbe3431591cb19d0cb0b530e VERY USEFUL
+
 
 Indices:
     - https://stackoverflow.com/questions/14143813/find-out-usage-statistics-of-mysql-indices
@@ -53,5 +57,5 @@ Notes:
 
     - throughput and latency is calculated on the tables in tpcc100
     - need a table tpch for indices work
-    
+
     - ./tpcc_start -h 127.0.0.1 -d tpcc100 -uroot -p "Gobronxbombers2" -w 10 -c 6 -r 10 -l 30 -i 2 > /Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/run_test2.txt

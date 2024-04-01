@@ -153,10 +153,17 @@ class MySQL:
         return [*self.cur]
 
     @DB_EXISTS(requires_db = False)
-    def memory_size(self) -> dict:
-        self.cur.execute("""select table_schema db_name, round(sum(data_length + index_length), 1) size 
+    def memory_size(self, metric:str = 'b') -> dict:
+        """
+        @metric
+            b (bytes)
+            mb
+            gb
+        """
+        denom = {"b":"", "mb":"/ 1024 / 1024", "gb":"/ 1024 / 1024/ 1024"}[metric.lower()]
+        self.cur.execute(f"""select table_schema db_name, round(sum(data_length + index_length){denom}, 3) size 
         from information_schema.tables group by table_schema;""")
-        return {i['db_name']:int(i['size']) for i in self.cur}
+        return {i['db_name']:float(i['size']) for i in self.cur}
 
 
     @DB_EXISTS(requires_db = False)
@@ -264,7 +271,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "atlas_stuff") as conn:
+    with MySQL(database = "tpch1") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -280,4 +287,5 @@ if __name__ == '__main__':
         #TODO: explain query cost
         #TODO: explain to check if query has utilized a specific column
         #print(MySQL.col_indices_to_list(conn.get_columns("test_stuff")))
-        print(MySQL.tpcc_metrics())
+        #print(MySQL.tpcc_metrics())
+        print(conn.memory_size('gb'))
