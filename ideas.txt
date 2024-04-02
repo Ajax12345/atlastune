@@ -18,7 +18,12 @@ TPC-H
 
     - https://github.com/electrum/tpch-dbgen
     - https://github.com/dhuny/tpch/tree/main VERY USEFUL
-    https://github.com/pola-rs/tpch/tree/700a440212aada40fbe3431591cb19d0cb0b530e VERY USEFUL
+    - https://github.com/pola-rs/tpch/tree/700a440212aada40fbe3431591cb19d0cb0b530e VERY USEFUL
+
+    Need to create one additional table:
+        create table if not exists revenue0 (supplier_no int, total_revenue int);
+        insert into revenue0
+            select l_suppkey, sum(l_extendedprice * (1 - l_discount)) from lineitem where l_shipdate >= date '1993-01-01' and l_shipdate < date '1993-01-01' + interval '3' month group by l_suppkey;
 
 
 Indices:
@@ -59,3 +64,8 @@ Notes:
     - need a table tpch for indices work
 
     - ./tpcc_start -h 127.0.0.1 -d tpcc100 -uroot -p "Gobronxbombers2" -w 10 -c 6 -r 10 -l 30 -i 2 > /Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/run_test2.txt
+
+    - current database: tpch1 (1GB)
+        - see folder "TPC_H_OFFICIAL"
+
+    - Starting indices option: https://github.com/dimitri/tpch-citus/blob/master/schema/tpch-index.sql

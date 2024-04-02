@@ -1,7 +1,7 @@
 import mysql.connector, typing
 import contextlib, csv, time
 import collections, subprocess
-import datetime, re
+import datetime, re, json, os
 
 #https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 #https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
@@ -197,10 +197,10 @@ class MySQL:
     @DB_EXISTS()
     def get_tables(self) -> typing.Any:
         self.cur.execute("show tables")
-        return [*self.cur]
+        return [j for i in self.cur for j in i.values()]
 
     @DB_EXISTS()
-    def get_columns(self, tbl:str) -> typing.List[dict]:
+    def get_columns_from_tbl(self, tbl:str) -> typing.List[dict]:
         self.cur.execute("""
         select t.table_schema, t.table_name, t.column_name, t.ordinal_position,
             s.index_schema, s.index_name, s.seq_in_index, s.index_type 
@@ -210,6 +210,19 @@ class MySQL:
             and lower(s.column_name) = lower(t.column_name)
         where t.table_schema = %s and t.table_name = %s
         order by t.ordinal_position""", [self.database, tbl])
+        return [*self.cur]
+
+    @DB_EXISTS()
+    def get_columns_from_database(self) -> typing.List[dict]:
+        self.cur.execute("""
+        select t.table_schema, t.table_name, t.column_name, t.ordinal_position,
+            s.index_schema, s.index_name, s.seq_in_index, s.index_type 
+        from information_schema.columns t
+        left join information_schema.statistics s on t.table_name = s.table_name
+            and t.table_schema = s.table_schema 
+            and lower(s.column_name) = lower(t.column_name)
+        where t.table_schema = %s
+        order by t.table_schema, t.ordinal_position""", [self.database])
         return [*self.cur]
 
     @DB_EXISTS()
@@ -253,7 +266,55 @@ class MySQL:
         
         return [tps/count, latency/count]
 
+    @classmethod
+    def used_index_lookup(cls, d:dict) -> typing.Iterator:
+        if isinstance(d, dict):
+            if 'table' in d:
+                yield {'table_name':d['table'].get('table_name'),
+                    'possible_keys':d['table'].get('possible_keys'),
+                    'key':d['table'].get('key'),
+                    'used_key_parts':d['table'].get('used_key_parts'),
+                    'ref':d['table'].get('ref')}
+
+            for a, b in d.items():
+                yield from cls.used_index_lookup(b)
+
+            return
+        
+        if isinstance(d, list):
+            for i in d:
+                yield from cls.used_index_lookup(i)
+
+    @DB_EXISTS()
+    def get_query_stats(self, query:str) -> dict:
+        self.cur.execute(f'explain format = json {query}')
+        data = json.loads(self.cur.fetchone()['EXPLAIN'])
+        return {'cost':float(data['query_block']['cost_info']['query_cost']),
+            'indices':[*self.__class__.used_index_lookup(data)]}
+
+    @classmethod
+    def __queries(cls) -> typing.List:
+        results = []
+        for i in os.listdir('tpc/tpch/queries'):
+            if i.endswith('.sql'):
+                with open(os.path.join('tpc/tpch/queries', i)) as f:
+                    results.append(f.read())
+
+        return results
     
+    @classmethod
+    def queries(cls) -> typing.List:
+        with open('tpc/tpch/queries.sql') as f:
+            return [i.strip(';\n') for i in f]
+
+    @classmethod
+    def tpch_metrics(cls, database:str="tpch1") -> typing.Any:
+        queries = cls.queries()
+        with cls(database=database) as conn:
+            for q in queries:
+                print(conn.get_query_stats(q))
+                print('-'*20)
+
     def commit(self) -> None:
         self.conn.commit()
 
@@ -288,4 +349,6 @@ if __name__ == '__main__':
         #TODO: explain to check if query has utilized a specific column
         #print(MySQL.col_indices_to_list(conn.get_columns("test_stuff")))
         #print(MySQL.tpcc_metrics())
-        print(conn.memory_size('gb'))
+        #print(conn.memory_size('gb'))
+        #print(len([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()]))
+        MySQL.tpch_metrics()
