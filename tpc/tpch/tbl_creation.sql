@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS nation (
   `n_dummy`      VARCHAR(10),
   PRIMARY KEY (`n_nationkey`));
 
+update nation set n_comment = "";
 -- region
 CREATE TABLE IF NOT EXISTS region (
   `r_regionkey`  INT,
@@ -14,6 +15,8 @@ CREATE TABLE IF NOT EXISTS region (
   `r_comment`    VARCHAR(152),
   `r_dummy`      VARCHAR(10),
   PRIMARY KEY (`r_regionkey`));
+
+update region set r_comment = "";
 
 -- supplier
 CREATE TABLE IF NOT EXISTS supplier (
@@ -27,6 +30,7 @@ CREATE TABLE IF NOT EXISTS supplier (
   `s_dummy` varchar(10),
   PRIMARY KEY (`s_suppkey`));
 
+update supplier set s_comment = "";
 -- customer
 CREATE TABLE IF NOT EXISTS customer (
   `c_custkey`     INT,
@@ -40,6 +44,7 @@ CREATE TABLE IF NOT EXISTS customer (
   `c_dummy`       VARCHAR(10),
   PRIMARY KEY (`c_custkey`));
 
+update customer set c_comment = "";
 -- part
 CREATE TABLE IF NOT EXISTS part (
   `p_partkey`     INT,
@@ -54,6 +59,8 @@ CREATE TABLE IF NOT EXISTS part (
   `p_dummy`       VARCHAR(10),
   PRIMARY KEY (`p_partkey`));
 
+update part set p_comment = "";
+
 -- partsupp
 CREATE TABLE IF NOT EXISTS partsupp (
   `ps_partkey`     INT,
@@ -64,6 +71,7 @@ CREATE TABLE IF NOT EXISTS partsupp (
   `ps_dummy`       VARCHAR(10),
   PRIMARY KEY (`ps_partkey`));
 
+update partsupp set ps_comment = "";
 -- orders
 CREATE TABLE IF NOT EXISTS orders (
   `o_orderkey`       INT,
@@ -77,6 +85,8 @@ CREATE TABLE IF NOT EXISTS orders (
   `o_comment`        VARCHAR(79),
   `o_dummy`          VARCHAR(10),
   PRIMARY KEY (`o_orderkey`));
+
+update orders set o_comment = "";
 
 -- lineitem
 CREATE TABLE IF NOT EXISTS lineitem (
@@ -98,6 +108,7 @@ CREATE TABLE IF NOT EXISTS lineitem (
   `l_comment`     VARCHAR(44),
   `l_dummy`       VARCHAR(10));
 
+update lineitem  set l_comment = "";
 
 -- /Users/jamespetullo/Downloads/TPC_H_official/dbgen/customer.tbl
 -- /Users/jamespetullo/Downloads/TPC_H_official/dbgen/lineitem.tbl

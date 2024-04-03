@@ -361,8 +361,6 @@ class MySQL:
             q_t = cls.tpch_query_tests(database)
             rf2_t = cls.tpch_ref2(refresh_stream, o_r, l_r, database = database)
 
-
-
     @classmethod
     def tpch_metrics(cls, database:str="tpch1") -> typing.Any:
         o, l, o_r, l_r, f1_data, f2_data  = cls.tpch_tbl_id_offsets(database = database)
