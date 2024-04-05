@@ -57,7 +57,8 @@ class Atlas_Index_Tune:
         self.actor = Atlas_Index_Actor(len(state), len(indices))
         self.actor_target = Atlas_Index_Actor(len(state), len(indices))
         self.actor.eval()
-        print(self.actor(start_state))
+        #print(db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist()))
+        #print(self.conn.workload_cost())
 
     def __exit__(self, *_) -> None:
         if self.conn is not None:

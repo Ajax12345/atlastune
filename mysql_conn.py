@@ -258,6 +258,10 @@ class MySQL:
     def col_indices_to_list(cls, cols:typing.List[dict]) -> typing.List:
         assert cols, "table must contain columns"
         return [int(i['INDEX_NAME'] is not None) for i in cols]
+    
+    @classmethod
+    def activate_index_actor_outputs(cls, outputs:typing.List[float]) -> typing.List[int]:
+        return [[int(j >= 0.5) for j in i] for i in outputs]
 
     @classmethod
     def tpcc_metrics(cls, l:int = 30) -> typing.List[float]:
@@ -305,6 +309,44 @@ class MySQL:
         data = json.loads(self.cur.fetchone()['EXPLAIN'])
         return {'cost':float(data['query_block']['cost_info']['query_cost']),
             'indices':[*self.__class__.used_index_lookup(data)]}
+
+    @DB_EXISTS()
+    def workload_cost(self) -> dict:
+        queries = {}
+        for q in os.listdir('tpc/tpcc/queries'):
+            with open(os.path.join('tpc/tpcc/queries', q)) as f:
+                queries[q] = self.get_query_stats(f.read())
+        
+        return queries
+
+    @DB_EXISTS()
+    def apply_index_configuration(self, indices:typing.List[int]) -> None:
+        col_state = self.get_columns_from_database()
+        assert len(indices) == len(col_state)
+        for i, (ind_state, col_data) in enumerate(zip(indices, col_state), 1):
+            if col_data['INDEX_NAME'] == 'PRIMARY':
+                continue
+
+            if ind_state:
+                if col_data['INDEX_NAME'] is None:
+                    self.cur.execute(f'create index ATLAS_INDEX_{i} on {col_data["TABLE_NAME"]}({col_data["COLUMN_NAME"]})')
+
+            else:
+                if col_data['INDEX_NAME'] is not None:
+                    self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
+
+        self.commit() 
+
+    @DB_EXISTS()
+    def drop_all_indices(self) -> None:
+        for col_data in self.get_columns_from_database():
+            if col_data['INDEX_NAME'] == 'PRIMARY':
+                continue
+            
+            if col_data['INDEX_NAME'] is not None:
+                self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
+
+        self.commit()
 
     @classmethod
     def __queries(cls) -> typing.List:
@@ -416,5 +458,17 @@ if __name__ == '__main__':
         #print(conn.memory_size('gb'))
         #print(len([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()]))
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
-        assert conn.db_column_count == len(conn.get_columns_from_database())
+        #assert conn.db_column_count == len(conn.get_columns_from_database())
+        conn.apply_index_configuration([0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1])
+        #conn.drop_all_indices()
     #print(MySQL.tpch_query_tests())
+
+    """
+    select t.table_name, t.column_name, s.index_name
+        from information_schema.columns t
+        left join information_schema.statistics s on t.table_name = s.table_name
+            and t.table_schema = s.table_schema 
+            and lower(s.column_name) = lower(t.column_name)
+        where t.table_schema = 'tpcc100'
+        order by t.table_schema, t.table_name, t.column_name, t.ordinal_position
+        """
