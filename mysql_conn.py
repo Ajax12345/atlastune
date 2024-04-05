@@ -227,6 +227,18 @@ class MySQL:
         order by t.table_schema, t.table_name, t.column_name, t.ordinal_position""", [self.database])
         return [*self.cur]
 
+    @property
+    @DB_EXISTS()
+    def metric_count(self) -> int:
+        self.cur.execute('select count(*) c from information_schema.innodb_metrics where status="enabled" order by name;')
+        return self.cur.fetchone()['c']
+
+    @property
+    @DB_EXISTS()
+    def db_column_count(self) -> int:
+        self.cur.execute('select count(*) c from information_schema.columns t where t.table_schema = %s', [self.database])
+        return self.cur.fetchone()['c']
+
     @DB_EXISTS()
     def get_indices(self, tbl:str) -> typing.List[dict]:
         self.cur.execute(f"""show index from {tbl}""")
@@ -403,5 +415,6 @@ if __name__ == '__main__':
         #print(MySQL.tpcc_metrics())
         #print(conn.memory_size('gb'))
         #print(len([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()]))
-        print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+        #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+        assert conn.db_column_count == len(conn.get_columns_from_database())
     #print(MySQL.tpch_query_tests())
