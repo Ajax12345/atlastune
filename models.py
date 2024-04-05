@@ -11,6 +11,31 @@ class Normalize:
         std = pow(sum(pow(i - mean, 2) for i in arr)/len(arr), 0.5)
         return [(i - mean)/std for i in arr]
 
+class Atlas_Index_Critic(nn.Module):
+    def __init__(self, state_num:int, action_num:int, val_num:int) -> None:
+        super().__init__()
+        self.state_num = state_num
+        self.action_num = action_num
+        self.val_num = val_num
+        self.state_input = nn.Linear(self.state_num, 128)
+        self.action_input = nn.Linear(self.action_num, 128)
+        self.act = nn.Tanh()
+        self.layers = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.LeakyReLU(negative_slope=0.2),
+            nn.BatchNorm1d(256),
+            nn.Linear(256, 64),
+            nn.Tanh(),
+            nn.Dropout(0.3),
+            nn.BatchNorm1d(64),
+            nn.Linear(64, 1),
+        )
+    
+    def forward(self, state, action) -> typing.Any:
+        state = self.act(self.state_input(state))
+        action = self.act(self.action_input(action))
+        return self.layers(torch.cat([state, action], dim = 1))
+
 
 class Atlas_Index_Actor(nn.Module):
     def __init__(self, state_num:int, index_num:int) -> None:
@@ -41,6 +66,8 @@ class Atlas_Index_Tune:
         self.conn = conn
         self.actor = None
         self.actor_target = None
+        self.critic = None
+        self.critic_target = None
 
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -53,10 +80,18 @@ class Atlas_Index_Tune:
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
-        start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])])
-        self.actor = Atlas_Index_Actor(len(state), len(indices))
-        self.actor_target = Atlas_Index_Actor(len(state), len(indices))
+        start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])], requires_grad = True)
+        state_num, action_num = len(state), len(indices)
+
+        self.actor = Atlas_Index_Actor(state_num, action_num)
+        self.actor_target = Atlas_Index_Actor(state_num, action_num)
+        self.critic = Atlas_Index_Critic(state_num, action_num, 1)
+        self.critic_target = Atlas_Index_Critic(state_num, action_num, 1)
         self.actor.eval()
+        p_action = self.actor(start_state)
+        print(p_action)
+        self.critic.eval()
+        print(self.critic(start_state, p_action))
         #print(db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist()))
         #print(self.conn.workload_cost())
 
