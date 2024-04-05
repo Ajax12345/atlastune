@@ -6,4 +6,4 @@ select c2.c_id, sum(case when c2.c_middle != 'Yb' then 1 else 0 end) from (
         and c.c_delivery_cnt > 15
 ) c2
 where substring(c2.c_last, 1, 4) = 'ESEE'
-group by c.c_id
+group by c.c_id;

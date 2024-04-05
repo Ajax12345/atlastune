@@ -69,3 +69,5 @@ Notes:
         - see folder "TPC_H_OFFICIAL"
 
     - Starting indices option: https://github.com/dimitri/tpch-citus/blob/master/schema/tpch-index.sql
+
+    - Idea: using QPH or raw latency from running the queries might take too long in a standard training cycle, however, query cost can be used, but every n cycles, the QPH can be found, and if QPH(i+1) < QPH(i), that is, a drop in overall raw performance, subsequent penalties can be applied to the rewards stored for transitions in the minibatch indexed under the last n cycles. That way, when transitions are sampled, the updated rewards can be used

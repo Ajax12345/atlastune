@@ -224,7 +224,7 @@ class MySQL:
             and t.table_schema = s.table_schema 
             and lower(s.column_name) = lower(t.column_name)
         where t.table_schema = %s
-        order by t.table_schema, t.ordinal_position""", [self.database])
+        order by t.table_schema, t.table_name, t.column_name, t.ordinal_position""", [self.database])
         return [*self.cur]
 
     @DB_EXISTS()
@@ -384,7 +384,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "tpch1") as conn:
+    with MySQL(database = "tpcc100") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -403,4 +403,5 @@ if __name__ == '__main__':
         #print(MySQL.tpcc_metrics())
         #print(conn.memory_size('gb'))
         #print(len([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()]))
-    print(MySQL.tpch_query_tests())
+        print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+    #print(MySQL.tpch_query_tests())
