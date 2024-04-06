@@ -107,7 +107,7 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        with open('experience_replay.json', 'w') as f:
+        with open('experience_replay1.json', 'a') as f:
             json.dump(self.experience_replay, f)
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
@@ -135,7 +135,8 @@ class Atlas_Index_Tune:
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = True)
+        self.generate_experience_replay(indices, metrics, 50)
+        
         for i in self.experience_replay:
             print(i[2])
         '''
@@ -162,8 +163,8 @@ class Atlas_Index_Tune:
 
 if __name__ == '__main__':
     
-    a = Atlas_Index_Tune('tpcc100')
-    a.mount_entities()
-    a.conn.drop_all_indices()
-    a.tune()
+    with Atlas_Index_Tune('tpcc100') as a:
+        a.mount_entities()
+        a.conn.drop_all_indices()
+        a.tune()
     

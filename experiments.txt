@@ -1,0 +1,7 @@
+
+06/04/2024 @ 6:28 PM
+    - Currently plan on trying TPC-C with all primary indices dropped.
+    - If this does not work on standard model, will switch to TPC-H
+    - Might want to run installation of TPC-H again, we cleared out the large text fields for the sake of memory. It might not matter, though.
+
+

@@ -8,3 +8,4 @@ group by s.s_i_id) k
 join item i on i.i_id = k.s_i_id
 join order_line ol on ol.ol_i_id = i.i_id
 where ol.ol_delivery_d > '2024-03-31 17:54:14'
+-- long

@@ -314,11 +314,20 @@ class MySQL:
     @DB_EXISTS()
     def workload_cost(self) -> dict:
         queries = {}
-        for q in os.listdir('tpc/tpcc/queries'):
-            with open(os.path.join('tpc/tpcc/queries', q)) as f:
-                queries[q] = self.get_query_stats(f.read())
+        if self.database == 'tpcc100':
+            for q in os.listdir('tpc/tpcc/queries'):
+                with open(os.path.join('tpc/tpcc/queries', q)) as f:
+                    queries[q] = self.get_query_stats(f.read())
         
-        return queries
+            return queries
+
+        if self.database == 'tpch1':
+            with open('tpch/queries.sql') as f:
+                for i, q in enumerate(f, 1):
+                    queries[f'q{i}.sql'] = self.get_query_stats(f.strip(';\n'))
+
+            return queries
+
 
     @DB_EXISTS()
     def apply_index_configuration(self, indices:typing.List[int]) -> None:
@@ -353,15 +362,6 @@ class MySQL:
 
         self.commit()
 
-    @classmethod
-    def __queries(cls) -> typing.List:
-        results = []
-        for i in os.listdir('tpc/tpch/queries'):
-            if i.endswith('.sql'):
-                with open(os.path.join('tpc/tpch/queries', i)) as f:
-                    results.append(f.read())
-
-        return results
     
     @classmethod
     def queries(cls) -> typing.List:

@@ -2,6 +2,17 @@ mysql -u root -p
 export PATH=${PATH}:/usr/local/mysql/bin
 https://apple.stackexchange.com/questions/176786/how-to-add-mysql-to-path-variable-to-resolve-mysql-command-not-found
 
+ALTER TABLE customer DROP PRIMARY KEY;
+ALTER TABLE lineitem DROP PRIMARY KEY;
+alter table nation drop primary key;
+alter table orders drop primary key;
+alter table part drop primary key;
+alter table partsupp drop primary key;
+alter table region drop primary key;
+alter table supplier drop primary key;
+
+
+
 
 password: Gobronxbombers2
 
@@ -75,3 +86,12 @@ Notes:
     - Idea: every n cycles, run the standard latency and throughput tests, and go back into memory buffer and make penalizations if latency and throughput have degraded (i.e too many indices have been created)
 
     - There might be enough of a positive gradient in the experience replay if most rewards are negative
+
+    - Idea: clip rewards to be between range of -10 and 10
+    - Idea: alter tables to remove primary keys
+    - Look into using tracxn database
+    - Perhaps try TPC-DS?
+    - TPC-E?
+    - https://github.com/TPC-Council/HammerDB/
+    - https://github.com/cmu-db/benchbase
+    - TPC-H works?
