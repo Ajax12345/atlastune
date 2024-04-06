@@ -2,7 +2,8 @@ import typing, numpy as np
 import torch, torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optimizer
-import mysql_conn as db
+import mysql_conn as db, random
+import copy, json
 
 class Normalize:
     @classmethod
@@ -68,6 +69,7 @@ class Atlas_Index_Tune:
         self.actor_target = None
         self.critic = None
         self.critic_target = None
+        self.experience_replay = []
 
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -77,9 +79,42 @@ class Atlas_Index_Tune:
         self.mount_entities()
         return self
 
+    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int) -> None:
+        self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
+        for _ in range(iterations):
+            print(_)
+            _indices = copy.deepcopy(indices)
+            for i in random.sample([*range(len(indices))], random.choice([*range(1, 4)])):
+                _indices[i] = int(not indices[i])
+        
+            self.conn.apply_index_configuration(_indices)
+            self.experience_replay.append([[*indices, *metrics], _indices, None, [*_indices, *metrics], self.conn.workload_cost()])
+            indices = _indices
+
+        with open('experience_replay.json', 'a') as f:
+            json.dump(self.experience_replay, f)
+
+    def compute_step_reward(self, w1:dict, w2:dict) -> float:
+        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
+        if not (l:=(sum(k)/len(k))*10):
+            return -0.5
+        
+        return l
+
+    def _test_experience_replay(self) -> None:
+        with open('experience_replay.json') as f:
+            data = json.load(f)
+
+        for i in range(len(data)-1):
+            print(self.compute_step_reward(data[i][-1], data[i+1][-1]))
+            print('-'*20)        
+
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+        self.generate_experience_replay(indices, metrics, 20)
+
+        '''
         start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])], requires_grad = True)
         state_num, action_num = len(state), len(indices)
 
@@ -94,6 +129,7 @@ class Atlas_Index_Tune:
         print(self.critic(start_state, p_action))
         #print(db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist()))
         #print(self.conn.workload_cost())
+        '''
 
     def __exit__(self, *_) -> None:
         if self.conn is not None:
@@ -107,5 +143,7 @@ class Atlas_Index_Tune:
 if __name__ == '__main__':
     a = Atlas_Index_Tune('tpcc100')
     a.mount_entities()
-    a.tune()
+    a._test_experience_replay()
+    #a.conn.drop_all_indices()
+    #a.tune()
         
