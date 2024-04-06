@@ -79,27 +79,33 @@ class Atlas_Index_Tune:
         self.mount_entities()
         return self
 
-    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int) -> None:
+    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
+        if from_buffer:
+            with open('experience_replay.json') as f:
+                self.experience_replay = json.load(f)
+            
+            return
+
         self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
         for _ in range(iterations):
-            print(_)
             _indices = copy.deepcopy(indices)
-            for i in random.sample([*range(len(indices))], random.choice([*range(1, 4)])):
-                _indices[i] = int(not indices[i])
+            for i in random.sample([*range(len(indices))], random.choice([*range(1, 5)])):
+                _indices[i] = int(not _indices[i])
         
             self.conn.apply_index_configuration(_indices)
-            self.experience_replay.append([[*indices, *metrics], _indices, None, [*_indices, *metrics], self.conn.workload_cost()])
+            self.experience_replay.append([[*indices, *metrics], _indices, 
+                self.compute_step_reward(self.experience_replay[-1][-1], 
+                        w2:=self.conn.workload_cost()), 
+                [*_indices, *metrics], w2])
             indices = _indices
 
-        with open('experience_replay.json', 'a') as f:
+        with open('experience_replay.json', 'w') as f:
             json.dump(self.experience_replay, f)
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
         k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
-        if not (l:=(sum(k)/len(k))*10):
-            return -0.5
-        
-        return l
+        return -0.5 if not (l:=(sum(k)/len(k))*10) else l
+
 
     def _test_experience_replay(self) -> None:
         with open('experience_replay.json') as f:
@@ -112,7 +118,7 @@ class Atlas_Index_Tune:
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
-        self.generate_experience_replay(indices, metrics, 20)
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = True)
 
         '''
         start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])], requires_grad = True)
@@ -141,9 +147,9 @@ class Atlas_Index_Tune:
 
 
 if __name__ == '__main__':
+    
     a = Atlas_Index_Tune('tpcc100')
     a.mount_entities()
-    a._test_experience_replay()
-    #a.conn.drop_all_indices()
-    #a.tune()
-        
+    a.conn.drop_all_indices()
+    a.tune()
+    

@@ -217,7 +217,8 @@ class MySQL:
     @DB_EXISTS()
     def get_columns_from_database(self) -> typing.List[dict]:
         self.cur.execute("""
-        select t.table_schema, t.table_name, t.column_name, t.ordinal_position,
+        select t.table_schema, t.table_name, t.column_name, t.data_type, 
+            t.character_maximum_length, t.ordinal_position,
             s.index_schema, s.index_name, s.seq_in_index, s.index_type 
         from information_schema.columns t
         left join information_schema.statistics s on t.table_name = s.table_name
@@ -329,7 +330,11 @@ class MySQL:
 
             if ind_state:
                 if col_data['INDEX_NAME'] is None:
-                    self.cur.execute(f'create index ATLAS_INDEX_{i} on {col_data["TABLE_NAME"]}({col_data["COLUMN_NAME"]})')
+                    if col_data['DATA_TYPE'].lower() == 'text':
+                        self.cur.execute(f'create index ATLAS_INDEX_{i} on {col_data["TABLE_NAME"]}({col_data["COLUMN_NAME"]}({min(20, int(col_data["CHARACTER_MAXIMUM_LENGTH"]))}))')
+
+                    else:
+                        self.cur.execute(f'create index ATLAS_INDEX_{i} on {col_data["TABLE_NAME"]}({col_data["COLUMN_NAME"]})')
 
             else:
                 if col_data['INDEX_NAME'] is not None:
@@ -465,6 +470,17 @@ if __name__ == '__main__':
 
     """
     select t.table_name, t.column_name, s.index_name
+        from information_schema.columns t
+        left join information_schema.statistics s on t.table_name = s.table_name
+            and t.table_schema = s.table_schema 
+            and lower(s.column_name) = lower(t.column_name)
+        where t.table_schema = 'tpcc100'
+        order by t.table_schema, t.table_name, t.column_name, t.ordinal_position
+        """
+
+    """
+    select t.table_schema, t.table_name, t.column_name, t.data_type, t.character_maximum_length, t.ordinal_position,
+            s.index_schema, s.index_name, s.seq_in_index, s.index_type 
         from information_schema.columns t
         left join information_schema.statistics s on t.table_name = s.table_name
             and t.table_schema = s.table_schema 

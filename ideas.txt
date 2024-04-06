@@ -73,3 +73,5 @@ Notes:
     - Idea: using QPH or raw latency from running the queries might take too long in a standard training cycle, however, query cost can be used, but every n cycles, the QPH can be found, and if QPH(i+1) < QPH(i), that is, a drop in overall raw performance, subsequent penalties can be applied to the rewards stored for transitions in the minibatch indexed under the last n cycles. That way, when transitions are sampled, the updated rewards can be used
 
     - Idea: every n cycles, run the standard latency and throughput tests, and go back into memory buffer and make penalizations if latency and throughput have degraded (i.e too many indices have been created)
+
+    - There might be enough of a positive gradient in the experience replay if most rewards are negative
