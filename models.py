@@ -62,13 +62,21 @@ class Atlas_Index_Actor(nn.Module):
 
 
 class Atlas_Index_Tune:
-    def __init__(self, database:str, conn = None) -> None:
+    def __init__(self, database:str, conn = None, config = {
+            'alr':0.00001,
+            'clr':0.00001,
+            'tau':0.00001
+        }) -> None:
         self.database = database
         self.conn = conn
+        self.config = config
         self.actor = None
         self.actor_target = None
         self.critic = None
         self.critic_target = None
+        self.actor_optimizer = None
+        self.critic_optimizer = None
+        self.loss_criterion = None
         self.experience_replay = []
 
     def mount_entities(self) -> None:
@@ -113,21 +121,27 @@ class Atlas_Index_Tune:
 
         for i in range(len(data)-1):
             print(self.compute_step_reward(data[i][-1], data[i+1][-1]))
-            print('-'*20)        
+            print('-'*20)      
+
+    def init_models(self, state_num:int, action_num:int) -> None:
+        self.actor = Atlas_Index_Actor(state_num, action_num)
+        self.actor_target = Atlas_Index_Actor(state_num, action_num)
+        self.critic = Atlas_Index_Critic(state_num, action_num, 1)
+        self.critic_target = Atlas_Index_Critic(state_num, action_num, 1)
+        self.loss_criterion = nn.MSELoss()
+        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
+        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
 
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.generate_experience_replay(indices, metrics, 50, from_buffer = True)
-
+        for i in self.experience_replay:
+            print(i[2])
         '''
         start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])], requires_grad = True)
         state_num, action_num = len(state), len(indices)
-
-        self.actor = Atlas_Index_Actor(state_num, action_num)
-        self.actor_target = Atlas_Index_Actor(state_num, action_num)
-        self.critic = Atlas_Index_Critic(state_num, action_num, 1)
-        self.critic_target = Atlas_Index_Critic(state_num, action_num, 1)
+        self.init_models(state_num, action_num)
         self.actor.eval()
         p_action = self.actor(start_state)
         print(p_action)
