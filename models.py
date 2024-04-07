@@ -97,7 +97,7 @@ class Atlas_Index_Tune:
         self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
         for _ in range(iterations):
             _indices = copy.deepcopy(indices)
-            for i in random.sample([*range(len(indices))], random.choice([*range(1, 5)])):
+            for i in random.sample([*range(len(indices))], random.choice([*range(1, 3)])):
                 _indices[i] = int(not _indices[i])
         
             self.conn.apply_index_configuration(_indices)
@@ -107,7 +107,7 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        with open('experience_replay3.json', 'a') as f:
+        with open(f"experience_replay/experience_replay{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
             json.dump(self.experience_replay, f)
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
