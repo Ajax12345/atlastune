@@ -3,7 +3,7 @@ import torch, torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optimizer
 import mysql_conn as db, random
-import copy, json
+import copy, json, datetime
 
 class Normalize:
     @classmethod
@@ -107,21 +107,33 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        with open('experience_replay1.json', 'a') as f:
+        with open('experience_replay3.json', 'a') as f:
             json.dump(self.experience_replay, f)
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
-        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
+        k = [j for a, b in w2.items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
+        if not k:
+            return -1
+
+        return max(min((sum(k)/len(k))*10, 10), -10)
+        '''
         return -0.5 if not (l:=(sum(k)/len(k))*10) else l
+        '''
+
+
 
 
     def _test_experience_replay(self) -> None:
-        with open('experience_replay.json') as f:
+        with open('experience_replay2.json') as f:
             data = json.load(f)
 
+    
         for i in range(len(data)-1):
+            w1, w2 = data[i][-1], data[i+1][-1]
+            #print([(w1[a]['cost'], w1[a]['cost'] - b['cost']) for a, b in w2.items()])
             print(self.compute_step_reward(data[i][-1], data[i+1][-1]))
-            print('-'*20)      
+            #print('-'*20)      
+       
 
     def init_models(self, state_num:int, action_num:int) -> None:
         self.actor = Atlas_Index_Actor(state_num, action_num)
@@ -135,10 +147,12 @@ class Atlas_Index_Tune:
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
-        self.generate_experience_replay(indices, metrics, 50)
+        self.conn.drop_all_indices()
+        self.generate_experience_replay(indices, metrics, 20)
         
         for i in self.experience_replay:
             print(i[2])
+        
         '''
         start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])], requires_grad = True)
         state_num, action_num = len(state), len(indices)
@@ -164,7 +178,8 @@ class Atlas_Index_Tune:
 if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
-        a.mount_entities()
+        
         a.conn.drop_all_indices()
         a.tune()
-    
+        
+        #a._test_experience_replay()

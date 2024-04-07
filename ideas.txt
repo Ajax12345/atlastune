@@ -12,7 +12,24 @@ alter table region drop primary key;
 alter table supplier drop primary key;
 
 
-
+with cte(tbl, c) as (
+    select 'customer', (select count(*) from customer)
+    union all
+    select 'lineitem', (select count(*) from lineitem)
+    union all
+    select 'nation', (select count(*) from nation)
+    union all
+    select 'orders', (select count(*) from orders)
+    union all
+    select 'part', (select count(*) from part)
+    union all
+    select 'partsupp', (select count(*) from partsupp)
+    union all
+    select 'region', (select count(*) from region)
+    union all
+    select 'supplier', (select count(*) from supplier)
+)
+select c.* from cte c where c.c= (select max(c1.c) from cte c1);
 
 password: Gobronxbombers2
 
@@ -95,3 +112,4 @@ Notes:
     - https://github.com/TPC-Council/HammerDB/
     - https://github.com/cmu-db/benchbase
     - TPC-H works?
+    - with TPC-H, perhaps clearing out the dummy text blobs did the trick
