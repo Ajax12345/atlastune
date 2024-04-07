@@ -89,7 +89,7 @@ class Atlas_Index_Tune:
 
     def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
         if from_buffer:
-            with open('experience_replay.json') as f:
+            with open('experience_replay/experience_replay2024-04-0621:48:19749950.json') as f:
                 self.experience_replay = json.load(f)
             
             return
@@ -107,7 +107,7 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        with open(f"experience_replay/experience_replay{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
+        with open(f"experience_replay/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
             json.dump(self.experience_replay, f)
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
@@ -120,19 +120,19 @@ class Atlas_Index_Tune:
         return -0.5 if not (l:=(sum(k)/len(k))*10) else l
         '''
 
-
-
-
     def _test_experience_replay(self) -> None:
-        with open('experience_replay2.json') as f:
+        with open('experience_replay/experience_replay3.json') as f:
             data = json.load(f)
 
-    
+        '''
         for i in range(len(data)-1):
             w1, w2 = data[i][-1], data[i+1][-1]
             #print([(w1[a]['cost'], w1[a]['cost'] - b['cost']) for a, b in w2.items()])
             print(self.compute_step_reward(data[i][-1], data[i+1][-1]))
-            #print('-'*20)      
+            #print('-'*20)    
+        '''
+        for i in data:
+            print(i[2])  
        
 
     def init_models(self, state_num:int, action_num:int) -> None:
@@ -148,7 +148,7 @@ class Atlas_Index_Tune:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.conn.drop_all_indices()
-        self.generate_experience_replay(indices, metrics, 20)
+        self.generate_experience_replay(indices, metrics, 50)
         
         for i in self.experience_replay:
             print(i[2])
@@ -179,7 +179,7 @@ if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
         
-        a.conn.drop_all_indices()
+        #a.conn.drop_all_indices()
         a.tune()
-        
         #a._test_experience_replay()
+        

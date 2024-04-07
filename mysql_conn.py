@@ -322,9 +322,9 @@ class MySQL:
             return queries
 
         if self.database == 'tpch1':
-            with open('tpch/queries.sql') as f:
+            with open('tpc/tpch/queries.sql') as f:
                 for i, q in enumerate(f, 1):
-                    queries[f'q{i}.sql'] = self.get_query_stats(f.strip(';\n'))
+                    queries[f'q{i}.sql'] = self.get_query_stats(q.strip(';\n'))
 
             return queries
 

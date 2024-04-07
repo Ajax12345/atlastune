@@ -113,3 +113,4 @@ Notes:
     - https://github.com/cmu-db/benchbase
     - TPC-H works?
     - with TPC-H, perhaps clearing out the dummy text blobs did the trick
+    - Not every query is equal: more time-intensive queries should have heigher priority than inherently shorter/faster queries, perhaps need weighting 
