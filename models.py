@@ -5,6 +5,7 @@ import torch.optim as optimizer
 import mysql_conn as db, random
 import copy, json, datetime
 import collections
+import matplotlib.pyplot as plt
 
 class Normalize:
     @classmethod
@@ -64,8 +65,8 @@ class Atlas_Index_Actor(nn.Module):
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
-            'alr':0.001,
-            'clr':0.001,
+            'alr':0.00001,
+            'clr':0.00001,
             'gamma':0.9,
             'tau':0.9999
         }) -> None:
@@ -101,7 +102,7 @@ class Atlas_Index_Tune:
 
         return _indices  
 
-    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
+    def __generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
         if from_buffer:
             with open(from_buffer) as f:
                 self.experience_replay = json.load(f)
@@ -120,6 +121,45 @@ class Atlas_Index_Tune:
             indices = _indices
 
         self.save_experience_replay('experience_replay/custom_exper_repr.json')
+
+    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
+        if from_buffer:
+            with open(from_buffer) as f:
+                self.experience_replay = json.load(f)
+            
+            return
+
+        self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
+        for _ in range(iterations):
+            _indices = self.generate_random_index(indices)
+        
+            self.conn.apply_index_configuration(_indices)
+            self.experience_replay.append([[*indices, *metrics], _indices, 
+                self.compute_ranking_reward(self.experience_replay, 
+                        w2:=self.conn.workload_cost()), 
+                [*_indices, *metrics], w2])
+            indices = _indices
+
+        self.save_experience_replay('experience_replay/custom_exper_repr1.json')
+
+
+    def workload_cost(self, w:dict) -> float:
+        return sum(w[i]['cost'] for i in w)
+
+    def compute_ranking_reward(self, experience_replay:typing.List[list], w2:dict) -> float:
+        c = [self.workload_cost(i[-1]) for i in experience_replay]
+        w2_c = self.workload_cost(w2)
+        '''
+        s1, s2 = sum(w2_c > i for i in c), sum(w2_c <= i for i in c)
+        if s1 > s2:
+            return 5
+        
+        if s1 < s2:
+            return -5
+        
+        return 1
+        '''
+        return sum(w2_c < i for i in c)/len(c)
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
         k = [j for a, b in w2.items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
@@ -166,7 +206,7 @@ class Atlas_Index_Tune:
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.conn.drop_all_indices()
     
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/tpcc_custom_replay.json')
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exper_repr1.json')
         
         '''
         for i in self.experience_replay:
@@ -181,7 +221,8 @@ class Atlas_Index_Tune:
         self.init_models(state_num, action_num)
         
         rewards = []
-        for _ in range(100):
+        reward_sum = 0
+        for _ in range(1000):
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
@@ -196,16 +237,17 @@ class Atlas_Index_Tune:
             
             self.conn.apply_index_configuration(new_indices)
             self.experience_replay.append([state, new_indices, 
-                reward:=self.compute_step_reward(self.experience_replay[-1][-1], 
+                reward:=self.compute_ranking_reward(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*new_indices, *metrics], w2])
-            rewards.append(reward)
+            reward_sum += reward
+            rewards.append(reward_sum)
             indices = new_indices
             state = [*indices, *metrics]
             start_state = torch.tensor([Normalize.normalize(state)])
             
 
-            inds = random.sample([*range(len(self.experience_replay))], 50)
+            inds = random.sample([*range(1,len(self.experience_replay))], 50)
             _s, a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
             s = torch.tensor([Normalize.normalize(i) for i in _s])
             s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
@@ -259,9 +301,15 @@ if __name__ == '__main__':
     with Atlas_Index_Tune('tpcc100') as a:
         
         #a.conn.drop_all_indices()
-        print(a.tune())
+        #v = a.tune()
         #a.generate_experience_replay(500)
         #a._test_experience_replay()
+        
+        with open('outputs/r1.json') as f:
+            v = json.load(f)
+
+            plt.plot([*range(len(v))], v)
+            plt.show()
 
 
 

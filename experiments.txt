@@ -15,3 +15,7 @@
     - there is a poor solving gradient: assuming you converge on index i, which is optimal, then anything better will simply need to a negative result, since it has plateued and cannot find a better solution
         - trick might be to check performance of new candidate relative to any of the existing solutions in the memory buffer
         - should be measured against the best seen so far, at any point
+        - new reward:
+            - number of candidates it is better than?
+            - number of better solutions, number of worse solutions?
+            - in terms of total cost
