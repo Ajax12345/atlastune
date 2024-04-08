@@ -65,6 +65,7 @@ class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
             'alr':0.00001,
             'clr':0.00001,
+            'gamma':0.9,
             'tau':0.00001
         }) -> None:
         self.database = database
@@ -89,7 +90,7 @@ class Atlas_Index_Tune:
 
     def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
         if from_buffer:
-            with open('experience_replay/experience_replay2024-04-0621:48:19749950.json') as f:
+            with open('experience_replay/experience_replay_tpcc100_2024-04-0717:14:11832096.json') as f:
                 self.experience_replay = json.load(f)
             
             return
@@ -148,23 +149,53 @@ class Atlas_Index_Tune:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.conn.drop_all_indices()
-        self.generate_experience_replay(indices, metrics, 50)
-        
+    
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = True)
+        '''
         for i in self.experience_replay:
             print(i[2])
-        
         '''
-        start_state = torch.tensor([Normalize.normalize(state:=[*indices, *metrics])], requires_grad = True)
+        
+        self.conn.drop_all_indices()
+
+        state = [*indices, *metrics]
+        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         state_num, action_num = len(state), len(indices)
         self.init_models(state_num, action_num)
+        
+        rewards = []
+        #for _ in range(20):
         self.actor.eval()
-        p_action = self.actor(start_state)
+        '''
+        [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
+        self.conn.apply_index_configuration(new_indices)
+        self.experience_replay.append([state, new_indices, 
+            reward:=self.compute_step_reward(self.experience_replay[-1][-1], 
+                    w2:=self.conn.workload_cost()), 
+            [*new_indices, *metrics], w2])
+        rewards.append(reward)
+        indices = new_indices
+        state = [*indices, *metrics]
+        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+        '''
+
+        inds = random.sample([*range(1,len(self.experience_replay)+1)], 10)
+        s, a, r, s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+        s = torch.tensor([Normalize.normalize(i) for i in s], requires_grad = True)
+        s_prime = torch.tensor([Normalize.normalize(i) for i in s_prime], requires_grad = True)
+        r = torch.tensor([[i] for i in r], requires_grad = True)
+
+
+
+    
+        '''
         print(p_action)
         self.critic.eval()
         print(self.critic(start_state, p_action))
+        '''
         #print(db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist()))
         #print(self.conn.workload_cost())
-        '''
+    
 
     def __exit__(self, *_) -> None:
         if self.conn is not None:

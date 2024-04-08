@@ -114,3 +114,5 @@ Notes:
     - TPC-H works?
     - with TPC-H, perhaps clearing out the dummy text blobs did the trick
     - Not every query is equal: more time-intensive queries should have heigher priority than inherently shorter/faster queries, perhaps need weighting 
+    - Note: might need to initialize experience replay with self.actor instead of random process?
+    
