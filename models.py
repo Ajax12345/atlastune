@@ -63,10 +63,10 @@ class Atlas_Index_Actor(nn.Module):
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
-            'alr':0.00001,
-            'clr':0.00001,
-            'gamma':0.9,
-            'tau':0.00001
+            'alr':0.001,
+            'clr':0.001,
+            'gamma':0.7,
+            'tau':0.9999
         }) -> None:
         self.database = database
         self.conn = conn
@@ -88,6 +88,17 @@ class Atlas_Index_Tune:
         self.mount_entities()
         return self
 
+    def save_experience_replay(self) -> None:
+        with open(f"experience_replay/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
+            json.dump(self.experience_replay, f)
+
+    def generate_random_index(self, indices:typing.List[int]) -> typing.List[int]:
+        _indices = copy.deepcopy(indices)
+        for i in random.sample([*range(len(indices))], random.choice([*range(1, 3)])):
+            _indices[i] = int(not _indices[i])
+
+        return _indices  
+
     def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
         if from_buffer:
             with open('experience_replay/experience_replay_tpcc100_2024-04-0717:14:11832096.json') as f:
@@ -97,9 +108,7 @@ class Atlas_Index_Tune:
 
         self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
         for _ in range(iterations):
-            _indices = copy.deepcopy(indices)
-            for i in random.sample([*range(len(indices))], random.choice([*range(1, 3)])):
-                _indices[i] = int(not _indices[i])
+            _indices = self.generate_random_index(indices)
         
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *metrics], _indices, 
@@ -108,13 +117,12 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        with open(f"experience_replay/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
-            json.dump(self.experience_replay, f)
+        self.save_experience_replay()
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
         k = [j for a, b in w2.items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
         if not k:
-            return -1
+            return -20
 
         return max(min((sum(k)/len(k))*10, 10), -10)
         '''
@@ -148,7 +156,7 @@ class Atlas_Index_Tune:
     def update_target_weights(self, target_m, m) -> None:
         for target_param, param in zip(target_m.parameters(), m.parameters()):
             target_param.data.copy_(
-                target_param.data * (1-self.config['tau']) + param.data * self.config['tau']
+                target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
             )
 
     def tune(self) -> None:
@@ -156,7 +164,7 @@ class Atlas_Index_Tune:
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.conn.drop_all_indices()
     
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = True)
+        self.generate_experience_replay(indices, metrics, 20, from_buffer = True)
         '''
         for i in self.experience_replay:
             print(i[2])
@@ -175,8 +183,14 @@ class Atlas_Index_Tune:
             self.actor_target.eval()
             self.critic.eval()
             self.critic_target.eval()
+
             
-            [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
+            if random.random() < 0.25:
+                new_indices = self.generate_random_index(indices)
+            
+            else:
+                [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
+            
             self.conn.apply_index_configuration(new_indices)
             self.experience_replay.append([state, new_indices, 
                 reward:=self.compute_step_reward(self.experience_replay[-1][-1], 
@@ -196,15 +210,14 @@ class Atlas_Index_Tune:
 
             target_action = self.actor_target(s_prime)
             target_q_value = self.critic_target(s_prime, target_action)
-
             next_value = r + self.config['gamma']*target_q_value
 
             current_action = self.actor(s)
             current_value = self.critic(s, current_action)
             
-            loss = torch.autograd.Variable(self.loss_criterion(current_value.detach(), next_value.detach()), requires_grad = True)
-
-            
+            #loss = torch.autograd.Variable(self.loss_criterion(current_value, next_value), requires_grad = True)
+            loss = self.loss_criterion(current_value.detach(), next_value)
+            print(loss)
             self.actor.train()
             self.actor_target.train()
             self.critic.train()
@@ -213,8 +226,8 @@ class Atlas_Index_Tune:
             self.critic_optimizer.zero_grad()
             loss.backward()
             self.critic_optimizer.step()
-
-            actor_loss = current_value.mean()
+            al = -current_value
+            actor_loss = al.mean()
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
@@ -222,14 +235,8 @@ class Atlas_Index_Tune:
             self.update_target_weights(self.critic_target, self.critic)
             self.update_target_weights(self.actor_target, self.actor)
 
-        '''
-        print(p_action)
-        self.critic.eval()
-        print(self.critic(start_state, p_action))
-        '''
-        #print(db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist()))
-        #print(self.conn.workload_cost())
-
+    
+        #self.save_experience_replay()
         return rewards
     
 

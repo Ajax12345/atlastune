@@ -5,3 +5,8 @@
     - Might want to run installation of TPC-H again, we cleared out the large text fields for the sake of memory. It might not matter, though.
 
 
+06/08/2024 @12:20 PM
+    - 500 iterations
+    - idea: change actor/critic network architecture
+
+    
