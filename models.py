@@ -145,6 +145,12 @@ class Atlas_Index_Tune:
         self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
         self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
 
+    def update_target_weights(self, target_m, m) -> None:
+        for target_param, param in zip(target_m.parameters(), m.parameters()):
+            target_param.data.copy_(
+                target_param.data * (1-self.config['tau']) + param.data * self.config['tau']
+            )
+
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
@@ -164,30 +170,58 @@ class Atlas_Index_Tune:
         self.init_models(state_num, action_num)
         
         rewards = []
-        #for _ in range(20):
-        self.actor.eval()
-        '''
-        [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
-        self.conn.apply_index_configuration(new_indices)
-        self.experience_replay.append([state, new_indices, 
-            reward:=self.compute_step_reward(self.experience_replay[-1][-1], 
-                    w2:=self.conn.workload_cost()), 
-            [*new_indices, *metrics], w2])
-        rewards.append(reward)
-        indices = new_indices
-        state = [*indices, *metrics]
-        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
-        '''
+        for _ in range(100):
+            self.actor.eval()
+            self.actor_target.eval()
+            self.critic.eval()
+            self.critic_target.eval()
+            
+            [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
+            self.conn.apply_index_configuration(new_indices)
+            self.experience_replay.append([state, new_indices, 
+                reward:=self.compute_step_reward(self.experience_replay[-1][-1], 
+                        w2:=self.conn.workload_cost()), 
+                [*new_indices, *metrics], w2])
+            rewards.append(reward)
+            indices = new_indices
+            state = [*indices, *metrics]
+            start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+            
 
-        inds = random.sample([*range(1,len(self.experience_replay)+1)], 10)
-        s, a, r, s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-        s = torch.tensor([Normalize.normalize(i) for i in s], requires_grad = True)
-        s_prime = torch.tensor([Normalize.normalize(i) for i in s_prime], requires_grad = True)
-        r = torch.tensor([[i] for i in r], requires_grad = True)
+            inds = random.sample([*range(1,len(self.experience_replay))], 10)
+            _s, a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+            s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
+            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
+            r = torch.tensor([[float(i)] for i in _r], requires_grad = True)
 
+            target_action = self.actor_target(s_prime)
+            target_q_value = self.critic_target(s_prime, target_action)
 
+            next_value = r + self.config['gamma']*target_q_value
 
-    
+            current_action = self.actor(s)
+            current_value = self.critic(s, current_action)
+            
+            loss = torch.autograd.Variable(self.loss_criterion(current_value.detach(), next_value.detach()), requires_grad = True)
+
+            
+            self.actor.train()
+            self.actor_target.train()
+            self.critic.train()
+            self.critic_target.train()
+            
+            self.critic_optimizer.zero_grad()
+            loss.backward()
+            self.critic_optimizer.step()
+
+            actor_loss = current_value.mean()
+            self.actor_optimizer.zero_grad()
+            actor_loss.backward()
+            self.actor_optimizer.step()
+
+            self.update_target_weights(self.critic_target, self.critic)
+            self.update_target_weights(self.actor_target, self.actor)
+
         '''
         print(p_action)
         self.critic.eval()
@@ -195,6 +229,8 @@ class Atlas_Index_Tune:
         '''
         #print(db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist()))
         #print(self.conn.workload_cost())
+
+        return rewards
     
 
     def __exit__(self, *_) -> None:
@@ -211,6 +247,6 @@ if __name__ == '__main__':
     with Atlas_Index_Tune('tpcc100') as a:
         
         #a.conn.drop_all_indices()
-        a.tune()
+        print(a.tune())
         #a._test_experience_replay()
         
