@@ -4,6 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optimizer
 import mysql_conn as db, random
 import copy, json, datetime
+import collections
 
 class Normalize:
     @classmethod
@@ -63,8 +64,8 @@ class Atlas_Index_Actor(nn.Module):
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
-            'alr':0.001,
-            'clr':0.001,
+            'alr':0.0001,
+            'clr':0.0001,
             'gamma':0.7,
             'tau':0.9999
         }) -> None:
@@ -88,8 +89,9 @@ class Atlas_Index_Tune:
         self.mount_entities()
         return self
 
-    def save_experience_replay(self) -> None:
-        with open(f"experience_replay/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
+    def save_experience_replay(self, f_name = None) -> None:
+        f_name = f_name if f_name is not None else f"experience_replay/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json"
+        with open(f_name, 'a') as f:
             json.dump(self.experience_replay, f)
 
     def generate_random_index(self, indices:typing.List[int]) -> typing.List[int]:
@@ -101,7 +103,7 @@ class Atlas_Index_Tune:
 
     def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
         if from_buffer:
-            with open('experience_replay/experience_replay_tpcc100_2024-04-0717:14:11832096.json') as f:
+            with open(from_buffer) as f:
                 self.experience_replay = json.load(f)
             
             return
@@ -117,12 +119,12 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        self.save_experience_replay()
+        self.save_experience_replay('experience_replay/custom_exper_repr.json')
 
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
         k = [j for a, b in w2.items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
         if not k:
-            return -20
+            return -5
 
         return max(min((sum(k)/len(k))*10, 10), -10)
         '''
@@ -164,7 +166,8 @@ class Atlas_Index_Tune:
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.conn.drop_all_indices()
     
-        self.generate_experience_replay(indices, metrics, 20, from_buffer = True)
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/tpcc_custom_replay.json')
+        
         '''
         for i in self.experience_replay:
             print(i[2])
@@ -202,7 +205,7 @@ class Atlas_Index_Tune:
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
             
 
-            inds = random.sample([*range(1,len(self.experience_replay))], 10)
+            inds = random.sample([*range(len(self.experience_replay))], 50)
             _s, a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
             s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
             s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
@@ -255,5 +258,21 @@ if __name__ == '__main__':
         
         #a.conn.drop_all_indices()
         print(a.tune())
+        #a.generate_experience_replay(500)
         #a._test_experience_replay()
-        
+
+
+
+    '''
+    with open('experience_replay/custom_exper_repr.json') as f:
+        data = json.load(f)
+        d = collections.defaultdict(list)
+        for i in data:
+            if i[2] is not None:
+                d[i[2]].append(i)
+
+        k = [j for a, b in d.items() for j in random.sample(b, min(len(b), 10))]
+
+    with open('experience_replay/tpcc_custom_replay.json', 'a') as f:
+        json.dump(k, f)
+    '''

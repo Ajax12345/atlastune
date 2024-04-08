@@ -8,5 +8,7 @@
 06/08/2024 @12:20 PM
     - 500 iterations
     - idea: change actor/critic network architecture
-
-    
+        - add more layers
+        - add fewer?
+    - try with larger batch size
+    - see that only a small number of -20 rewards occur
