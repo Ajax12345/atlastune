@@ -64,9 +64,9 @@ class Atlas_Index_Actor(nn.Module):
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
-            'alr':0.0001,
-            'clr':0.0001,
-            'gamma':0.7,
+            'alr':0.001,
+            'clr':0.001,
+            'gamma':0.9,
             'tau':0.9999
         }) -> None:
         self.database = database
@@ -124,7 +124,7 @@ class Atlas_Index_Tune:
     def compute_step_reward(self, w1:dict, w2:dict) -> float:
         k = [j for a, b in w2.items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
         if not k:
-            return -5
+            return 1
 
         return max(min((sum(k)/len(k))*10, 10), -10)
         '''
@@ -202,14 +202,14 @@ class Atlas_Index_Tune:
             rewards.append(reward)
             indices = new_indices
             state = [*indices, *metrics]
-            start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+            start_state = torch.tensor([Normalize.normalize(state)])
             
 
             inds = random.sample([*range(len(self.experience_replay))], 50)
             _s, a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-            s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
-            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
-            r = torch.tensor([[float(i)] for i in _r], requires_grad = True)
+            s = torch.tensor([Normalize.normalize(i) for i in _s])
+            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
+            r = torch.tensor([[float(i)] for i in _r])
 
             target_action = self.actor_target(s_prime)
             target_q_value = self.critic_target(s_prime, target_action)
@@ -221,6 +221,7 @@ class Atlas_Index_Tune:
             #loss = torch.autograd.Variable(self.loss_criterion(current_value, next_value), requires_grad = True)
             loss = self.loss_criterion(current_value.detach(), next_value)
             print(loss)
+            
             self.actor.train()
             self.actor_target.train()
             self.critic.train()
@@ -229,12 +230,13 @@ class Atlas_Index_Tune:
             self.critic_optimizer.zero_grad()
             loss.backward()
             self.critic_optimizer.step()
-            al = -current_value
+            al = current_value
             actor_loss = al.mean()
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
             self.actor_optimizer.step()
 
+            self.critic.train()
             self.update_target_weights(self.critic_target, self.critic)
             self.update_target_weights(self.actor_target, self.actor)
 
