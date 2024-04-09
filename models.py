@@ -33,7 +33,20 @@ class Atlas_Index_Critic(nn.Module):
             nn.BatchNorm1d(64),
             nn.Linear(64, 1),
         )
-    
+        #self._init_weights()
+
+    def _init_weights(self):
+        self.state_input.weight.data.normal_(0.0, 1e-2)
+        self.state_input.bias.data.uniform_(-0.1, 0.1)
+
+        self.action_input.weight.data.normal_(0.0, 1e-2)
+        self.action_input.bias.data.uniform_(-0.1, 0.1)
+
+        for m in self.layers:
+            if type(m) == nn.Linear:
+                m.weight.data.normal_(0.0, 1e-2)
+                m.bias.data.uniform_(-0.1, 0.1)
+
     def forward(self, state, action) -> typing.Any:
         state = self.act(self.state_input(state))
         action = self.act(self.action_input(action))
@@ -58,6 +71,14 @@ class Atlas_Index_Actor(nn.Module):
         )
         self.out_layer = nn.Linear(64, self.index_num)
         self.act = nn.Sigmoid()
+        #self._init_weights()
+
+    def _init_weights(self):
+
+        for m in self.layers:
+            if type(m) == nn.Linear:
+                m.weight.data.normal_(0.0, 1e-2)
+                m.bias.data.uniform_(-0.1, 0.1)
 
     def forward(self, x) -> torch.tensor:
         return self.act(self.out_layer(self.layers(x)))
@@ -95,9 +116,9 @@ class Atlas_Index_Tune:
         with open(f_name, 'a') as f:
             json.dump(self.experience_replay, f)
 
-    def generate_random_index(self, indices:typing.List[int]) -> typing.List[int]:
+    def generate_random_index(self, indices:typing.List[int], bound:int = 6) -> typing.List[int]:
         _indices = copy.deepcopy(indices)
-        for i in random.sample([*range(len(indices))], random.choice([*range(1, 3)])):
+        for i in random.sample([*range(len(indices))], random.choice([*range(1, bound)])):
             _indices[i] = int(not _indices[i])
 
         return _indices  
@@ -135,7 +156,7 @@ class Atlas_Index_Tune:
         
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *metrics], _indices, 
-                self.compute_cost_delta(self.experience_replay, 
+                self.compute_cost_delta_per_query(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*_indices, *metrics], w2])
             indices = _indices
@@ -156,6 +177,11 @@ class Atlas_Index_Tune:
             return -5
 
         return 1
+
+    def compute_cost_delta_per_query(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        w1 = experience_replay[0][-1]
+        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
+        return max(min((sum(k)/len(k))*10, 10), -10)
 
     def compute_total_cost_reward(self, _, w:dict) -> float:
         return -1*self.workload_cost(w)
@@ -216,16 +242,17 @@ class Atlas_Index_Tune:
             )
 
     def tune(self) -> None:
+        self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
-        self.conn.drop_all_indices()
         #self.generate_experience_replay(indices, metrics, 100)
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exprience_replay2024-04-0912:02:49902856.json')
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json')
         '''
         for i in self.experience_replay:
             print(i[2])
-        '''
         
+        '''
+        #return 
         self.conn.drop_all_indices()
 
         state = [*indices, *metrics]
@@ -235,7 +262,7 @@ class Atlas_Index_Tune:
         
         rewards = []
         reward_sum = 0
-        for _ in range(100):
+        for _ in range(300):
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
@@ -248,19 +275,21 @@ class Atlas_Index_Tune:
             else:
                 [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
             
+            #[new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
+
             self.conn.apply_index_configuration(new_indices)
             self.experience_replay.append([state, new_indices, 
-                reward:=self.compute_cost_delta(self.experience_replay, 
+                reward:=self.compute_cost_delta_per_query(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*new_indices, *metrics], w2])
             reward_sum += reward
-            rewards.append(reward_sum)
+            rewards.append(reward)
             indices = new_indices
             state = [*indices, *metrics]
             start_state = torch.tensor([Normalize.normalize(state)])
             
 
-            inds = random.sample([*range(1,len(self.experience_replay))], 50)
+            inds = random.sample([*range(1,len(self.experience_replay))], 20)
             _s, a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
             s = torch.tensor([Normalize.normalize(i) for i in _s])
             s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
@@ -272,15 +301,15 @@ class Atlas_Index_Tune:
 
             current_action = self.actor(s)
             current_value = self.critic(s, current_action)
-            
-            #loss = torch.autograd.Variable(self.loss_criterion(current_value, next_value), requires_grad = True)
-            loss = self.loss_criterion(current_value.detach(), next_value)
-            print(loss)
-            
             self.actor.train()
             self.actor_target.train()
             self.critic.train()
             self.critic_target.train()
+
+            #loss = torch.autograd.Variable(self.loss_criterion(current_value, next_value), requires_grad = True)
+            loss = self.loss_criterion(current_value.detach(), next_value)
+            print(loss)
+        
             
             self.critic_optimizer.zero_grad()
             loss.backward()
@@ -291,14 +320,26 @@ class Atlas_Index_Tune:
             actor_loss.backward()
             self.actor_optimizer.step()
 
-            self.critic.train()
             self.update_target_weights(self.critic_target, self.critic)
             self.update_target_weights(self.actor_target, self.actor)
 
     
         #self.save_experience_replay()
         return rewards
-    
+
+    def tune_random(self, iterations:int) -> typing.List[float]:
+        self.conn.drop_all_indices()
+        indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+        _experience_replay = [[indices, None, self.conn.workload_cost()]]
+        rewards = []
+        for _ in range(iterations):
+            indices = self.generate_random_index(indices, 2)
+            self.conn.apply_index_configuration(indices)
+            _experience_replay.append([indices, reward:=self.compute_cost_delta_per_query(_experience_replay, 
+                        w2:=self.conn.workload_cost()), w2])
+            rewards.append(reward)
+        
+        return rewards
 
     def __exit__(self, *_) -> None:
         if self.conn is not None:
@@ -313,24 +354,35 @@ if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
         
-        a.conn.drop_all_indices()
-        a.tune()
-        #a.generate_experience_replay(500)
-        #a._test_experience_replay()
+        rewards = []
+        for _ in range(5):
+            a.conn.drop_all_indices()
+            rewards.append(a.tune())
+            
+        with open('outputs/rl_ddpg.json', 'a') as f:
+            json.dump(rewards, f)
+
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)])
+        plt.title("reward at each iteration")
+        plt.xlabel("iteration")
+        plt.ylabel("reward")
+        plt.show()
         
+        
+        '''
+        rewards = []
+        for _ in range(5):
 
+            a.conn.drop_all_indices()
+            r = a.tune_random(300)
+            rewards.append(r)
 
+        with open('outputs/random_control.json', 'a') as f:
+            json.dump(rewards, f)
 
-    '''
-    with open('experience_replay/custom_exper_repr.json') as f:
-        data = json.load(f)
-        d = collections.defaultdict(list)
-        for i in data:
-            if i[2] is not None:
-                d[i[2]].append(i)
-
-        k = [j for a, b in d.items() for j in random.sample(b, min(len(b), 10))]
-
-    with open('experience_replay/tpcc_custom_replay.json', 'a') as f:
-        json.dump(k, f)
-    '''
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)])
+        plt.title("reward at each iteration (random)")
+        plt.xlabel("iteration")
+        plt.ylabel("reward")
+        plt.show()
+        '''

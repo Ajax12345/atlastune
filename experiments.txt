@@ -50,3 +50,65 @@
     reward now  difference between default configuration and proposed configuration
     reward function: compute_cost_delta
     weight updates: target * t + old* (1 - t)
+    
+    Oberservations:
+        - loss does not decrease
+        - 99% of the rewards were = 5
+
+
+06/09/2024 @1:22 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+
+    ideas:
+        plot size of reward given out at each iteration
+        change around critic and actor architecture
+        pass to critic the activated action values
+        reward function does not just approximate from experience_replay[0], but a random sample of prior solutions
+        using incorrect loss function?
+        - try on TPC-H
+
+    - TODO: plot returned reward at each iteration
+        - initialize weights differently (see papers)
+            https://www.reddit.com/r/reinforcementlearning/comments/ookni2/sac_critic_loss_increases/
+        - decrease the size of the critic network
+
+        - https://stackoverflow.com/questions/58004237/critic-loss-for-rl-agent
+
+06/09/2024 @2:00 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+
+    plotting rewards per iteration
+
+    using _init_weights
+
+    observations:
+        reward per iteration increasing!!!
+
+    TODO:
+        - remove _init_weights
+        - try on 500 iterations
+        - try on TPC-H
+        - update reward function to sample from elsewere in the experience replay
+        - decrease the size of the critic network
+        - train over 5 epochs, find the mean of each reward at every iteration
+        - compare with purely random search
+
+06/09/2024 @3:57 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+
+    300 iterations over five epochs
+
+
+    Observation:    
+        - logarithmic increase
+
+     TODO: 
+        - run purely random over five epochs
+
+    - Try DQN?
+    - Implement this algo more closely:
+        - https://spinningup.openai.com/en/latest/algorithms/ddpg.html#pseudocode
+        - differentiate between Q(s, a) and Q(s, u(s))
