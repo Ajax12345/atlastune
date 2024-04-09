@@ -19,3 +19,34 @@
             - number of candidates it is better than?
             - number of better solutions, number of worse solutions?
             - in terms of total cost
+
+    - TODO: reward is -1*query_cost
+        - might need to normalize query_cost
+    - Also try the reward as being -1*execution time    
+    - Try other reward formulas
+    - detect convergence: that is, when suggested solutions are not noticeable better than the others seen, after a certain period of time
+    - if -1*query_cost or -1*execution_time does not work, then get baseline costs for workload and then find max(original - new for original in baselines)
+    - check that weight updating is correct
+    - try on TPC-H
+    - repurpose old reward function based on percentage change, but the w1 is the original (first) non-indexed state
+
+06/09/2024 @11:29 AM
+    reward function is now -1*total_query_cost
+    experience replay: custom_exprience_replay2024-04-0911:36:45523674.json
+    replay batch size: 50
+    weight updates: target * t + old* (1 - t)
+    reward function: compute_total_cost_reward
+
+    - Observations:
+        - total cost too large, had to normalize rewards, but loss did not decrease
+
+    - TODO:
+        - change weight updates to be: target * (1 - t) + old * t
+        - have reward be the difference between default configuration and proposed configuration
+            - clip at -10 and 10
+
+
+06/09/2024 @11:58 AM
+    reward now  difference between default configuration and proposed configuration
+    reward function: compute_cost_delta
+    weight updates: target * t + old* (1 - t)

@@ -65,8 +65,8 @@ class Atlas_Index_Actor(nn.Module):
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
-            'alr':0.00001,
-            'clr':0.00001,
+            'alr':0.0001,
+            'clr':0.0001,
             'gamma':0.9,
             'tau':0.9999
         }) -> None:
@@ -135,16 +135,30 @@ class Atlas_Index_Tune:
         
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *metrics], _indices, 
-                self.compute_ranking_reward(self.experience_replay, 
+                self.compute_cost_delta(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        self.save_experience_replay('experience_replay/custom_exper_repr1.json')
-
+        self.save_experience_replay(f1_name:=f"experience_replay/custom_exprience_replay{str(datetime.datetime.now()).replace('.','').replace(' ','')}.json")
+        print('experience replay saved to: ', f1_name)
 
     def workload_cost(self, w:dict) -> float:
         return sum(w[i]['cost'] for i in w)
+
+    def compute_cost_delta(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        j = self.workload_cost(experience_replay[0][-1]) 
+        k = self.workload_cost(w2)
+        if j > k:
+            return 5
+        
+        if j < k:
+            return -5
+
+        return 1
+
+    def compute_total_cost_reward(self, _, w:dict) -> float:
+        return -1*self.workload_cost(w)
 
     def compute_ranking_reward(self, experience_replay:typing.List[list], w2:dict) -> float:
         c = [self.workload_cost(i[-1]) for i in experience_replay]
@@ -198,16 +212,15 @@ class Atlas_Index_Tune:
     def update_target_weights(self, target_m, m) -> None:
         for target_param, param in zip(target_m.parameters(), m.parameters()):
             target_param.data.copy_(
-                target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
+                target_param.data * (1-self.config['tau']) + param.data * self.config['tau']
             )
 
     def tune(self) -> None:
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         self.conn.drop_all_indices()
-    
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exper_repr1.json')
-        
+        #self.generate_experience_replay(indices, metrics, 100)
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exprience_replay2024-04-0912:02:49902856.json')
         '''
         for i in self.experience_replay:
             print(i[2])
@@ -222,7 +235,7 @@ class Atlas_Index_Tune:
         
         rewards = []
         reward_sum = 0
-        for _ in range(1000):
+        for _ in range(100):
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
@@ -237,7 +250,7 @@ class Atlas_Index_Tune:
             
             self.conn.apply_index_configuration(new_indices)
             self.experience_replay.append([state, new_indices, 
-                reward:=self.compute_ranking_reward(self.experience_replay, 
+                reward:=self.compute_cost_delta(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*new_indices, *metrics], w2])
             reward_sum += reward
@@ -300,16 +313,11 @@ if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
         
-        #a.conn.drop_all_indices()
-        #v = a.tune()
+        a.conn.drop_all_indices()
+        a.tune()
         #a.generate_experience_replay(500)
         #a._test_experience_replay()
         
-        with open('outputs/r1.json') as f:
-            v = json.load(f)
-
-            plt.plot([*range(len(v))], v)
-            plt.show()
 
 
 
