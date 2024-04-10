@@ -297,8 +297,8 @@ class Atlas_Index_Tune:
             s = torch.tensor([Normalize.normalize(i) for i in _s])
             a = torch.tensor([[float(j) for j in i] for i in _a])
             s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
-            #r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
-            r = torch.tensor([[float(i)] for i in _r])
+            r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
+            #r = torch.tensor([[float(i)] for i in _r])
 
             u_prime = self.actor_target(s_prime.detach()).tolist()
             target_action = torch.tensor([[float(j) for j in i] for i in db.MySQL.activate_index_actor_outputs(u_prime)])
@@ -307,8 +307,6 @@ class Atlas_Index_Tune:
             next_value = r + self.config['gamma']*target_q_value
 
 
-
-            #current_action = self.actor(s)
             current_value = self.critic(s.detach(), a)
 
             u = self.actor(s.detach()).tolist()
@@ -320,7 +318,6 @@ class Atlas_Index_Tune:
             self.critic.train()
             self.critic_target.train()
 
-            #loss = torch.autograd.Variable(self.loss_criterion(current_value, next_value), requires_grad = True)
             loss = self.loss_criterion(current_value, next_value)
             print(loss)
         
@@ -368,24 +365,33 @@ class Atlas_Index_Tune:
 if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
-        
+        '''
         rewards = []
         for _ in range(5):
             a.conn.drop_all_indices()
-            rewards.append(a.tune(100))
+            rewards.append(a.tune(300))
         
-        
-        with open('outputs/rl_ddpg1.json', 'a') as f:
+        with open('outputs/rl_ddpg2.json', 'a') as f:
             json.dump(rewards, f)
         
         
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
         '''
-        with open('outputs/rl_ddpg.json') as f:
+        
+        with open('outputs/rl_ddpg2.json') as f:
             rewards = json.load(f)
-        '''
+            d = len(rewards[0])
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
 
-        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)])
-        plt.title("reward at each iteration")
+        with open('outputs/random_control.json') as f:
+            #rewards = [i[:d] for i in json.load(f)]
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
+        
+        
+        plt.title("reward at each iteration (5 epochs)")
+        plt.legend(loc="lower right")
+
         plt.xlabel("iteration")
         plt.ylabel("reward")
         plt.show()

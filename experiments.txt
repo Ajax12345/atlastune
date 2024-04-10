@@ -146,14 +146,32 @@
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
     
+    100 iterations
+
     Output: outputs/rl_ddpg1.json
 
     - normalization of batch rewards
         - Observation: no major difference between reward normalization and no normalization
+        - a little more stable, but not by much
 
     Ideas:
         - reward could be original_total_cost - new_total_cost, normalized across batch
         - reduce network size
         - new reward functions
+        - try on TPC-H
+        - reward function could be based on query execution time
         - try DQN
+
+06/09/2024 @9:48 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+    
+    Output: outputs/rl_ddpg2.json
+
+    Same as last experiement, but over 300 iterations
+
+
+
+
+
 
