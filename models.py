@@ -238,15 +238,17 @@ class Atlas_Index_Tune:
     def update_target_weights(self, target_m, m) -> None:
         for target_param, param in zip(target_m.parameters(), m.parameters()):
             target_param.data.copy_(
-                target_param.data * (1-self.config['tau']) + param.data * self.config['tau']
+                target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
             )
 
-    def tune(self) -> None:
+    def tune(self, iterations:int, with_epoch:bool = False) -> None:
+        torch.autograd.set_detect_anomaly(True)
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         #self.generate_experience_replay(indices, metrics, 100)
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json')
+        if not with_epoch or not self.experience_replay:
+            self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json')
         '''
         for i in self.experience_replay:
             print(i[2])
@@ -258,18 +260,19 @@ class Atlas_Index_Tune:
         state = [*indices, *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         state_num, action_num = len(state), len(indices)
-        self.init_models(state_num, action_num)
+        if not with_epoch or self.actor is None:
+            self.init_models(state_num, action_num)
         
         rewards = []
         reward_sum = 0
-        for _ in range(300):
+        for _ in range(iterations):
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
             self.critic_target.eval()
 
             
-            if random.random() < 0.25:
+            if random.random() < 0.75:
                 new_indices = self.generate_random_index(indices)
             
             else:
@@ -290,34 +293,46 @@ class Atlas_Index_Tune:
             
 
             inds = random.sample([*range(1,len(self.experience_replay))], 20)
-            _s, a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+            _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
             s = torch.tensor([Normalize.normalize(i) for i in _s])
+            a = torch.tensor([[float(j) for j in i] for i in _a])
             s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
+            #r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
             r = torch.tensor([[float(i)] for i in _r])
 
-            target_action = self.actor_target(s_prime)
-            target_q_value = self.critic_target(s_prime, target_action)
+            u_prime = self.actor_target(s_prime.detach()).tolist()
+            target_action = torch.tensor([[float(j) for j in i] for i in db.MySQL.activate_index_actor_outputs(u_prime)])
+            
+            target_q_value = self.critic_target(s_prime.detach(), target_action)
             next_value = r + self.config['gamma']*target_q_value
 
-            current_action = self.actor(s)
-            current_value = self.critic(s, current_action)
+
+
+            #current_action = self.actor(s)
+            current_value = self.critic(s.detach(), a)
+
+            u = self.actor(s.detach()).tolist()
+            predicted_action = torch.tensor([[float(j) for j in i] for i in db.MySQL.activate_index_actor_outputs(u)])
+            predicted_q_value = self.critic(s.detach(), predicted_action.detach())
+
             self.actor.train()
             self.actor_target.train()
             self.critic.train()
             self.critic_target.train()
 
             #loss = torch.autograd.Variable(self.loss_criterion(current_value, next_value), requires_grad = True)
-            loss = self.loss_criterion(current_value.detach(), next_value)
+            loss = self.loss_criterion(current_value, next_value)
             print(loss)
         
             
             self.critic_optimizer.zero_grad()
             loss.backward()
-            self.critic_optimizer.step()
-            al = current_value
-            actor_loss = al.mean()
+
+            actor_loss = predicted_q_value.mean()
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
+
+            self.critic_optimizer.step()
             self.actor_optimizer.step()
 
             self.update_target_weights(self.critic_target, self.critic)
@@ -357,10 +372,17 @@ if __name__ == '__main__':
         rewards = []
         for _ in range(5):
             a.conn.drop_all_indices()
-            rewards.append(a.tune())
-            
-        with open('outputs/rl_ddpg.json', 'a') as f:
+            rewards.append(a.tune(100))
+        
+        
+        with open('outputs/rl_ddpg1.json', 'a') as f:
             json.dump(rewards, f)
+        
+        
+        '''
+        with open('outputs/rl_ddpg.json') as f:
+            rewards = json.load(f)
+        '''
 
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)])
         plt.title("reward at each iteration")

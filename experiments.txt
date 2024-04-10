@@ -112,3 +112,48 @@
     - Implement this algo more closely:
         - https://spinningup.openai.com/en/latest/algorithms/ddpg.html#pseudocode
         - differentiate between Q(s, a) and Q(s, u(s))
+
+06/09/2024 @6:09 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+    
+    - using both Q(s, a) and Q(s, u(s))
+    - target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
+    - epsilon = 0.75
+    - batch_size = 20
+
+    Ideas
+        - have bound = 2 in generate_random_index
+        - change network layers
+        - possible overfitting? try again with the tuner context manager inside the loop
+        - increase batch size
+
+
+06/09/2024 @7:49 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+    true epoch tuning
+
+    Observations: consistent growth
+
+    Output: outputs/rl_ddpg.json
+
+    Ideas:
+        - normalize reward
+    
+
+06/09/2024 @8:36 PM
+    reward function: compute_cost_delta_per_query
+    experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
+    
+    Output: outputs/rl_ddpg1.json
+
+    - normalization of batch rewards
+        - Observation: no major difference between reward normalization and no normalization
+
+    Ideas:
+        - reward could be original_total_cost - new_total_cost, normalized across batch
+        - reduce network size
+        - new reward functions
+        - try DQN
+
