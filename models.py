@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optimizer
 import mysql_conn as db, random
 import copy, json, datetime
-import collections
+import collections, time
 import matplotlib.pyplot as plt
 
 class Normalize:
@@ -12,7 +12,15 @@ class Normalize:
     def normalize(cls, arr:typing.List[float]) -> typing.List[float]:
         mean = sum(arr)/len(arr)
         std = pow(sum(pow(i - mean, 2) for i in arr)/len(arr), 0.5)
-        return [(i - mean)/std for i in arr]
+        if std:
+            return [(i - mean)/std for i in arr]
+
+        return [i - mean for i in arr]
+
+    @classmethod
+    def add_noise(cls, inds:typing.List[typing.List[float]], noise_scale:float) -> typing.List[typing.List[float]]:
+        return [[X + Y for X, Y in zip(ind, np.random.randn(len(ind))*noise_scale)] 
+                    for ind in inds]
 
 class Atlas_Index_Critic(nn.Module):
     def __init__(self, state_num:int, action_num:int, val_num:int) -> None:
@@ -266,21 +274,28 @@ class Atlas_Index_Tune:
         rewards = []
         reward_sum = 0
         for _ in range(iterations):
+            print(_)
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
             self.critic_target.eval()
 
-            
+            '''
             if random.random() < 0.75:
                 new_indices = self.generate_random_index(indices)
             
             else:
                 [new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
-            
+                print(new_indices)
+            '''
             #[new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
-
+            
+            selected_action = Normalize.add_noise(self.actor(start_state).tolist(), 0.1)
+            [new_indices] = db.MySQL.activate_index_actor_outputs(selected_action)
+            
+            t = time.time()
             self.conn.apply_index_configuration(new_indices)
+            #print(time.time() - t, new_indices)
             self.experience_replay.append([state, new_indices, 
                 reward:=self.compute_cost_delta_per_query(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
@@ -325,7 +340,8 @@ class Atlas_Index_Tune:
             self.critic_optimizer.zero_grad()
             loss.backward()
 
-            actor_loss = predicted_q_value.mean()
+            pqv = -1*predicted_q_value
+            actor_loss = pqv.mean()
             self.actor_optimizer.zero_grad()
             actor_loss.backward()
 
@@ -345,7 +361,9 @@ class Atlas_Index_Tune:
         _experience_replay = [[indices, None, self.conn.workload_cost()]]
         rewards = []
         for _ in range(iterations):
+            print(_)
             indices = self.generate_random_index(indices, 2)
+            print(indices)
             self.conn.apply_index_configuration(indices)
             _experience_replay.append([indices, reward:=self.compute_cost_delta_per_query(_experience_replay, 
                         w2:=self.conn.workload_cost()), w2])
@@ -365,30 +383,44 @@ class Atlas_Index_Tune:
 if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
+        #a.tune_random(300)
         '''
         rewards = []
-        for _ in range(5):
+        for _ in range(1):
             a.conn.drop_all_indices()
-            rewards.append(a.tune(300))
+            rewards.append(a.tune(100))
         
-        with open('outputs/rl_ddpg2.json', 'a') as f:
+        with open('outputs/rl_ddpg9.json', 'a') as f:
             json.dump(rewards, f)
         
         
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
         '''
+        rewards = []
+        for i in range(6, 10):
+            with open(f'outputs/rl_ddpg{i}.json') as f:
+                rewards.extend(json.load(f))
+
         
+        print(len(rewards))
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
+        '''
         with open('outputs/rl_ddpg2.json') as f:
             rewards = json.load(f)
-            d = len(rewards[0])
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
+
+        
+        with open('outputs/rl_ddpg3.json') as f:
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg1")
 
         with open('outputs/random_control.json') as f:
             #rewards = [i[:d] for i in json.load(f)]
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
         
-        
+        '''
+
         plt.title("reward at each iteration (5 epochs)")
         plt.legend(loc="lower right")
 

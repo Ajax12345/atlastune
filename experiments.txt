@@ -170,8 +170,66 @@
 
     Same as last experiement, but over 300 iterations
 
+    Cannot break past the reward threshold of six
+
+
+06/10/2024 @10:46 AM
+    -1*predicted_q_value
+
+    Output: outputs/rl_ddpg3.json
+    more performant than previously: breaks threshold of six
+
+    TODO: 
+        - remove epsilon greedy
+        - simplify network models
+
+06/10/2024 @11:39 AM
+    -1*predicted_q_value
+
+    removed epsilon greedy
+
+    Output: outputs/rl_ddpg4.json
+
+    Epsilon greedy fails: 
+        - plateaus at 6.3
+
+    TODO: 
+        - add noise to actor in place of epsilon greedy
+        - simplify network models
+
+        put weight updates in body of with torch.no_grad():
 
 
 
+06/10/2024 @11:59 AM
+    -1*predicted_q_value
+
+    Output: outputs/rl_ddpg5.json
+    
+    put weight updates in body of with torch.no_grad():
+
+    Oberservations:
+        - poorer performance
+
+    TODO: 
+        - add noise to actor in place of epsilon greedy
+            - np.random.randn(5)
+        - simplify network models
+
+
+06/10/2024 @12:29 PM
+    -1*predicted_q_value
+
+    Output: outputs/rl_ddpg6.json
+            outputs/rl_ddpg7.json
+            outputs/rl_ddpg8.json
+            outputs/rl_ddpg9.json
+            
+    
+    Adding actor noise in place of epsilon greedy
+        noise_scale: 0.25
+
+    TODO: 
+        - simplify network models
 
 
