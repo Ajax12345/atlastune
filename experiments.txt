@@ -5,7 +5,7 @@
     - Might want to run installation of TPC-H again, we cleared out the large text fields for the sake of memory. It might not matter, though.
 
 
-06/08/2024 @12:20 PM
+06/08/2024 @ 12:20 PM
     - 500 iterations
     - idea: change actor/critic network architecture
         - add more layers
@@ -30,7 +30,7 @@
     - try on TPC-H
     - repurpose old reward function based on percentage change, but the w1 is the original (first) non-indexed state
 
-06/09/2024 @11:29 AM
+06/09/2024 @ 11:29 AM
     reward function is now -1*total_query_cost
     experience replay: custom_exprience_replay2024-04-0911:36:45523674.json
     replay batch size: 50
@@ -46,7 +46,7 @@
             - clip at -10 and 10
 
 
-06/09/2024 @11:58 AM
+06/09/2024 @ 11:58 AM
     reward now  difference between default configuration and proposed configuration
     reward function: compute_cost_delta
     weight updates: target * t + old* (1 - t)
@@ -56,7 +56,7 @@
         - 99% of the rewards were = 5
 
 
-06/09/2024 @1:22 PM
+06/09/2024 @ 1:22 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
 
@@ -75,7 +75,7 @@
 
         - https://stackoverflow.com/questions/58004237/critic-loss-for-rl-agent
 
-06/09/2024 @2:00 PM
+06/09/2024 @ 2:00 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
 
@@ -95,7 +95,7 @@
         - train over 5 epochs, find the mean of each reward at every iteration
         - compare with purely random search
 
-06/09/2024 @3:57 PM
+06/09/2024 @ 3:57 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
 
@@ -113,7 +113,7 @@
         - https://spinningup.openai.com/en/latest/algorithms/ddpg.html#pseudocode
         - differentiate between Q(s, a) and Q(s, u(s))
 
-06/09/2024 @6:09 PM
+06/09/2024 @ 6:09 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
     
@@ -129,7 +129,7 @@
         - increase batch size
 
 
-06/09/2024 @7:49 PM
+06/09/2024 @ 7:49 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
     true epoch tuning
@@ -142,7 +142,7 @@
         - normalize reward
     
 
-06/09/2024 @8:36 PM
+06/09/2024 @ 8:36 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
     
@@ -162,7 +162,7 @@
         - reward function could be based on query execution time
         - try DQN
 
-06/09/2024 @9:48 PM
+06/09/2024 @ 9:48 PM
     reward function: compute_cost_delta_per_query
     experience replay: experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json
     
@@ -173,7 +173,7 @@
     Cannot break past the reward threshold of six
 
 
-06/10/2024 @10:46 AM
+06/10/2024 @ 10:46 AM
     -1*predicted_q_value
 
     Output: outputs/rl_ddpg3.json
@@ -183,7 +183,7 @@
         - remove epsilon greedy
         - simplify network models
 
-06/10/2024 @11:39 AM
+06/10/2024 @ 11:39 AM
     -1*predicted_q_value
 
     removed epsilon greedy
@@ -201,7 +201,7 @@
 
 
 
-06/10/2024 @11:59 AM
+06/10/2024 @ 11:59 AM
     -1*predicted_q_value
 
     Output: outputs/rl_ddpg5.json
@@ -217,7 +217,7 @@
         - simplify network models
 
 
-06/10/2024 @12:29 PM
+06/10/2024 @ 12:29 PM
     -1*predicted_q_value
 
     Output: outputs/rl_ddpg6.json
@@ -233,7 +233,7 @@
         - simplify network models
 
 
-06/11/2024 @9:30 AM
+06/11/2024 @ 9:30 AM
     -1*predicted_q_value
 
     Output: outputs/rl_ddpg10.json
@@ -247,7 +247,7 @@
         - simplify network models
         - update rewards so that change of 0 is not included in the average
 
-06/11/2024 @10:00 AM
+06/11/2024 @ 10:00 AM
 
     Output: outputs/rl_ddpg11.json
             outputs/rl_ddpg12.json
@@ -266,6 +266,12 @@
     TODO: 
         - update rewards so that change of 0 is not included in the average
         - could also subtract -4 from each reward to add more of a penalty and encourage further exploration
+        - may need to run on larger databases for a better problem gradient
+        - another possible reward function:
+            r = (cost(workload, i) - cost(workload, i+1))/cost(workload, 0)
+        
+        - penalize if agent chooses an index that is not used in any expression?
+        - normalize index configuration and metrics separately?
 
 
 
