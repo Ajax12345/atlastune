@@ -82,6 +82,8 @@ Output layer activations:
     - softmax: multiclass
     - both between 0 and 1, however
 
+    - try Huberloss for DQN: makes loss less sensitive to outlyers
+
 
 Notes:
     - created folder "lib" in /usr/local/

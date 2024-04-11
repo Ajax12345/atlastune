@@ -403,19 +403,21 @@ if __name__ == '__main__':
     
     with Atlas_Index_Tune('tpcc100') as a:
         #a.tune_random(300)
-        '''
-        rewards = []
-        for _ in range(3):
-            a.conn.drop_all_indices()
-            rewards.append(a.tune(50))
         
-        with open('outputs/rl_ddpg12.json', 'a') as f:
-            json.dump(rewards, f)
+        rewards = []
+        
+        for _ in range(4):
+            a.conn.drop_all_indices()
+            rewards.append(a.tune(300))
+            with open(f'outputs/rl_ddpg13_{_}.json', 'a') as f:
+                json.dump(rewards, f)
+  
         
         
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
-        '''
         
+        
+        '''
         with open(f'outputs/rl_ddpg12.json') as f:
             rewards = json.load(f)
 
@@ -437,7 +439,7 @@ if __name__ == '__main__':
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
         
-    
+        '''
 
         plt.title("reward at each iteration (5 epochs)")
         plt.legend(loc="lower right")
