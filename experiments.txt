@@ -224,7 +224,7 @@
             outputs/rl_ddpg7.json
             outputs/rl_ddpg8.json
             outputs/rl_ddpg9.json
-            
+
     
     Adding actor noise in place of epsilon greedy
         noise_scale: 0.25
@@ -232,4 +232,43 @@
     TODO: 
         - simplify network models
 
+
+06/11/2024 @9:30 AM
+    -1*predicted_q_value
+
+    Output: outputs/rl_ddpg10.json
+            
+    Trying to decrease volatility
+
+    noise_scale: 0.05
+        - no meaningful volatility decrease
+
+    TODO: 
+        - simplify network models
+        - update rewards so that change of 0 is not included in the average
+
+06/11/2024 @10:00 AM
+
+    Output: outputs/rl_ddpg11.json
+            outputs/rl_ddpg12.json
+
+    Simplified network architecture
+        
+    Trying to decrease volatility
+
+    noise_scale: 0.05
+
+    Oberservations:
+        - approaches 8
+        - BEST DDPG TO DATE
+        - needs to be run over more iterations to confirm, though
+
+    TODO: 
+        - update rewards so that change of 0 is not included in the average
+        - could also subtract -4 from each reward to add more of a penalty and encourage further exploration
+
+
+
+
+    
 

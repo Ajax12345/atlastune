@@ -31,6 +31,7 @@ class Atlas_Index_Critic(nn.Module):
         self.state_input = nn.Linear(self.state_num, 128)
         self.action_input = nn.Linear(self.action_num, 128)
         self.act = nn.Tanh()
+        '''
         self.layers = nn.Sequential(
             nn.Linear(256, 256),
             nn.LeakyReLU(negative_slope=0.2),
@@ -39,6 +40,14 @@ class Atlas_Index_Critic(nn.Module):
             nn.Tanh(),
             nn.Dropout(0.3),
             nn.BatchNorm1d(64),
+            nn.Linear(64, 1),
+        )
+        '''
+        self.layers = nn.Sequential(
+            nn.Linear(256, 256),
+            nn.ReLU(),
+            nn.Linear(256, 64),
+            nn.Tanh(),
             nn.Linear(64, 1),
         )
         #self._init_weights()
@@ -66,6 +75,7 @@ class Atlas_Index_Actor(nn.Module):
         super().__init__()
         self.state_num = state_num
         self.index_num = index_num
+        '''
         self.layers = nn.Sequential(
             nn.Linear(self.state_num, 128),
             nn.LeakyReLU(negative_slope=0.2),
@@ -76,6 +86,15 @@ class Atlas_Index_Actor(nn.Module):
             nn.Linear(128, 64),
             nn.Tanh(),
             nn.BatchNorm1d(64),
+        )
+        '''
+        self.layers = nn.Sequential(
+            nn.Linear(self.state_num, 128),
+            nn.ReLU(),
+            nn.Linear(128, 128),
+            nn.Tanh(),
+            nn.Linear(128, 64),
+            nn.Tanh(),
         )
         self.out_layer = nn.Linear(64, self.index_num)
         self.act = nn.Sigmoid()
@@ -290,7 +309,7 @@ class Atlas_Index_Tune:
             '''
             #[new_indices] = db.MySQL.activate_index_actor_outputs(self.actor(start_state).tolist())
             
-            selected_action = Normalize.add_noise(self.actor(start_state).tolist(), 0.1)
+            selected_action = Normalize.add_noise(self.actor(start_state).tolist(), 0.05)
             [new_indices] = db.MySQL.activate_index_actor_outputs(selected_action)
             
             t = time.time()
@@ -386,25 +405,24 @@ if __name__ == '__main__':
         #a.tune_random(300)
         '''
         rewards = []
-        for _ in range(1):
+        for _ in range(3):
             a.conn.drop_all_indices()
-            rewards.append(a.tune(100))
+            rewards.append(a.tune(50))
         
-        with open('outputs/rl_ddpg9.json', 'a') as f:
+        with open('outputs/rl_ddpg12.json', 'a') as f:
             json.dump(rewards, f)
         
         
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
         '''
-        rewards = []
-        for i in range(6, 10):
-            with open(f'outputs/rl_ddpg{i}.json') as f:
-                rewards.extend(json.load(f))
+        
+        with open(f'outputs/rl_ddpg12.json') as f:
+            rewards = json.load(f)
 
         
-        print(len(rewards))
+        #print(len(rewards))
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
-        '''
+    
         with open('outputs/rl_ddpg2.json') as f:
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
@@ -419,7 +437,7 @@ if __name__ == '__main__':
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
         
-        '''
+    
 
         plt.title("reward at each iteration (5 epochs)")
         plt.legend(loc="lower right")
