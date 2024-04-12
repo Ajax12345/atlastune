@@ -424,7 +424,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             'weight_copy_interval':10,
             'tau':0.9999,
             'epsilon':1,
-            'epsilon_decay':0.01,
+            'epsilon_decay':0.005,
             'batch_sample_size':50
         }) -> None:
 
@@ -437,7 +437,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         self.optimizer = None
         self.experience_replay = []
 
-    def update_config(**kwargs) -> None:
+    def update_config(self, **kwargs) -> None:
         self.config.update(kwargs)
 
     def reset_target_weights(self) -> None:
@@ -509,6 +509,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
                 ind, _indices = self.random_action(indices)
 
             else:
+                print('in here!!')
                 with torch.no_grad():
                     ind = self.q_net(start_state).max(1)[1].item()
                     _indices = copy.deepcopy(indices)
@@ -623,19 +624,17 @@ if __name__ == '__main__':
     
     rewards = []
     with Atlas_Index_Tune_DQN('tpcc100') as a:
+        
         for _ in range(4):
-            rewards.append(a.tune(300))
+            a.update_config(**{'epsilon':1, 'epsilon_decay':0.001})
+            rewards.append(a.tune(500))
+
+        with open(f'outputs/rl_dqn4.json', 'a') as f:
+            json.dump(rewards, f)
+        
     
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
-        '''
-        rewards.extend(a.tune(300))
         
-        with open(f'outputs/rl_dqn1.json', 'a') as f:
-            json.dump(rewards, f)
-
-        '''
-
-
         '''
         with open(f'outputs/rl_ddpg12.json') as f:
             rewards = json.load(f)

@@ -319,15 +319,26 @@
 
 
 06/12/2024 @ 2:19 PM
-    - Using DQN
+    Using DQN
+
+    Four training runs for mean calculation
     
     Experience replay:
         experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json
+
+    Output: 
+        outputs/rl_dqn2.json
+        outputs/rl_dqn3.json
+        outputs/rl_dqn4.json
 
     'lr':0.0001,
     'gamma':0.9,
     'weight_copy_interval':10,
     'tau':0.9999,
     'epsilon':1,
-    'epsilon_decay':0.01,
+    'epsilon_decay':0.001,
     'batch_sample_size':50
+
+    Observations:
+        - need more exploration
+            - cooling factor needs to be much smaller
