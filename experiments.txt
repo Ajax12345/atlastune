@@ -271,7 +271,6 @@
             r = (cost(workload, i) - cost(workload, i+1))/cost(workload, 0)
         
         - penalize if agent chooses an index that is not used in any expression?
-        - normalize index configuration and metrics separately?
         - in DQN, copy weights after long time lapses
 
 06/11/2024 @ 7:49 PM
@@ -283,6 +282,21 @@
     Observations:
         - no meaningful change
 
+
+06/12/2024 @ 11:57 AM
+    Using DQN
+
+    TODO: 
+        - update rewards so that change of 0 is not included in the average
+        - could also subtract -4 from each reward to add more of a penalty and encourage further exploration
+        - may need to run on larger databases for a better problem gradient
+        - another possible reward function:
+            r = (cost(workload, i) - cost(workload, i+1))/cost(workload, 0)
+        
+        - penalize if agent chooses an index that is not used in any expression?
+        - in DQN, copy weights after long time lapses
+        - try Huber Loss
+        - train over multiple different epochs
 
     
 

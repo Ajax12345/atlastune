@@ -114,6 +114,20 @@ class Atlas_Index_Actor(nn.Module):
     def forward(self, x) -> torch.tensor:
         return self.act(self.out_layer(self.layers(x)))
 
+class Atlas_Index_QNet(nn.Module):
+    def __init__(self, state_num:int, action_num:int) -> None:
+        super().__init__()
+        self.state_num = state_num 
+        self.action_num = action_num
+        #TODO: perhaps try 128 instead of 64?
+        self.layers = nn.Sequential(
+            nn.Linear(self.state_num, 64),
+            nn.ReLU(),
+            nn.Linear(64, self.action_num)
+        )
+
+    def forward(self, x) -> torch.tensor:
+        return self.layers(x)
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
@@ -143,7 +157,7 @@ class Atlas_Index_Tune:
         return self
 
     def save_experience_replay(self, f_name = None) -> None:
-        f_name = f_name if f_name is not None else f"experience_replay/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json"
+        f_name = f_name if f_name is not None else f"experience_replay/ddpg_index_tune/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json"
         with open(f_name, 'a') as f:
             json.dump(self.experience_replay, f)
 
@@ -172,7 +186,7 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        self.save_experience_replay('experience_replay/custom_exper_repr.json')
+        self.save_experience_replay('experience_replay/ddpg_index_tune/custom_exper_repr.json')
 
     def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List, iterations:int, from_buffer:bool = False) -> None:
         if from_buffer:
@@ -192,7 +206,7 @@ class Atlas_Index_Tune:
                 [*_indices, *metrics], w2])
             indices = _indices
 
-        self.save_experience_replay(f1_name:=f"experience_replay/custom_exprience_replay{str(datetime.datetime.now()).replace('.','').replace(' ','')}.json")
+        self.save_experience_replay(f1_name:=f"experience_replay/ddpg_index_tune/custom_exprience_replay{str(datetime.datetime.now()).replace('.','').replace(' ','')}.json")
         print('experience replay saved to: ', f1_name)
 
     def workload_cost(self, w:dict) -> float:
@@ -243,7 +257,7 @@ class Atlas_Index_Tune:
         '''
 
     def _test_experience_replay(self) -> None:
-        with open('experience_replay/experience_replay3.json') as f:
+        with open('experience_replay/ddpg_index_tune/experience_replay3.json') as f:
             data = json.load(f)
 
         '''
@@ -279,7 +293,7 @@ class Atlas_Index_Tune:
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         #self.generate_experience_replay(indices, metrics, 100)
         if not with_epoch or not self.experience_replay:
-            self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/custom_exprience_replay2024-04-0913:18:31438505.json')
+            self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/ddpg_index_tune/custom_exprience_replay2024-04-0913:18:31438505.json')
         '''
         for i in self.experience_replay:
             print(i[2])
@@ -403,8 +417,101 @@ class Atlas_Index_Tune:
         return f'{self.__class__.__name__}(database="{self.database}")'
 
 
-if __name__ == '__main__':
+class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
+    def __init__(self, database:str, conn = None, config = {
+            'lr':0.0001,
+            'gamma':0.9,
+            'weight_copy_interval':20,
+            'tau':0.9999
+        }) -> None:
+
+        self.database = database
+        self.conn = conn
+        self.config = config
+        self.q_net = None
+        self.q_net_target = None
+        self.loss_func = None
+        self.optimizer = None
+        self.experience_replay = []
+
+    def reset_target_weights(self) -> None:
+        self.q_net_target.load_state_dict(self.q_net.state_dict())
+
+    def init_models(self, state_num:int, action_num:int) -> None:
+        self.q_net = Atlas_Index_QNet(state_num, action_num)
+        self.q_net_target = Atlas_Index_QNet(state_num, action_num)
+        self.reset_target_weights()
+        self.loss_func = nn.MSELoss() #TODO: try Huber loss
+        self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
+        
+    def random_action(self, indices:typing.List[int]) -> typing.Tuple[int, typing.List[int]]:
+        ind = random.choice([*range(len(indices))])
+        _indices = copy.deepcopy(indices)
+        _indices[ind] = int(not _indices[ind])
+        return ind, _indices
+
+    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List[int], iterations:int, from_buffer:typing.Union[bool, str] = False) -> None:
+        if from_buffer:
+            print('loading experience replay from buffer ', from_buffer)
+            with open(from_buffer) as f:
+                self.experience_replay = json.load(f)
+            
+            return
+
+        self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
+        for _ in range(iterations):
+            ind, _indices = self.random_action(indices)
+
+            self.conn.apply_index_configuration(_indices)
+            self.experience_replay.append([[*indices, *metrics], ind, 
+                self.compute_cost_delta_per_query(self.experience_replay, 
+                        w2:=self.conn.workload_cost()), 
+                [*_indices, *metrics], w2])
+            indices = _indices
+
+        print('experience replay saved to:')
+        print(self.save_experience_replay())
+
+
+    def save_experience_replay(self, f_name = None) -> str:
+        f_name = f_name if f_name is not None else f"experience_replay/dqn_index_tune/experience_replay_{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json"
+        with open(f_name, 'a') as f:
+            json.dump(self.experience_replay, f)
+
+        return f_name
+
+    def tune(self, iterations:int, is_epoch:bool = False) -> None:
+        self.conn.drop_all_indices()
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json')
+
+        
+        if not is_epoch or self.q_net is None:
+            self.init_models(len(indices), len(metrics))
+
+        self.conn.drop_all_indices()
+        
     
+    def mount_entities(self) -> None:
+        if self.conn is None:
+            self.conn = db.MySQL(database = self.database)
+
+
+    def __enter__(self) -> 'Atlas_Index_Tune':
+        self.mount_entities()
+        return self
+
+    def __exit__(self, *_) -> None:
+        if self.conn is not None:
+            self.conn.__exit__()
+
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}(database="{self.database}")'
+
+def atlas_index_tune_ddpg() -> None:
     with Atlas_Index_Tune('tpcc100') as a:
         #a.tune_random(300)
         rewards = []
@@ -453,3 +560,8 @@ if __name__ == '__main__':
         plt.xlabel("iteration")
         plt.ylabel("reward")
         plt.show()
+
+if __name__ == '__main__':
+    
+    with Atlas_Index_Tune_DQN('tpcc100') as a:
+        a.tune(300)
