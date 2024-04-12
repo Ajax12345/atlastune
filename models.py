@@ -424,7 +424,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             'weight_copy_interval':10,
             'tau':0.9999,
             'epsilon':1,
-            'epsilon_decay':0.005,
+            'epsilon_decay':0.001,
             'batch_sample_size':50
         }) -> None:
 
@@ -491,7 +491,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json')
+        self.generate_experience_replay(indices, metrics, 50)
         state = [*indices, *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
@@ -504,12 +504,12 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         
         rewards = []
         for iteration in range(iterations):
-            print(iteration)
+            #print(iteration)
             if random.random() < self.config['epsilon']:
                 ind, _indices = self.random_action(indices)
 
             else:
-                print('in here!!')
+                #print('in here!!')
                 with torch.no_grad():
                     ind = self.q_net(start_state).max(1)[1].item()
                     _indices = copy.deepcopy(indices)
@@ -542,7 +542,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             target_q_value = r + self.config['gamma']*q_prime
 
             loss = self.loss_func(q_value, target_q_value)
-            print(loss)
+            #print(loss)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -624,29 +624,35 @@ if __name__ == '__main__':
     
     rewards = []
     with Atlas_Index_Tune_DQN('tpcc100') as a:
-        
+        '''
         for _ in range(4):
-            a.update_config(**{'epsilon':1, 'epsilon_decay':0.001})
+            print(_ + 1)
+            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.001})
             rewards.append(a.tune(500))
-
-        with open(f'outputs/rl_dqn4.json', 'a') as f:
+        
+        with open(f'outputs/rl_dqn7.json', 'a') as f:
             json.dump(rewards, f)
+
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+        '''
+
         
     
-        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+    
         
-        '''
+        with open(f'outputs/rl_dqn7.json') as f:
+            rewards= json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn7")
+
         with open(f'outputs/rl_ddpg12.json') as f:
             rewards = json.load(f)
-
-        
-        #print(len(rewards))
-        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
     
+        '''
         with open('outputs/rl_ddpg2.json') as f:
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
-
+        '''
         
         with open('outputs/rl_ddpg3.json') as f:
             rewards = json.load(f)
@@ -657,11 +663,17 @@ if __name__ == '__main__':
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
         
-        with open(f'outputs/rl_dqn1.json') as f:
+        with open(f'outputs/rl_dqn4.json') as f:
             rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn4")
+        
         '''
-
+        with open(f'outputs/rl_dqn5.json') as f:
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn5")
+        '''
+        
+        
         plt.title("reward at each iteration (5 epochs)")
         plt.legend(loc="lower right")
 

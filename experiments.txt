@@ -342,3 +342,42 @@
     Observations:
         - need more exploration
             - cooling factor needs to be much smaller
+
+
+06/12/2024 @ 3:40 PM
+    DQN
+
+    hard-coded e = 0.4
+
+    no substantial growth beyond 6
+
+
+06/12/2024 @ 3:46 PM
+    DQN
+
+    Experience replay: experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json
+    - {'epsilon':1, 'epsilon_decay':0.004}
+    - 500 iterations
+    - 4 epochs
+    
+    Output: rl_dqn6.json
+
+    Observations:
+        converges around 5
+
+06/12/2024 @ 4:01 PM
+    DQN
+
+    - Generates new experience replay every time
+    - {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.001}
+    - 500 iterations
+    - 4 epochs
+
+    Output: outputs/rl_dqn7.json
+
+    Observations:
+        - converges to around 6
+
+    Ideas:
+        - Need to experiment with annealing, weight_copy_interval, etc
+        - Also need epochs for training that preserve models, optimizer, etc. 
