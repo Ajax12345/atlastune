@@ -289,7 +289,17 @@
     Experience replay:
         experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json
 
+
+    'weight_copy_interval':20
+    'epsilon':0.7,
+    'epsilon_decay':0.01,
+    'batch_sample_size':30
+
+
     Output: outputs/rl_dqn1.json
+
+    Observations:
+        clearly steady learning!!
 
     TODO: 
         - update rewards so that change of 0 is not included in the average
@@ -302,6 +312,22 @@
         - in DQN, copy weights after long time lapses
         - try Huber Loss
         - train over multiple different epochs
+        - need more exploration:
+            - annealing should either be removed or cooling factor significantly decreased
+        
+        - decrease learning rate
 
+
+06/12/2024 @ 2:19 PM
+    - Using DQN
     
+    Experience replay:
+        experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json
 
+    'lr':0.0001,
+    'gamma':0.9,
+    'weight_copy_interval':10,
+    'tau':0.9999,
+    'epsilon':1,
+    'epsilon_decay':0.01,
+    'batch_sample_size':50

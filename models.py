@@ -421,11 +421,11 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
     def __init__(self, database:str, conn = None, config = {
             'lr':0.0001,
             'gamma':0.9,
-            'weight_copy_interval':20,
+            'weight_copy_interval':10,
             'tau':0.9999,
-            'epsilon':0.7,
+            'epsilon':1,
             'epsilon_decay':0.01,
-            'batch_sample_size':30
+            'batch_sample_size':50
         }) -> None:
 
         self.database = database
@@ -436,6 +436,9 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         self.loss_func = None
         self.optimizer = None
         self.experience_replay = []
+
+    def update_config(**kwargs) -> None:
+        self.config.update(kwargs)
 
     def reset_target_weights(self) -> None:
         self.q_net_target.load_state_dict(self.q_net.state_dict())
@@ -526,10 +529,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
             inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_sample_size'])
             _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-            s = torch.tensor([Normalize.normalize(i) for i in _s])
+            s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
             a = torch.tensor([[i] for i in _a])
-            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
-            r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
+            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
+            r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)], requires_grad = True)
 
             with torch.no_grad():
                 q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
@@ -537,7 +540,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             
             target_q_value = r + self.config['gamma']*q_prime
 
-            loss = self.loss_criterion(q_value, target_q_value)
+            loss = self.loss_func(q_value, target_q_value)
             print(loss)
 
             self.optimizer.zero_grad()
@@ -620,12 +623,45 @@ if __name__ == '__main__':
     
     rewards = []
     with Atlas_Index_Tune_DQN('tpcc100') as a:
+        for _ in range(4):
+            rewards.append(a.tune(300))
+    
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+        '''
         rewards.extend(a.tune(300))
-
+        
         with open(f'outputs/rl_dqn1.json', 'a') as f:
             json.dump(rewards, f)
 
-        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+        '''
+
+
+        '''
+        with open(f'outputs/rl_ddpg12.json') as f:
+            rewards = json.load(f)
+
+        
+        #print(len(rewards))
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
+    
+        with open('outputs/rl_ddpg2.json') as f:
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
+
+        
+        with open('outputs/rl_ddpg3.json') as f:
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg1")
+
+        with open('outputs/random_control.json') as f:
+            #rewards = [i[:d] for i in json.load(f)]
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
+        
+        with open(f'outputs/rl_dqn1.json') as f:
+            rewards = json.load(f)
+            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+        '''
 
         plt.title("reward at each iteration (5 epochs)")
         plt.legend(loc="lower right")
