@@ -286,6 +286,11 @@
 06/12/2024 @ 11:57 AM
     Using DQN
 
+    Experience replay:
+        experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json
+
+    Output: outputs/rl_dqn1.json
+
     TODO: 
         - update rewards so that change of 0 is not included in the average
         - could also subtract -4 from each reward to add more of a penalty and encourage further exploration

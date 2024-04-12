@@ -286,7 +286,7 @@ class Atlas_Index_Tune:
                 target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
             )
 
-    def tune(self, iterations:int, with_epoch:bool = False) -> None:
+    def tune(self, iterations:int, with_epoch:bool = False) -> typing.List[float]:
         torch.autograd.set_detect_anomaly(True)
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
@@ -422,7 +422,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             'lr':0.0001,
             'gamma':0.9,
             'weight_copy_interval':20,
-            'tau':0.9999
+            'tau':0.9999,
+            'epsilon':0.7,
+            'epsilon_decay':0.01,
+            'batch_sample_size':30
         }) -> None:
 
         self.database = database
@@ -480,19 +483,71 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
         return f_name
 
-    def tune(self, iterations:int, is_epoch:bool = False) -> None:
+    def tune(self, iterations:int, is_epoch:bool = False) -> typing.List[float]:
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1212:00:36529360.json')
-
+        state = [*indices, *metrics]
+        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
+        action_num, state_num = len(indices), len(state)
+
         if not is_epoch or self.q_net is None:
-            self.init_models(len(indices), len(metrics))
+            self.init_models(state_num, action_num)
 
         self.conn.drop_all_indices()
         
+        rewards = []
+        for iteration in range(iterations):
+            print(iteration)
+            if random.random() < self.config['epsilon']:
+                ind, _indices = self.random_action(indices)
+
+            else:
+                with torch.no_grad():
+                    ind = self.q_net(start_state).max(1)[1].item()
+                    _indices = copy.deepcopy(indices)
+                    _indices[ind] = int(not _indices[ind])
+                
+            
+            self.conn.apply_index_configuration(_indices)
+            self.experience_replay.append([state, ind, 
+                reward:=self.compute_cost_delta_per_query(self.experience_replay, 
+                        w2:=self.conn.workload_cost()), 
+                [*_indices, *metrics], w2])
+
+            rewards.append(reward)
+            indices = _indices
+            state = [*indices, *metrics]
+            start_state = torch.tensor([Normalize.normalize(state)])
+            self.config['epsilon'] -= self.config['epsilon']*self.config['epsilon_decay']
+
+            inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_sample_size'])
+            _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+            s = torch.tensor([Normalize.normalize(i) for i in _s])
+            a = torch.tensor([[i] for i in _a])
+            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
+            r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
+
+            with torch.no_grad():
+                q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+                q_value = self.q_net(s).gather(1, a)
+            
+            target_q_value = r + self.config['gamma']*q_prime
+
+            loss = self.loss_criterion(q_value, target_q_value)
+            print(loss)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            if iteration and not iteration%self.config['weight_copy_interval']:
+                self.reset_target_weights()
+
+        return rewards
     
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -563,5 +618,19 @@ def atlas_index_tune_ddpg() -> None:
 
 if __name__ == '__main__':
     
+    rewards = []
     with Atlas_Index_Tune_DQN('tpcc100') as a:
-        a.tune(300)
+        rewards.extend(a.tune(300))
+
+        with open(f'outputs/rl_dqn1.json', 'a') as f:
+            json.dump(rewards, f)
+
+        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+
+        plt.title("reward at each iteration (5 epochs)")
+        plt.legend(loc="lower right")
+
+        plt.xlabel("iteration")
+        plt.ylabel("reward")
+        plt.show()
+       
