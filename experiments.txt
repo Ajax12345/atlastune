@@ -272,8 +272,16 @@
         
         - penalize if agent chooses an index that is not used in any expression?
         - normalize index configuration and metrics separately?
+        - in DQN, copy weights after long time lapses
 
+06/11/2024 @ 7:49 PM
 
+    Output: outputs/rl_ddpg14.json
+
+    Normalizing index configuration and metrics
+
+    Observations:
+        - no meaningful change
 
 
     

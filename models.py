@@ -18,6 +18,10 @@ class Normalize:
         return [i - mean for i in arr]
 
     @classmethod
+    def split_normalize(cls, ind:int, arr:typing.List[float]) -> typing.List[float]:
+        return [*map(float, arr[:ind])] + cls.normalize(arr[ind:]) 
+
+    @classmethod
     def add_noise(cls, inds:typing.List[typing.List[float]], noise_scale:float) -> typing.List[typing.List[float]]:
         return [[X + Y for X, Y in zip(ind, np.random.randn(len(ind))*noise_scale)] 
                     for ind in inds]
@@ -334,18 +338,18 @@ class Atlas_Index_Tune:
             r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
             #r = torch.tensor([[float(i)] for i in _r])
 
-            u_prime = self.actor_target(s_prime.detach()).tolist()
+            u_prime = self.actor_target(s_prime).tolist()
             target_action = torch.tensor([[float(j) for j in i] for i in db.MySQL.activate_index_actor_outputs(u_prime)])
             
-            target_q_value = self.critic_target(s_prime.detach(), target_action)
+            target_q_value = self.critic_target(s_prime, target_action)
             next_value = r + self.config['gamma']*target_q_value
 
 
-            current_value = self.critic(s.detach(), a)
+            current_value = self.critic(s, a)
 
-            u = self.actor(s.detach()).tolist()
+            u = self.actor(s).tolist()
             predicted_action = torch.tensor([[float(j) for j in i] for i in db.MySQL.activate_index_actor_outputs(u)])
-            predicted_q_value = self.critic(s.detach(), predicted_action.detach())
+            predicted_q_value = self.critic(s, predicted_action)
 
             self.actor.train()
             self.actor_target.train()
@@ -405,11 +409,12 @@ if __name__ == '__main__':
         #a.tune_random(300)
         rewards = []
         
-        for _ in range(4):
+        for _ in range(1):
             a.conn.drop_all_indices()
-            rewards.append(a.tune(300))
-            with open(f'outputs/rl_ddpg13_{_}.json', 'a') as f:
+            rewards.append(a.tune(50))
+            with open(f'outputs/rl_ddpg14.json', 'a') as f:
                 json.dump(rewards, f)
+       
   
         
         
@@ -440,12 +445,11 @@ if __name__ == '__main__':
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
         
-    
 
+        '''
         plt.title("reward at each iteration (5 epochs)")
         plt.legend(loc="lower right")
 
         plt.xlabel("iteration")
         plt.ylabel("reward")
         plt.show()
-        '''
