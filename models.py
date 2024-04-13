@@ -491,14 +491,18 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1216:10:49538176.json')
+        self.generate_experience_replay(indices, metrics, 150)
         state = [*indices, *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
         action_num, state_num = len(indices), len(state)
 
         if not is_epoch or self.q_net is None:
+            print('setting weights')
             self.init_models(state_num, action_num)
+
+        else:
+            print('skipping weight setting')
 
         self.conn.drop_all_indices()
         
@@ -651,21 +655,23 @@ def display_tuning_results(f_name:str) -> None:
 
 if __name__ == '__main__':
 
-    display_tuning_results('outputs/tuning_data/rl_dqn1.json')
+    #display_tuning_results('outputs/tuning_data/rl_dqn1.json')
     
 
     with Atlas_Index_Tune_DQN('tpcc100') as a:
+        display_tuning_results('outputs/tuning_data/rl_dqn2.json')
         '''
         tuning_data = []
-        for i in range(4):
+        for i in range(5):
             print(i + 1)
-            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.01})
-            tuning_data.append(a.tune(100))
+            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.001})
+            tuning_data.append(a.tune(500, is_epoch = True))
         
-        with open(f'outputs/tuning_data/rl_dqn1.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn2.json', 'a') as f:
             json.dump(tuning_data, f)
-        
         '''
+        
+        
         
     
         '''

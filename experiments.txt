@@ -381,3 +381,17 @@
     Ideas:
         - Need to experiment with annealing, weight_copy_interval, etc
         - Also need epochs for training that preserve models, optimizer, etc. 
+
+
+06/12/2024 @ 8:22 PM
+
+    DQN
+
+    - running 5 epochs without resetting models
+    - initial memory replay size = 150, reset at every epoch
+    - 500 iterations per epoch
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.001}
+
+    Output:
+        outputs/tuning_data/rl_dqn2.json
