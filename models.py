@@ -456,7 +456,8 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         _indices[ind] = int(not _indices[ind])
         return ind, _indices
 
-    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List[int], iterations:int, from_buffer:typing.Union[bool, str] = False) -> None:
+    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List[int], iterations:int, reward_func:str, from_buffer:typing.Union[bool, str] = False) -> None:
+        print('experience replay reward func:', reward_func)
         if from_buffer:
             print('loading experience replay from buffer ', from_buffer)
             with open(from_buffer) as f:
@@ -470,7 +471,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *metrics], ind, 
-                self.compute_cost_delta_per_query(self.experience_replay, 
+                getattr(self, reward_func)(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*_indices, *metrics], w2])
             indices = _indices
@@ -486,12 +487,13 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
         return f_name
 
-    def tune(self, iterations:int, is_epoch:bool = False) -> dict:
+    def tune(self, iterations:int, reward_func:str = 'compute_cost_delta_per_query', is_epoch:bool = False) -> dict:
+        print('tuning reward function:', reward_func)
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 150)
+        self.generate_experience_replay(indices, metrics, 150, reward_func)
         state = [*indices, *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
@@ -507,13 +509,14 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         self.conn.drop_all_indices()
         
         rewards, costs = [], []
+        delta_rewards = []
         for iteration in range(iterations):
-            #print(iteration)
             if random.random() < self.config['epsilon']:
+                print('random')
                 ind, _indices = self.random_action(indices)
 
             else:
-                #print('in here!!')
+                print('q_val')
                 with torch.no_grad():
                     ind = self.q_net(start_state).max(1)[1].item()
                     _indices = copy.deepcopy(indices)
@@ -522,11 +525,12 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([state, ind, 
-                reward:=self.compute_cost_delta_per_query(self.experience_replay, 
+                reward:=getattr(self, reward_func)(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
                 [*_indices, *metrics], w2])
 
             rewards.append(reward)
+            delta_rewards.append(self.compute_cost_delta_per_query(self.experience_replay, w2))
             costs.append(w2)
             indices = _indices
             state = [*indices, *metrics]
@@ -556,7 +560,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             if iteration and not iteration%self.config['weight_copy_interval']:
                 self.reset_target_weights()
 
-        return {'rewards':rewards, 'costs':costs}
+        return {'rewards':rewards, 'delta_rewards':delta_rewards, 'costs':costs}
     
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -632,12 +636,25 @@ def display_tuning_results(f_name:str) -> None:
 
     rewards = [i['rewards'] for i in tuning_data]
     costs = [[sum(j[k]['cost'] for k in j) for j in i['costs']] for i in tuning_data]
+    if 'delta_rewards' in tuning_data[0]:
+        fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+        delta_rewards = [i['delta_rewards'] for i in tuning_data]
+        a3.plot([*range(1,len(delta_rewards[0])+1)], [sum(i)/len(i) for i in zip(*delta_rewards)], label = 'dqn')
+        a3.title.set_text("Delta workload cost at each iteration")
+        a3.legend(loc="lower right")
 
-    fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
+        a3.set_xlabel("iteration")
+        a3.set_ylabel("Workload cost")
+
+    else:
+        fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
+
     a1.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label = 'dqn')
 
     a2.plot([*range(1,len(costs[0])+1)], [sum(i)/len(i) for i in zip(*costs)], label="dqn")
+
     
+
     a1.title.set_text("Reward at each iteration")
     a1.legend(loc="lower right")
 
@@ -655,22 +672,22 @@ def display_tuning_results(f_name:str) -> None:
 
 if __name__ == '__main__':
 
-    #display_tuning_results('outputs/tuning_data/rl_dqn1.json')
+    #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     
 
     with Atlas_Index_Tune_DQN('tpcc100') as a:
-        display_tuning_results('outputs/tuning_data/rl_dqn2.json')
         '''
         tuning_data = []
-        for i in range(5):
+        for i in range(4):
             print(i + 1)
-            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.001})
-            tuning_data.append(a.tune(500, is_epoch = True))
+            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0025})
+            tuning_data.append(a.tune(500, reward_func = 'compute_total_cost_reward'))
         
-        with open(f'outputs/tuning_data/rl_dqn2.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn3.json', 'a') as f:
             json.dump(tuning_data, f)
-        '''
         
+        '''
+        display_tuning_results('outputs/tuning_data/rl_dqn3.json')
         
         
     
