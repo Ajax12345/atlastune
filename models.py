@@ -486,12 +486,12 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
         return f_name
 
-    def tune(self, iterations:int, is_epoch:bool = False) -> typing.List[float]:
+    def tune(self, iterations:int, is_epoch:bool = False) -> dict:
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 50)
+        self.generate_experience_replay(indices, metrics, 50, from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc100_2024-04-1216:10:49538176.json')
         state = [*indices, *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
@@ -502,7 +502,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
         self.conn.drop_all_indices()
         
-        rewards = []
+        rewards, costs = [], []
         for iteration in range(iterations):
             #print(iteration)
             if random.random() < self.config['epsilon']:
@@ -523,6 +523,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
                 [*_indices, *metrics], w2])
 
             rewards.append(reward)
+            costs.append(w2)
             indices = _indices
             state = [*indices, *metrics]
             start_state = torch.tensor([Normalize.normalize(state)])
@@ -551,7 +552,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             if iteration and not iteration%self.config['weight_copy_interval']:
                 self.reset_target_weights()
 
-        return rewards
+        return {'rewards':rewards, 'costs':costs}
     
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -620,25 +621,54 @@ def atlas_index_tune_ddpg() -> None:
         plt.ylabel("reward")
         plt.show()
 
-if __name__ == '__main__':
+
+def display_tuning_results(f_name:str) -> None:
+    with open(f_name) as f:
+        tuning_data = json.load(f)
+
+    rewards = [i['rewards'] for i in tuning_data]
+    costs = [[sum(j[k]['cost'] for k in j) for j in i['costs']] for i in tuning_data]
+
+    fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
+    a1.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label = 'dqn')
+
+    a2.plot([*range(1,len(costs[0])+1)], [sum(i)/len(i) for i in zip(*costs)], label="dqn")
     
-    rewards = []
+    a1.title.set_text("Reward at each iteration")
+    a1.legend(loc="lower right")
+
+    a1.set_xlabel("iteration")
+    a1.set_ylabel("reward")
+
+    a2.title.set_text("Total workload cost at each iteration")
+    a2.legend(loc="lower right")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("Workload cost")
+
+    plt.show()
+    
+
+if __name__ == '__main__':
+
+    display_tuning_results('outputs/tuning_data/rl_dqn1.json')
+    
+
     with Atlas_Index_Tune_DQN('tpcc100') as a:
         '''
-        for _ in range(4):
-            print(_ + 1)
-            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.001})
-            rewards.append(a.tune(500))
+        tuning_data = []
+        for i in range(4):
+            print(i + 1)
+            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.01})
+            tuning_data.append(a.tune(100))
         
-        with open(f'outputs/rl_dqn7.json', 'a') as f:
-            json.dump(rewards, f)
-
-        plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn")
+        with open(f'outputs/tuning_data/rl_dqn1.json', 'a') as f:
+            json.dump(tuning_data, f)
+        
         '''
-
         
     
-    
+        '''
         
         with open(f'outputs/rl_dqn7.json') as f:
             rewards= json.load(f)
@@ -648,16 +678,16 @@ if __name__ == '__main__':
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
     
-        '''
+        
         with open('outputs/rl_ddpg2.json') as f:
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
-        '''
+        
         
         with open('outputs/rl_ddpg3.json') as f:
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg1")
-
+        
         with open('outputs/random_control.json') as f:
             #rewards = [i[:d] for i in json.load(f)]
             rewards = json.load(f)
@@ -667,11 +697,10 @@ if __name__ == '__main__':
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn4")
         
-        '''
+        
         with open(f'outputs/rl_dqn5.json') as f:
             rewards = json.load(f)
             plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn5")
-        '''
         
         
         plt.title("reward at each iteration (5 epochs)")
@@ -680,4 +709,8 @@ if __name__ == '__main__':
         plt.xlabel("iteration")
         plt.ylabel("reward")
         plt.show()
+        '''
+        
+        
+
        
