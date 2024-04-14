@@ -212,7 +212,7 @@ class Atlas_Index_Tune:
     def workload_cost(self, w:dict) -> float:
         return sum(w[i]['cost'] for i in w)
 
-    def compute_cost_delta(self, experience_replay:typing.List[dict], w2:dict) -> float:
+    def compute_cost_delta(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
         j = self.workload_cost(experience_replay[0][-1]) 
         k = self.workload_cost(w2)
         if j > k:
@@ -223,15 +223,18 @@ class Atlas_Index_Tune:
 
         return 1
 
-    def compute_cost_delta_per_query(self, experience_replay:typing.List[dict], w2:dict) -> float:
+    def compute_min_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        return min(map(self.workload_cost, costs[-50:])) - self.workload_cost(w2)
+
+    def compute_cost_delta_per_query(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
         w1 = experience_replay[0][-1]
         k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
         return max(min((sum(k)/len(k))*10, 10), -10)
 
-    def compute_total_cost_reward(self, _, w:dict) -> float:
+    def compute_total_cost_reward(self, _, costs:typing.List[dict], w:dict) -> float:
         return -1*self.workload_cost(w)
 
-    def compute_ranking_reward(self, experience_replay:typing.List[list], w2:dict) -> float:
+    def compute_ranking_reward(self, experience_replay:typing.List[list], costs:typing.List[dict], w2:dict) -> float:
         c = [self.workload_cost(i[-1]) for i in experience_replay]
         w2_c = self.workload_cost(w2)
         '''
@@ -334,7 +337,7 @@ class Atlas_Index_Tune:
             self.conn.apply_index_configuration(new_indices)
             #print(time.time() - t, new_indices)
             self.experience_replay.append([state, new_indices, 
-                reward:=self.compute_cost_delta_per_query(self.experience_replay, 
+                reward:=self.compute_cost_delta_per_query(self.experience_replay, None,
                         w2:=self.conn.workload_cost()), 
                 [*new_indices, *metrics], w2])
             reward_sum += reward
@@ -402,7 +405,7 @@ class Atlas_Index_Tune:
             indices = self.generate_random_index(indices, 2)
             print(indices)
             self.conn.apply_index_configuration(indices)
-            _experience_replay.append([indices, reward:=self.compute_cost_delta_per_query(_experience_replay, 
+            _experience_replay.append([indices, reward:=self.compute_cost_delta_per_query(_experience_replay, None,
                         w2:=self.conn.workload_cost()), w2])
             rewards.append(reward)
         
@@ -465,16 +468,18 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             
             return
 
-        self.experience_replay = [[[*indices, *metrics], None, None, None, self.conn.workload_cost()]]
+        self.experience_replay = [[[*indices, *metrics], None, None, None, w2_o:=self.conn.workload_cost()]]
+        costs = [w2_o]
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
 
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *metrics], ind, 
-                getattr(self, reward_func)(self.experience_replay, 
+                getattr(self, reward_func)(self.experience_replay, costs,
                         w2:=self.conn.workload_cost()), 
                 [*_indices, *metrics], w2])
             indices = _indices
+            costs.append(w2)
 
         print('experience replay saved to:')
         print(self.save_experience_replay())
@@ -508,7 +513,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
         self.conn.drop_all_indices()
         
-        rewards, costs = [], []
+        rewards, costs = [], [self.conn.workload_cost()]
         delta_rewards = []
         for iteration in range(iterations):
             if random.random() < self.config['epsilon']:
@@ -525,12 +530,12 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([state, ind, 
-                reward:=getattr(self, reward_func)(self.experience_replay, 
+                reward:=getattr(self, reward_func)(self.experience_replay, costs,
                         w2:=self.conn.workload_cost()), 
                 [*_indices, *metrics], w2])
 
             rewards.append(reward)
-            delta_rewards.append(self.compute_cost_delta_per_query(self.experience_replay, w2))
+            delta_rewards.append(self.compute_cost_delta_per_query(self.experience_replay, costs, w2))
             costs.append(w2)
             indices = _indices
             state = [*indices, *metrics]
@@ -676,18 +681,18 @@ if __name__ == '__main__':
     
 
     with Atlas_Index_Tune_DQN('tpcc100') as a:
-        '''
+        
         tuning_data = []
         for i in range(4):
             print(i + 1)
             a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0025})
             tuning_data.append(a.tune(500, reward_func = 'compute_total_cost_reward'))
         
-        with open(f'outputs/tuning_data/rl_dqn3.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn5.json', 'a') as f:
             json.dump(tuning_data, f)
         
-        '''
-        display_tuning_results('outputs/tuning_data/rl_dqn3.json')
+        
+        display_tuning_results('outputs/tuning_data/rl_dqn5.json')
         
         
     

@@ -428,3 +428,46 @@
     Ideas:
         - increase batch sample size
         - increase number of iterations before weights are swapped
+
+        Possible reward functions:
+            (cost(0, workload) - cost(i+1, workload))/cost(0, workload) + (cost(i, workload) - cost(i+1, workload))/cost(i, workload)
+
+            if cost(0, workload) > cost(i+1, workload):
+                if cost(i, workload) > cost(i+1, workload):
+                    return 10
+                return 5
+
+            return -5
+
+
+            (cost(workload, i) - cost(workload, i+1))/cost(workload, 0)
+
+            (min(costs[j:k]) - cost(i+1, workload))/min(costs[j:k])
+
+
+04/13/2024 @ 7:28 PM (experiment 27)
+    DQN
+    Four epochs, 500 iterations
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0025}
+    
+    reward function: compute_min_step_cost
+
+    Output: 
+        outputs/tuning_data/rl_dqn4.json
+
+
+
+
+04/13/2024 @ 7:28 PM (experiment 28)
+    DQN
+    Four epochs, 500 iterations
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0025}
+    
+    reward function: compute_total_cost_reward
+
+    Trying total cost reward with a smaller epsilon decay value to see if results from experiment 25 can be replicated
+
+    Output: 
+        outputs/tuning_data/rl_dqn5.json
