@@ -477,6 +477,35 @@
     DQN
     Four epochs, 500 iterations
     Same as experiment 28, attempting to replicate results
-    
+
     Output: 
         outputs/tuning_data/rl_dqn6.json
+
+
+04/13/2024 @ 8:50 PM (experiment 29)
+    DQN
+    Four epochs, 500 iterations
+    Same as experiment 28, attempting to replicate results
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.007}
+
+    compute_total_cost_reward
+    
+    Output: 
+        outputs/tuning_data/rl_dqn7.json
+
+04/13/2024 @ 9:52 PM (experiment 30)
+    DQN
+    Four epochs, 500 iterations
+    Same as experiment 28, attempting to replicate results
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003}
+
+    compute_increment_step_cost
+    
+    Output: 
+        outputs/tuning_data/rl_dqn8.json
+
+    Some interesting growth. Experiment should be run again to see if results can be replicated
+
+    Currently the best configuration

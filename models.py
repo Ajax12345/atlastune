@@ -226,6 +226,9 @@ class Atlas_Index_Tune:
     def compute_min_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
         return min(map(self.workload_cost, costs[-50:])) - self.workload_cost(w2)
 
+    def compute_increment_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        return (self.workload_cost(costs[-1]) - self.workload_cost(w2))/self.workload_cost(costs[0])
+
     def compute_cost_delta_per_query(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
         w1 = experience_replay[0][-1]
         k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
@@ -685,14 +688,14 @@ if __name__ == '__main__':
         tuning_data = []
         for i in range(4):
             print(i + 1)
-            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0025})
-            tuning_data.append(a.tune(500, reward_func = 'compute_total_cost_reward'))
+            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003})
+            tuning_data.append(a.tune(500, reward_func = 'compute_increment_step_cost'))
         
-        with open(f'outputs/tuning_data/rl_dqn6.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn9.json', 'a') as f:
             json.dump(tuning_data, f)
         
         
-        display_tuning_results('outputs/tuning_data/rl_dqn6.json')
+        display_tuning_results('outputs/tuning_data/rl_dqn9.json')
         
         
     
