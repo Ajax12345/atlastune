@@ -509,3 +509,59 @@
     Some interesting growth. Experiment should be run again to see if results can be replicated
 
     Currently the best configuration
+
+
+
+04/14/2024 @ 10:25 AM (experiment 31)
+    DQN
+
+    Q-value action layer now has length of len(indices) + 1
+        - corresponding to a "do nothing" action
+
+    reward function: compute_cost_delta_per_query
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003}
+
+    Output:
+        outputs/tuning_data/rl_dqn10.json
+
+    Observations:
+        no meaningful impact
+
+
+04/14/2024 @ 10:48 AM (experiment 32)
+    DQN
+
+    Running on TPCH1
+
+    reward function: compute_cost_delta_per_query
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003}
+
+    Output:
+        outputs/tuning_data/rl_dqn11.json
+
+
+    A bit more volatile
+
+
+04/14/2024 @ 12:43 PM (experiment 33)
+    DQN
+
+    Running on TPCH1
+
+    reward function: compute_total_cost_reward
+
+    {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006}
+
+    Output:
+        outputs/tuning_data/rl_dqn12.json
+
+    Ideas:
+        - add "no action" option
+        - run over 1000 iterations
+
+    Questions:
+        - weight_copy_interval size?
+        - batch size?
+        - experience_replay size?
