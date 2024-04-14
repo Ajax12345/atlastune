@@ -688,11 +688,11 @@ if __name__ == '__main__':
             a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0025})
             tuning_data.append(a.tune(500, reward_func = 'compute_total_cost_reward'))
         
-        with open(f'outputs/tuning_data/rl_dqn5.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn6.json', 'a') as f:
             json.dump(tuning_data, f)
         
         
-        display_tuning_results('outputs/tuning_data/rl_dqn5.json')
+        display_tuning_results('outputs/tuning_data/rl_dqn6.json')
         
         
     
