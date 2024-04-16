@@ -572,3 +572,19 @@
         - batch size?
         - experience_replay size?
     
+
+04/16/2024 @ 4:00 PM (experiment 34)
+    - DQN
+    - running on sysbench_tpcc
+        - scale = 25
+
+    - 4 epochs, 400 iterations
+    - {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006}
+
+    Output:
+        outputs/tuning_data/rl_dqn14.json
+
+    Ideas:
+        - can probably scale up sysbench_tpcc to scale = 50
+        - instead of initial index configuration as part of the state, vectorize the query payload
+

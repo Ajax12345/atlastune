@@ -1,0 +1,98 @@
+mysql -u root -p
+export PATH=${PATH}:/usr/local/mysql/bin
+mysql --verbose --help | grep my.cnf
+
+/opt/homebrew/Cellar/sysbench/1.0.20_6
+
+sysbench_tpcc
+
+./tpcc.lua --mysql-user=root --mysql-password=Gobronxbombers2 --mysql-db=sysbench_tpcc --threads=8 --tables=1 --scale=25 --db-driver=mysql prepare
+
+./tpcc.lua --mysql-user=root --mysql-password=Gobronxbombers2 --mysql-db=sysbench_tpcc --time=10 --threads=8 --report-interval=1 --tables=1 --scale=25 --db-driver=mysql run
+
+./tpcc.lua --mysql-user=root --mysql-password=Gobronxbombers2 --mysql-db=sysbench_tpcc --threads=8 --tables=1 --scale=50 --db-driver=mysql cleanup
+
+Idea: run cleanup before each iteration block, or after x number of iterations
+
+./opt/homebrew/Cellar/sysbench/tpcc.lua
+
+tps is throughput
+
+
+https://apple.stackexchange.com/questions/176786/how-to-add-mysql-to-path-variable-to-resolve-mysql-command-not-found
+
+
+alter table customer1 drop foreign key fkey_customer_1_1;
+alter table customer1 drop foreign key fkey_customer_1_1;
+alter table district1 drop foreign key fkey_district_1_1;
+alter table history1 drop foreign key fkey_history_1_1;
+alter table history1 drop foreign key fkey_history_1_1;
+alter table history1 drop foreign key fkey_history_1_1;
+alter table history1 drop foreign key fkey_history_2_1;
+alter table history1 drop foreign key fkey_history_2_1;
+alter table new_orders1 drop foreign key fkey_new_orders_1_1;
+alter table new_orders1 drop foreign key fkey_new_orders_1_1;
+alter table new_orders1 drop foreign key fkey_new_orders_1_1;
+alter table order_line1 drop foreign key fkey_order_line_1_1;
+alter table order_line1 drop foreign key fkey_order_line_1_1;
+alter table order_line1 drop foreign key fkey_order_line_1_1;
+alter table order_line1 drop foreign key fkey_order_line_2_1;
+alter table order_line1 drop foreign key fkey_order_line_2_1;
+alter table orders1 drop foreign key fkey_orders_1_1;
+alter table orders1 drop foreign key fkey_orders_1_1;
+alter table orders1 drop foreign key fkey_orders_1_1;
+alter table stock1 drop foreign key fkey_stock_1_1;
+alter table stock1 drop foreign key fkey_stock_2_1;
+
+ALTER TABLE customer1 DROP PRIMARY KEY;
+ALTER TABLE warehouse1 DROP PRIMARY KEY;
+ALTER TABLE history1 DROP PRIMARY KEY;
+alter table district1 drop primary key;
+alter table orders1 drop primary key;
+alter table item1 drop primary key;
+alter table new_orders1 drop primary key;
+alter table order_line1 drop primary key;
+alter table stock1 drop primary key;
+
+
+ALTER TABLE customer DROP PRIMARY KEY;
+ALTER TABLE warehouse DROP PRIMARY KEY;
+ALTER TABLE history DROP PRIMARY KEY;
+alter table district drop primary key;
+alter table orders drop primary key;
+alter table item drop primary key;
+alter table new_orders drop primary key;
+alter table order_line drop primary key;
+alter table stock drop primary key;
+
+
+
+SELECT
+  concat('alter table ', a.TABLE_NAME, ' drop foreign key ', a.CONSTRAINT_NAME, ';') k
+FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE a
+JOIN INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS b USING (CONSTRAINT_NAME)
+WHERE
+    a.TABLE_SCHEMA = 'sysbench_tpcc'
+ORDER BY a.TABLE_NAME ASC;
+
+
+with cte(tbl, c) as (
+    select 'customer', (select count(*) from customer)
+    union all
+    select 'lineitem', (select count(*) from lineitem)
+    union all
+    select 'nation', (select count(*) from nation)
+    union all
+    select 'orders', (select count(*) from orders)
+    union all
+    select 'part', (select count(*) from part)
+    union all
+    select 'partsupp', (select count(*) from partsupp)
+    union all
+    select 'region', (select count(*) from region)
+    union all
+    select 'supplier', (select count(*) from supplier)
+)
+select c.* from cte c where c.c= (select max(c1.c) from cte c1);
+
+password: Gobronxbombers2

@@ -1,0 +1,61 @@
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc100'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '10'
+option c with value '6'
+option r with value '10'
+option l with value '2'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc100
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 10
+ [connection]: 6
+     [rampup]: 10 (sec.)
+    [measure]: 2 (sec.)
+
+RAMP-UP TIME.(10 sec.)
+
+MEASURING START.
+
+   2, trx: 0, 95: 0.000, 99: 0.000, max_rt: 0.000, 0|855.654, 0|2139.721, 0|0.000, 0|0.000
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:0 lt:0  rt:0  fl:0 avg_rt: inf (5)
+  [1] sc:0 lt:0  rt:0  fl:0 avg_rt: inf (5)
+  [2] sc:0 lt:0  rt:0  fl:0 avg_rt: inf (5)
+  [3] sc:0 lt:0  rt:0  fl:0 avg_rt: inf (80)
+  [4] sc:0 lt:0  rt:0  fl:0 avg_rt: inf (20)
+ in 2 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:0  lt:0  rt:0  fl:0 
+  [1] sc:0  lt:0  rt:0  fl:0 
+  [2] sc:0  lt:0  rt:0  fl:0 
+  [3] sc:0  lt:0  rt:0  fl:0 
+  [4] sc:0  lt:0  rt:0  fl:0 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: nan% (>=43.0%) [NG] *
+   Order-Status: nan% (>= 4.0%) [NG] *
+       Delivery: nan% (>= 4.0%) [NG] *
+    Stock-Level: nan% (>= 4.0%) [NG] *
+ [response time (at least 90% passed)]
+      New-Order: nan%  [NG] *
+        Payment: nan%  [NG] *
+   Order-Status: nan%  [NG] *
+       Delivery: nan%  [NG] *
+    Stock-Level: nan%  [NG] *
+
+<TpmC>
+                 0.000 TpmC

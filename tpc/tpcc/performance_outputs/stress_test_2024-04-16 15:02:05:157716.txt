@@ -1,0 +1,24 @@
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'sysbench_tpcc'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '10'
+option c with value '6'
+option r with value '10'
+option l with value '2'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: sysbench_tpcc
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 10
+ [connection]: 6
+     [rampup]: 10 (sec.)
+    [measure]: 2 (sec.)
+
+RAMP-UP TIME.(10 sec.)

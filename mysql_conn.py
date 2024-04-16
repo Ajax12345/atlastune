@@ -287,12 +287,12 @@ class MySQL:
     def activate_index_actor_outputs(cls, outputs:typing.List[float]) -> typing.List[int]:
         return [[int(j >= 0.5) for j in i] for i in outputs]
 
-    @classmethod
-    def tpcc_metrics(cls, l:int = 30) -> typing.List[float]:
+    
+    def tpcc_metrics(self, l:int = 30) -> typing.List[float]:
         
         with open(f_name:=f'/Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/stress_test_{str(datetime.datetime.now()).replace(".", ":")}.txt', 'a') as f:
             subprocess.run(['./tpcc_start', '-h', '127.0.0.1', 
-                '-d', 'tpcc100', '-uroot', 
+                '-d', self.database, '-uroot', 
                 '-p', 'Gobronxbombers2', '-w', '10', 
                 '-c', '6', '-r', '10', '-l', str(l), '-i', '2'], 
             cwd = "tpcc-mysql", stdout = f)
@@ -351,6 +351,13 @@ class MySQL:
 
             return queries
 
+        if self.database == 'sysbench_tpcc':
+            for q in os.listdir('tpc/tpcc/queries_sys'):
+                with open(os.path.join('tpc/tpcc/queries_sys', q)) as f:
+                    queries[q] = self.get_query_stats(f.read())
+        
+            return queries
+
 
     @DB_EXISTS()
     def apply_index_configuration(self, indices:typing.List[int]) -> None:
@@ -370,8 +377,10 @@ class MySQL:
 
             else:
                 if col_data['INDEX_NAME'] is not None:
-                    self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
-
+                    try:
+                        self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
+                    except:
+                        pass
         self.commit() 
 
     @DB_EXISTS()
@@ -381,7 +390,10 @@ class MySQL:
                 continue
             
             if col_data['INDEX_NAME'] is not None:
-                self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
+                try:
+                    self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
+                except:
+                    pass
 
         self.commit()
 
@@ -489,7 +501,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "tpcc100") as conn:
+    with MySQL(database = "sysbench_tpcc") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -518,7 +530,10 @@ if __name__ == '__main__':
         #print('before', conn.get_knob_value('innodb_read_ahead_threshold'))
         #conn.apply_knob_configuration({'innodb_read_ahead_threshold': 30, 'thread_cache_size':15})
         #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
-        conn.reset_knob_configuration()
+        #conn.reset_knob_configuration()
+        #print(conn.memory_size('gb'))
+        print(conn.tpcc_metrics(2))
+        #conn.drop_all_indices()
     #print(MySQL.tpch_query_tests())
 
     """
