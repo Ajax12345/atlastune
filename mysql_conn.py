@@ -65,7 +65,7 @@ class MySQL:
         #1
         #'lock_wait_timeout': ['integer', [1, 31536000, 31536000]],
         ###'metadata_locks_cache_size': ['integer', [1, min(memory_size, 1048576), 1024]],
-        'metadata_locks_hash_instances': ['integer', [1, 1024, 8]],
+        #'metadata_locks_hash_instances': ['integer', [1, 1024, 8]],
         #2
         #'binlog_order_commits': ['boolean', ['OFF', 'ON']],
         #'innodb_adaptive_flushing': [' boolean', ['OFF', 'ON']],
@@ -129,16 +129,39 @@ class MySQL:
         ##'thread_stack' : ['integer', [131072, memory_size, 524288]],
         #'back_log' : ['integer', [1, 65535, 900]],
     }
+    KNOB_DEFAULTS = {
+        "table_open_cache": 4000,
+        "innodb_buffer_pool_size": 134217728,
+        "innodb_buffer_pool_instances": 1,
+        "innodb_purge_threads": 4,
+        "innodb_read_io_threads": 4,
+        "innodb_write_io_threads": 4,
+        "innodb_read_ahead_threshold": 56,
+        "innodb_sync_array_size": 1,
+        "innodb_sync_spin_loops": 30,
+        "innodb_thread_concurrency": 0,
+        "innodb_adaptive_hash_index": 1,
+        "tmp_table_size": 16777216,
+        "innodb_random_read_ahead": 0,
+        "table_open_cache_instances": 16,
+        "thread_cache_size": 9,
+        "innodb_io_capacity": 200,
+        "innodb_lru_scan_depth": 1024,
+        "innodb_spin_wait_delay": 6,
+        "innodb_adaptive_hash_index_parts": 8,
+        "innodb_page_cleaners": 1,
+        "innodb_flush_neighbors": 0
+    }
     def __init__(self, host:str = "localhost", user:str = "root", 
                 passwd:str = "Gobronxbombers2", database:typing.Union[str, None] = None,
                 create_cursor:bool = True, buffered:bool = False) -> None:
         self.host, self.user = host, user
         self.passwd, self.database = passwd, database
         self.conn = mysql.connector.connect(
-            host = host,
-            user = user,
-            passwd = passwd,
-            database = database
+            host = self.host,
+            user = self.user,
+            passwd = self.passwd,
+            database = self.database
         )
         self.buffered = buffered
         self.cur = None
@@ -362,7 +385,30 @@ class MySQL:
 
         self.commit()
 
-    
+    @DB_EXISTS()
+    def apply_knob_configuration(self, knobs:dict) -> None:
+        self.__exit__()
+        subprocess.run([
+            '/usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server',
+            'restart', *[f"--{a.replace('_', '-')}={b}" for a, b in knobs.items()]
+        ])
+        self.conn = mysql.connector.connect(
+            host = self.host,
+            user = self.user,
+            passwd = self.passwd,
+            database = self.database
+        )
+        self.new_cur()
+
+    @DB_EXISTS()
+    def reset_knob_configuration(self) -> None:
+        self.apply_knob_configuration(self.__class__.KNOB_DEFAULTS)
+
+    @DB_EXISTS()
+    def get_knob_value(self, knob:str) -> dict:
+        self.cur.execute(f'select @@global.{knob} knob')
+        return self.cur.fetchone()['knob']
+
     @classmethod
     def queries(cls) -> typing.List:
         with open('tpc/tpch/queries.sql') as f:
@@ -465,7 +511,14 @@ if __name__ == '__main__':
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
         #assert conn.db_column_count == len(conn.get_columns_from_database())
         #conn.apply_index_configuration([0, 1, 1, 0, 1, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 1, 1, 1, 0, 1, 1, 0, 1, 0, 0, 0, 1, 0, 0, 1, 1, 1, 1, 0, 0, 1, 1, 0, 1, 1, 0, 0, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 1, 1, 1, 1, 1])
-        conn.drop_all_indices()
+        #print(conn._metrics())
+        #print(conn.apply_knob_configuration({'innodb_purge_threads':5}))
+        #print(json.dumps({i:conn.get_knob_value(i) for i in MySQL.KNOBS}, indent=4))
+        
+        #print('before', conn.get_knob_value('innodb_read_ahead_threshold'))
+        #conn.apply_knob_configuration({'innodb_read_ahead_threshold': 30, 'thread_cache_size':15})
+        #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
+        conn.reset_knob_configuration()
     #print(MySQL.tpch_query_tests())
 
     """

@@ -684,7 +684,7 @@ if __name__ == '__main__':
     
 
     with Atlas_Index_Tune_DQN('tpch1') as a:
-        
+        '''
         tuning_data = []
         for i in range(4):
             print(i + 1)
@@ -694,7 +694,7 @@ if __name__ == '__main__':
         with open(f'outputs/tuning_data/rl_dqn12.json', 'a') as f:
             json.dump(tuning_data, f)
         
-        
+        '''
         display_tuning_results('outputs/tuning_data/rl_dqn12.json')
         
         

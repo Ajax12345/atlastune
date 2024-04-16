@@ -1,5 +1,7 @@
 mysql -u root -p
 export PATH=${PATH}:/usr/local/mysql/bin
+mysql --verbose --help | grep my.cnf
+
 https://apple.stackexchange.com/questions/176786/how-to-add-mysql-to-path-variable-to-resolve-mysql-command-not-found
 
 ALTER TABLE customer DROP PRIMARY KEY;
@@ -118,3 +120,23 @@ Notes:
     - Not every query is equal: more time-intensive queries should have heigher priority than inherently shorter/faster queries, perhaps need weighting 
     - Note: might need to initialize experience replay with self.actor instead of random process?
     
+
+Total rewards:
+    R = [w1*(cost(wkld, 0) - cost(wkld, i))/cost(wkld, 0), 
+        w2*(latency(wkld, 0) - latency(wkld, i))/latency(wkld, 0),
+        w3*(throughput(wkld, i) - throughput(wkld, 0))/throughput(wkld, 0)]
+
+    r = min(R),
+        math.avg(R),
+        sum(R)
+
+    w1, w2, w3 = 1, 1, 1
+    
+    Evolving weights:
+        1. apply with w1, w2, w3
+        2. over n iterations, observe the accumulated rewards r1, r2, rn
+        3. at the end of the iteration, store ((w1, w2, w3), avg(r1, r2, ... rn))
+        4. select two tuples using fitness proportional sampling:
+            (w1, w2, w3) and (w1_1, w2_1, w3_3)
+            perform crossover and add random noise to a weight. Go back to 1 
+

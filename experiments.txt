@@ -561,7 +561,14 @@
         - add "no action" option
         - run over 1000 iterations
 
+    Observations:
+        - compute_total_cost_reward seemingly effective
+        - could be normalized by dividing by the initial total cost
+        - https://news.ycombinator.com/item?id=40028111
+        - Would not the query cost calculations consider available disk space, etc?
+
     Questions:
         - weight_copy_interval size?
         - batch size?
         - experience_replay size?
+    
