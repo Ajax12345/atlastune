@@ -2,7 +2,7 @@ import mysql.connector, typing
 import contextlib, csv, time
 import collections, subprocess
 import datetime, re, json, os
-import random
+import random, io
 
 #https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 #https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
@@ -287,26 +287,52 @@ class MySQL:
     def activate_index_actor_outputs(cls, outputs:typing.List[float]) -> typing.List[int]:
         return [[int(j >= 0.5) for j in i] for i in outputs]
 
-    
-    def tpcc_metrics(self, l:int = 30) -> typing.List[float]:
-        
-        with open(f_name:=f'/Users/jamespetullo/atlastune/tpc/tpcc/performance_outputs/stress_test_{str(datetime.datetime.now()).replace(".", ":")}.txt', 'a') as f:
-            subprocess.run(['./tpcc_start', '-h', '127.0.0.1', 
+    @DB_EXISTS()
+    def tpcc_metrics(self, l:int = 30) -> dict:
+        results = str(subprocess.run(['./tpcc_start', '-h', '127.0.0.1', 
                 '-d', self.database, '-uroot', 
-                '-p', 'Gobronxbombers2', '-w', '10', 
-                '-c', '6', '-r', '10', '-l', str(l), '-i', '2'], 
-            cwd = "tpcc-mysql", stdout = f)
-    
+                '-p', 'Gobronxbombers2', '-w', '50', 
+                '-c', '6', '-r', '0', '-l', str(l), '-i', '2'], 
+            cwd = "tpcc-mysql", capture_output=True).stdout)
+
+        print(results)
+            
         tps, latency, count = 0, 0, 0
-        with open(f_name) as f:
-            for i in f:
-                if (j:=re.findall('(?<=trx\:\s)\d+(?:\.\d+)*|(?<=,\s95\:\s)\d+\.\d+|(?<=,\s99\:\s)\d+\.\d+|(?<=,\smax_rt\:\s)\d+\.\d+', i)):
-                    _trx, _95, _99, _max_rt = map(float, j)
-                    tps += _trx
-                    latency += _99
-                    count += 1
+        for i in results.split('\n'):
+            if (j:=re.findall('(?<=trx\:\s)\d+(?:\.\d+)*|(?<=,\s95\:\s)\d+\.\d+|(?<=,\s99\:\s)\d+\.\d+|(?<=,\smax_rt\:\s)\d+\.\d+', i)):
+                _trx, _95, _99, _max_rt = map(float, j)
+                tps += _trx
+                latency += _99
+                count += 1
         
-        return [tps/count, latency/count]
+        return {'throughput':tps/count, 'latency':latency/count}
+
+    @DB_EXISTS()
+    def tpcc_sysbench_metrics(self, seconds:int = 10, scale:int = 25) -> typing.List:
+        assert self.database in ['sysbench_tpcc']
+        results = str(subprocess.run(['./tpcc.lua', '--mysql-user=root', 
+                '--mysql-password=Gobronxbombers2', '--mysql-db=sysbench_tpcc', 
+                f'--time={seconds}', '--threads=8', '--report-interval=1', 
+                '--tables=1', f'--scale={scale}', '--db-driver=mysql', 'run'], 
+            cwd = '/opt/homebrew/Cellar/sysbench', capture_output=True).stdout)
+        
+        tps = [*map(float, re.findall('(?<=tps:\s)\d+(?:\.\d+)*', results))]
+        qps = [*map(float, re.findall('(?<=qps:\s)\d+(?:\.\d+)*', results))]
+        ltnc = re.findall('Latency \(ms\)\:[\w\W]+', results)[0]
+        latency_min = float(re.findall('(?<=min:)\s+\d+(?:\.\d+)*', results)[0].lstrip())
+        latency_avg = float(re.findall('(?<=avg:)\s+\d+(?:\.\d+)*', results)[0].lstrip())
+        latency_max = float(re.findall('(?<=max:)\s+\d+(?:\.\d+)*', results)[0].lstrip())
+        latency_95 = float(re.findall('(?<=percentile:)\s+\d+(?:\.\d+)*', results)[0].lstrip())
+        latency_sum = float(re.findall('(?<=sum:)\s+\d+(?:\.\d+)*', results)[0].lstrip())
+        return {
+            'tps':sum(tps)/len(tps),
+            'qps':sum(qps)/len(qps),
+            'latency_min':latency_min,
+            'latency_avg':latency_avg,
+            'latency_max':latency_max,
+            'latency_95':latency_95,
+            'latency_sum':latency_sum
+        }
 
     @classmethod
     def used_index_lookup(cls, d:dict) -> typing.Iterator:
@@ -337,7 +363,7 @@ class MySQL:
     @DB_EXISTS()
     def workload_cost(self) -> dict:
         queries = {}
-        if self.database == 'tpcc100':
+        if self.database in ['tpcc100', 'tpcc_1000']:
             for q in os.listdir('tpc/tpcc/queries'):
                 with open(os.path.join('tpc/tpcc/queries', q)) as f:
                     queries[q] = self.get_query_stats(f.read())
@@ -532,7 +558,13 @@ if __name__ == '__main__':
         #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
         #conn.reset_knob_configuration()
         #print(conn.memory_size('gb'))
-        print(conn.tpcc_metrics(2))
+        
+        #print(conn.tpcc_metrics(2))
+        t = time.time()
+        print(conn.tpcc_sysbench_metrics())
+        print(time.time() - t)
+        #print(time.time() - t)
+
         #conn.drop_all_indices()
     #print(MySQL.tpch_query_tests())
 

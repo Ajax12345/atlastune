@@ -683,7 +683,7 @@ if __name__ == '__main__':
     #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     
 
-    with Atlas_Index_Tune_DQN('sysbench_tpcc') as a:
+    with Atlas_Index_Tune_DQN('tpcc_1000') as a:
         
         tuning_data = []
         for i in range(4):
@@ -691,11 +691,11 @@ if __name__ == '__main__':
             a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006})
             tuning_data.append(a.tune(400, reward_func = 'compute_cost_delta_per_query'))
         
-        with open(f'outputs/tuning_data/rl_dqn14.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn15.json', 'a') as f:
             json.dump(tuning_data, f)
         
         
-        display_tuning_results('outputs/tuning_data/rl_dqn14.json')
+        display_tuning_results('outputs/tuning_data/rl_dqn15.json')
         
         
     

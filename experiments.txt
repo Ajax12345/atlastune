@@ -588,3 +588,13 @@
         - can probably scale up sysbench_tpcc to scale = 50
         - instead of initial index configuration as part of the state, vectorize the query payload
 
+04/16/2024 @ 9:00 PM (experiment 35)
+    - DQN
+    - running on tpcc_1000
+
+    - 4 epochs, 400 iterations
+    - {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006}
+
+    Output:
+        outputs/tuning_data/rl_dqn15.json
+

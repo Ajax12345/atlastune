@@ -4,7 +4,8 @@ mysql --verbose --help | grep my.cnf
 
 /opt/homebrew/Cellar/sysbench/1.0.20_6
 
-sysbench_tpcc
+sysbench_tpcc (scale = 25)
+
 
 ./tpcc.lua --mysql-user=root --mysql-password=Gobronxbombers2 --mysql-db=sysbench_tpcc --threads=8 --tables=1 --scale=25 --db-driver=mysql prepare
 
@@ -18,6 +19,7 @@ Idea: run cleanup before each iteration block, or after x number of iterations
 
 tps is throughput
 
+./tpcc_load -h127.0.0.1 -d tpcc_1000 -u root -p "Gobronxbombers2" -w 50
 
 https://apple.stackexchange.com/questions/176786/how-to-add-mysql-to-path-variable-to-resolve-mysql-command-not-found
 
