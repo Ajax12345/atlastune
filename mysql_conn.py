@@ -301,7 +301,7 @@ class MySQL:
 
             return val_range[min(int(len(val_range)*val), len(val_range) - 1)]
 
-        
+
         result = [activate_knob(val, knob) for val, knob in zip(output, cls.KNOBS)]
         return result, {a:b for a, b in zip(cls.KNOBS, result)} 
 
@@ -578,8 +578,10 @@ if __name__ == '__main__':
         #print(conn.apply_knob_configuration({'innodb_purge_threads':5}))
         #print(json.dumps({i:conn.get_knob_value(i) for i in MySQL.KNOBS}, indent=4))
         
-        #print('before', conn.get_knob_value('innodb_read_ahead_threshold'))
-        #conn.apply_knob_configuration({'innodb_read_ahead_threshold': 30, 'thread_cache_size':15})
+
+        print('before', conn.get_knob_value('table_open_cache'))
+        print('before', conn.get_knob_value('innodb_random_read_ahead'))
+        #conn.apply_knob_configuration({'innodb_read_ahead_threshold': 30, 'innodb_random_read_ahead':'ON'})
         #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
         #conn.reset_knob_configuration()
         #print(conn.memory_size('gb'))
@@ -592,7 +594,7 @@ if __name__ == '__main__':
         #print(time.time() - t)
         '''
         #print(conn.tpcc_metrics(2))
-        print(conn.memory_size('b')[conn.database])
+        #print(conn.memory_size('b')[conn.database])
 
         #conn.drop_all_indices()
     #print(MySQL.tpch_query_tests())

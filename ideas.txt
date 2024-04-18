@@ -129,3 +129,5 @@ Putting it all together:
 #TODO: anneal ddpg noise_scale
 
 Might need to increase size of min_memory in knobs to be the default on my system
+
+Todo: need delay between apply_knob_config and tpcc_metrics?

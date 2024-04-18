@@ -178,8 +178,9 @@ class Atlas_Knob_Tune:
             'alr':0.0001,
             'clr':0.0001,
             'gamma':0.9,
-            'noise_scale':0.1,
-            'replay_size':50,
+            'noise_scale':0.5,
+            'noise_decay':0.001,
+            'replay_size':20,
             'tau':0.9999
         }) -> None:
         self.database = database
@@ -205,6 +206,9 @@ class Atlas_Knob_Tune:
         self.conn.set_log_file(self.tuning_log)
 
         return self
+
+    def update_config(self, **kwargs) -> None:
+        self.config.update(kwargs)
 
     def init_models(self, state_num:int, action_num:int) -> None:
         self.actor = Atlas_Knob_Actor(state_num, action_num)
@@ -246,33 +250,48 @@ class Atlas_Knob_Tune:
         self.init_models(state_num, action_num)
 
         self.log_message('Getting default metrics')
-        self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(4)]]
+        with open('experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json') as f:
+            self.experience_replay = json.load(f)
+
+        #self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(4)]]
         rewards = []
+        noise_scale = self.config['noise_scale']
         for i in range(iterations):
+            print('iteration', i+1)
             self.log_message(f'Iteration {i+1}')
             self.actor.eval()
             knob_activation_payload = {
                 'memory_size':self.conn.memory_size('b')[self.database]*2
             }
-            [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), self.config['noise_scale'])
+            [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
+            t = time.time()
             self.conn.apply_knob_configuration(knob_dict)
+            #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.conn.tpcc_metrics(4)),
                 [*indices, *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
+            #print('new stats computed')
             rewards.append(reward)
             state = [*indices, *metrics]
+            noise_scale -= noise_scale*self.config['noise_decay']
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
 
             if len(self.experience_replay) >= self.config['replay_size']:
-                pass
+                '''
+                with open(e_f_file:=f"experience_replay/ddpg_knob_tune/{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
+                    json.dump(self.experience_replay, f)
+
+                print('experience replay saved to:', e_f_file)
+                '''
+                
 
             self.actor.train()
         
-        return rewards, [i[-1] for i in self.experience_replay]
+        return {'rewards':rewards, 'metrics':[i[-1] for i in self.experience_replay]}
 
 
 
@@ -853,6 +872,9 @@ if __name__ == '__main__':
 
     #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     with Atlas_Knob_Tune('tpcc_1000') as a:
-        a.tune(1)
+        a.update_config(**{'replay_size':50})
+        results = a.tune(100)
+        with open('outputs/knob_tuning_data/rl_ddpg4.json', 'a') as f:
+            json.dump(results, f)
     
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))
