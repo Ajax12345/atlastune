@@ -625,10 +625,56 @@
         - use cdbtune's reward function
     
     Knobs to use:
-        - 
-    
+        - innodb_adaptive_flushing_lwm (0, 70)
+        - innodb_adaptive_max_sleep_delay (0, 1000000)
+        - innodb_change_buffering ['none', 'inserts', 'deletes', 'changes', 'purges', 'all']
+        - innodb_max_dirty_pages_pct [0, 99, 75]
+        - innodb_max_dirty_pages_pct_lwm [0, 99, 0]
+        - max_heap_table_size [16384, memory_size*5]
+        - binlog_cache_size
+        - binlog_max_flush_queue_time
+        - eq_range_index_dive_limit [0, 2000, 200]
+        - host_cache_size [0, 65536]
+        - innodb_adaptive_flushing
+        - innodb_autoextend_increment
+        - innodb_buffer_pool_load_at_startup
+        - innodb_change_buffer_max_size
+        - innodb_commit_concurrency
+        - innodb_concurrency_tickets
+        - innodb_flush_log_at_timeout
+        - innodb_flushing_avg_loops
+        - innodb_ft_sort_pll_degree [1, 16]
+        - innodb_log_buffer_size [1048576, 4294967295]
+        - innodb_max_purge_lag
+        - innodb_old_blocks_pct
+        - innodb_old_blocks_time
+        - innodb_rollback_segments
+        - innodb_ddl_buffer_size [65536, 4294967295]
+        - join_buffer_size
+        - max_binlog_cache_size
+        - max_binlog_size
+        - max_seeks_for_key
+        - max_write_lock_count
+
+
     Experience replay:
         experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json
 
     Output:
         outputs/knob_tuning_data/rl_ddpg4.json
+
+
+04/18/2024 @ 4:43 (experiment 37)
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':0.8, 'noise_decay':0.004, 'batch_size':20, 'tpcc_time':4}
+    - iterations: 500
+            'alr':0.001,
+            'clr':0.001
+
+    Experience replay:
+        experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg5.json
+
+    Observations: might be overshooting: try smaller learning rate

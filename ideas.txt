@@ -133,3 +133,5 @@ Might need to increase size of min_memory in knobs to be the default on my syste
 Todo: need delay between apply_knob_config and tpcc_metrics?
 
 TODO: for training only knob tuning, remove indices from the state 
+
+https://ottertune.com/blog/mysql-configuration-settings-list

@@ -284,6 +284,7 @@ class Atlas_Knob_Tune:
             #print('new stats computed')
             rewards.append(reward)
             state = [*indices, *metrics]
+            print('noise scale:', noise_scale)
             noise_scale -= noise_scale*self.config['noise_decay']
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
 
@@ -946,12 +947,12 @@ if __name__ == '__main__':
 
     #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     with Atlas_Knob_Tune('tpcc_1000') as a:
-        '''
-        a.update_config(**{'replay_size':50, 'noise_scale':0.5, 'noise_decay':0.001, 'batch_size':20, 'tpcc_time':4})
-        results = a.tune(100)
-        with open('outputs/knob_tuning_data/rl_ddpg4.json', 'a') as f:
+        
+        a.update_config(**{'replay_size':50, 'noise_scale':0.8, 'noise_decay':0.004, 'batch_size':20, 'tpcc_time':4})
+        results = a.tune(500)
+        with open('outputs/knob_tuning_data/rl_ddpg5.json', 'a') as f:
             json.dump(results, f)
-        '''
-        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg4.json')
+        
+        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg5.json')
     
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))
