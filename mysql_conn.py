@@ -292,7 +292,7 @@ class MySQL:
         return [[int(j >= 0.5) for j in i] for i in outputs]
 
     @classmethod
-    def activate_knob_actor_outputs(cls, outputs:typing.List[typing.List[float]], knob_activation_payload:dict) -> typing.List[typing.List[int]]:
+    def activate_knob_actor_outputs(cls, output:typing.List[float], knob_activation_payload:dict) -> typing.Tuple[typing.List[int], dict]:
         def activate_knob(val:float, knob:str) -> int:
             knob_type, val_range = cls.KNOBS[knob]
             if knob_type == 'integer':
@@ -301,7 +301,9 @@ class MySQL:
 
             return val_range[min(int(len(val_range)*val), len(val_range) - 1)]
 
-        return [[activate_knob(val, knob) for val, knob in zip(action, cls.KNOBS)] for action in outputs]
+        
+        result = [activate_knob(val, knob) for val, knob in zip(output, cls.KNOBS)]
+        return result, {a:b for a, b in zip(cls.KNOBS, result)} 
 
     @classmethod
     @property

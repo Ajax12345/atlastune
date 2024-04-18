@@ -179,6 +179,7 @@ class Atlas_Knob_Tune:
             'clr':0.0001,
             'gamma':0.9,
             'noise_scale':0.1,
+            'replay_size':50,
             'tau':0.9999
         }) -> None:
         self.database = database
@@ -222,8 +223,17 @@ class Atlas_Knob_Tune:
                 target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
             )
 
-    def tune(self, iterations:int, reset_knobs:bool = False) -> dict:
+    def compute_delta_min_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
+        w1 = experience_replay[0][-1]
+        return min((w1['latency'] - w2['latency'])/w1['latency'],
+            (w2['throughput'] - w1['throughput'])/w1['throughput'])
+
+    def log_message(self, message:str) -> None:
+        self.tuning_log.write('\n'+'#'*16+message+'#'*16)
+
+    def tune(self, iterations:int, reward_func:str = 'compute_delta_min_reward', reset_knobs:bool = True) -> dict:
         if reset_knobs:
+            self.log_message('Resetting knobs')
             self.conn.reset_knob_configuration()
 
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
@@ -234,19 +244,36 @@ class Atlas_Knob_Tune:
         state_num, action_num = len(state), db.MySQL.knob_num
 
         self.init_models(state_num, action_num)
-        #self.experience_replay = [(state, None, None, None, self.conn.tpcc_metrics(4))]
 
+        self.log_message('Getting default metrics')
+        self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(4)]]
+        rewards = []
         for i in range(iterations):
+            self.log_message(f'Iteration {i+1}')
             self.actor.eval()
             knob_activation_payload = {
                 'memory_size':self.conn.memory_size('b')[self.database]*2
             }
-            selected_action = Normalize.add_noise(self.actor(start_state).tolist(), self.config['noise_scale'])
-            chosen_knobs = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
-            print(selected_action)
-            print(chosen_knobs)
+            [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), self.config['noise_scale'])
+            chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
+            
+            self.conn.apply_knob_configuration(knob_dict)
+            self.experience_replay.append([state, selected_action, 
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.conn.tpcc_metrics(4)),
+                [*indices, *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
+                w2
+            ])
+            rewards.append(reward)
+            state = [*indices, *metrics]
+            start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+
+            if len(self.experience_replay) >= self.config['replay_size']:
+                pass
 
             self.actor.train()
+        
+        return rewards, [i[-1] for i in self.experience_replay]
+
 
 
     def __exit__(self, *_) -> None:
@@ -825,7 +852,6 @@ def atlas_index_tune_dqn() -> None:
 if __name__ == '__main__':
 
     #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
-    
     with Atlas_Knob_Tune('tpcc_1000') as a:
         a.tune(1)
     
