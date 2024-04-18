@@ -34,7 +34,7 @@ class MySQL:
         ###'skip_name_resolve': ['enum', ['OFF', 'ON']],
         'table_open_cache': ['integer', [1, 10240, 512]],
         #'max_connections': ['integer', [1100, 100000, 80000]],
-        'innodb_buffer_pool_size': ['integer', [1048576, 'memory_size', 'memory_size']],
+        'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 'memory_size']],
         'innodb_buffer_pool_instances': ['integer', [1, 64, 8]],
         #1
         #'innodb_log_files_in_group': ['integer', [2, 100, 2]],
@@ -79,7 +79,7 @@ class MySQL:
         #2
         #'innodb_large_prefix': ['boolean', ['OFF', 'ON']],
         #'innodb_log_buffer_size': ['integer', [262144, min(memory_size, 4294967295), 67108864]],
-        'tmp_table_size': ['integer', [1024, 1073741824, 1073741824]],
+        'tmp_table_size': ['integer', [1024, 'memory_size', 1073741824]],
         #2
         #'innodb_max_dirty_pages_pct': ['numeric', [0, 99, 75]],
         #'innodb_max_dirty_pages_pct_lwm': ['numeric', [0, 99, 0]],
@@ -164,9 +164,13 @@ class MySQL:
             database = self.database
         )
         self.buffered = buffered
+        self.stdout_f = None
         self.cur = None
         if create_cursor:
             self.new_cur()
+
+    def set_log_file(self, f:typing.Any) -> None:
+        self.stdout_f = f
 
     def new_cur(self) -> 'cursor':
         self.cur = self.conn.cursor(dictionary = True, buffered=self.buffered)
@@ -284,18 +288,37 @@ class MySQL:
         return [int(i['INDEX_NAME'] is not None) for i in cols]
     
     @classmethod
-    def activate_index_actor_outputs(cls, outputs:typing.List[float]) -> typing.List[int]:
+    def activate_index_actor_outputs(cls, outputs:typing.List[typing.List[float]]) -> typing.List[typing.List[int]]:
         return [[int(j >= 0.5) for j in i] for i in outputs]
+
+    @classmethod
+    def activate_knob_actor_outputs(cls, outputs:typing.List[typing.List[float]], knob_activation_payload:dict) -> typing.List[typing.List[int]]:
+        def activate_knob(val:float, knob:str) -> int:
+            knob_type, val_range = cls.KNOBS[knob]
+            if knob_type == 'integer':
+                min_val, max_val, _ = [knob_activation_payload.get(i, i) for i in val_range]
+                return max(min_val, int(max_val*val))
+
+            return val_range[min(int(len(val_range)*val), len(val_range) - 1)]
+
+        return [[activate_knob(val, knob) for val, knob in zip(action, cls.KNOBS)] for action in outputs]
+
+    @classmethod
+    @property
+    def knob_num(cls) -> int:
+        return len(cls.KNOBS)
 
     @DB_EXISTS()
     def tpcc_metrics(self, l:int = 30) -> dict:
-        results = str(subprocess.run(['./tpcc_start', '-h', '127.0.0.1', 
+        results = subprocess.run(['./tpcc_start', '-h', '127.0.0.1', 
                 '-d', self.database, '-uroot', 
                 '-p', 'Gobronxbombers2', '-w', '50', 
                 '-c', '6', '-r', '0', '-l', str(l), '-i', '2'], 
-            cwd = "tpcc-mysql", capture_output=True).stdout)
+            cwd = "tpcc-mysql", capture_output=True).stdout.decode('ascii')
 
-        print(results)
+        #print(results)
+        if self.stdout_f is not None:
+            self.stdout_f.write('\n'+results+'\n')
             
         tps, latency, count = 0, 0, 0
         for i in results.split('\n'):
@@ -429,7 +452,7 @@ class MySQL:
         subprocess.run([
             '/usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server',
             'restart', *[f"--{a.replace('_', '-')}={b}" for a, b in knobs.items()]
-        ])
+        ], stdout = self.stdout_f)
         self.conn = mysql.connector.connect(
             host = self.host,
             user = self.user,
@@ -527,7 +550,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "sysbench_tpcc") as conn:
+    with MySQL(database = "tpcc_1000") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -560,10 +583,14 @@ if __name__ == '__main__':
         #print(conn.memory_size('gb'))
         
         #print(conn.tpcc_metrics(2))
+        '''
         t = time.time()
         print(conn.tpcc_sysbench_metrics())
         print(time.time() - t)
         #print(time.time() - t)
+        '''
+        #print(conn.tpcc_metrics(2))
+        print(conn.memory_size('b')[conn.database])
 
         #conn.drop_all_indices()
     #print(MySQL.tpch_query_tests())

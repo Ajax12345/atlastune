@@ -26,7 +26,7 @@ class Normalize:
         return [[X + Y for X, Y in zip(ind, np.random.randn(len(ind))*noise_scale)] 
                     for ind in inds]
 
-class Atlas_Index_Critic(nn.Module):
+class Atlas_Knob_Critic(nn.Module):
     def __init__(self, state_num:int, action_num:int, val_num:int) -> None:
         super().__init__()
         self.state_num = state_num
@@ -35,7 +35,6 @@ class Atlas_Index_Critic(nn.Module):
         self.state_input = nn.Linear(self.state_num, 128)
         self.action_input = nn.Linear(self.action_num, 128)
         self.act = nn.Tanh()
-        '''
         self.layers = nn.Sequential(
             nn.Linear(256, 256),
             nn.LeakyReLU(negative_slope=0.2),
@@ -46,7 +45,64 @@ class Atlas_Index_Critic(nn.Module):
             nn.BatchNorm1d(64),
             nn.Linear(64, 1),
         )
-        '''
+        #self._init_weights()
+
+    def _init_weights(self):
+        self.state_input.weight.data.normal_(0.0, 1e-2)
+        self.state_input.bias.data.uniform_(-0.1, 0.1)
+
+        self.action_input.weight.data.normal_(0.0, 1e-2)
+        self.action_input.bias.data.uniform_(-0.1, 0.1)
+
+        for m in self.layers:
+            if type(m) == nn.Linear:
+                m.weight.data.normal_(0.0, 1e-2)
+                m.bias.data.uniform_(-0.1, 0.1)
+
+    def forward(self, state, action) -> typing.Any:
+        state = self.act(self.state_input(state))
+        action = self.act(self.action_input(action))
+        return self.layers(torch.cat([state, action], dim = 1))
+
+class Atlas_Knob_Actor(nn.Module):
+    def __init__(self, state_num:int, action_num:int) -> None:
+        super().__init__()
+        self.state_num = state_num
+        self.action_num = action_num
+        self.layers = nn.Sequential(
+            nn.Linear(self.state_num, 128),
+            nn.LeakyReLU(negative_slope=0.2),
+            nn.BatchNorm1d(128),
+            nn.Linear(128, 128),
+            nn.Tanh(),
+            nn.Dropout(0.3),
+            nn.Linear(128, 64),
+            nn.Tanh(),
+            nn.BatchNorm1d(64),
+        )
+        self.out_layer = nn.Linear(64, self.action_num)
+        self.act = nn.Sigmoid()
+        #self._init_weights()
+
+    def _init_weights(self):
+
+        for m in self.layers:
+            if type(m) == nn.Linear:
+                m.weight.data.normal_(0.0, 1e-2)
+                m.bias.data.uniform_(-0.1, 0.1)
+
+    def forward(self, x) -> torch.tensor:
+        return self.act(self.out_layer(self.layers(x)))
+
+class Atlas_Index_Critic(nn.Module):
+    def __init__(self, state_num:int, action_num:int, val_num:int) -> None:
+        super().__init__()
+        self.state_num = state_num
+        self.action_num = action_num
+        self.val_num = val_num
+        self.state_input = nn.Linear(self.state_num, 128)
+        self.action_input = nn.Linear(self.action_num, 128)
+        self.act = nn.Tanh()
         self.layers = nn.Sequential(
             nn.Linear(256, 256),
             nn.ReLU(),
@@ -79,19 +135,6 @@ class Atlas_Index_Actor(nn.Module):
         super().__init__()
         self.state_num = state_num
         self.index_num = index_num
-        '''
-        self.layers = nn.Sequential(
-            nn.Linear(self.state_num, 128),
-            nn.LeakyReLU(negative_slope=0.2),
-            nn.BatchNorm1d(128),
-            nn.Linear(128, 128),
-            nn.Tanh(),
-            nn.Dropout(0.3),
-            nn.Linear(128, 64),
-            nn.Tanh(),
-            nn.BatchNorm1d(64),
-        )
-        '''
         self.layers = nn.Sequential(
             nn.Linear(self.state_num, 128),
             nn.ReLU(),
@@ -128,6 +171,92 @@ class Atlas_Index_QNet(nn.Module):
 
     def forward(self, x) -> torch.tensor:
         return self.layers(x)
+
+
+class Atlas_Knob_Tune:
+    def __init__(self, database:str, conn = None, config = {
+            'alr':0.0001,
+            'clr':0.0001,
+            'gamma':0.9,
+            'noise_scale':0.1,
+            'tau':0.9999
+        }) -> None:
+        self.database = database
+        self.conn = conn
+        self.config = config
+        self.actor = None
+        self.actor_target = None
+        self.critic = None
+        self.critic_target = None
+        self.actor_optimizer = None
+        self.critic_optimizer = None
+        self.loss_criterion = None
+        self.tuning_log = None
+        self.experience_replay = []
+
+    def mount_entities(self) -> None:
+        if self.conn is None:
+            self.conn = db.MySQL(database = self.database)
+
+    def __enter__(self) -> 'Atlas_Knob_Tune':
+        self.mount_entities()
+        self.tuning_log = open(f"logs/knob_tuning_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.txt", 'a')
+        self.conn.set_log_file(self.tuning_log)
+
+        return self
+
+    def init_models(self, state_num:int, action_num:int) -> None:
+        self.actor = Atlas_Knob_Actor(state_num, action_num)
+        self.actor_target = Atlas_Knob_Actor(state_num, action_num)
+        self.critic = Atlas_Knob_Critic(state_num, action_num, 1)
+        self.critic_target = Atlas_Knob_Critic(state_num, action_num, 1)
+        self.loss_criterion = nn.MSELoss()
+        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
+        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
+        self.actor_target.load_state_dict(self.actor.state_dict())
+        self.critic_target.load_state_dict(self.critic.state_dict())
+
+    def update_target_weights(self, target_m, m) -> None:
+        for target_param, param in zip(target_m.parameters(), m.parameters()):
+            target_param.data.copy_(
+                target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
+            )
+
+    def tune(self, iterations:int, reset_knobs:bool = False) -> dict:
+        if reset_knobs:
+            self.conn.reset_knob_configuration()
+
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+
+        state = [*indices, *metrics]
+        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+        state_num, action_num = len(state), db.MySQL.knob_num
+
+        self.init_models(state_num, action_num)
+        #self.experience_replay = [(state, None, None, None, self.conn.tpcc_metrics(4))]
+
+        for i in range(iterations):
+            self.actor.eval()
+            knob_activation_payload = {
+                'memory_size':self.conn.memory_size('b')[self.database]*2
+            }
+            selected_action = Normalize.add_noise(self.actor(start_state).tolist(), self.config['noise_scale'])
+            chosen_knobs = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
+            print(selected_action)
+            print(chosen_knobs)
+
+            self.actor.train()
+
+
+    def __exit__(self, *_) -> None:
+        if self.conn is not None:
+            self.conn.__exit__()
+        
+        if self.tuning_log is not None:
+            self.tuning_log.close()
+
+
 
 class Atlas_Index_Tune:
     def __init__(self, database:str, conn = None, config = {
@@ -678,11 +807,7 @@ def display_tuning_results(f_name:str) -> None:
     plt.show()
     
 
-if __name__ == '__main__':
-
-    #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
-    
-
+def atlas_index_tune_dqn() -> None:
     with Atlas_Index_Tune_DQN('tpcc_1000') as a:
         
         tuning_data = []
@@ -696,52 +821,12 @@ if __name__ == '__main__':
         
         
         display_tuning_results('outputs/tuning_data/rl_dqn15.json')
-        
-        
+
+if __name__ == '__main__':
+
+    #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     
-        '''
-        
-        with open(f'outputs/rl_dqn7.json') as f:
-            rewards= json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn7")
-
-        with open(f'outputs/rl_ddpg12.json') as f:
-            rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg_main")
+    with Atlas_Knob_Tune('tpcc_1000') as a:
+        a.tune(1)
     
-        
-        with open('outputs/rl_ddpg2.json') as f:
-            rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
-        
-        
-        with open('outputs/rl_ddpg3.json') as f:
-            rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg1")
-        
-        with open('outputs/random_control.json') as f:
-            #rewards = [i[:d] for i in json.load(f)]
-            rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="random")
-        
-        with open(f'outputs/rl_dqn4.json') as f:
-            rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn4")
-        
-        
-        with open(f'outputs/rl_dqn5.json') as f:
-            rewards = json.load(f)
-            plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="dqn5")
-        
-        
-        plt.title("reward at each iteration (5 epochs)")
-        plt.legend(loc="lower right")
-
-        plt.xlabel("iteration")
-        plt.ylabel("reward")
-        plt.show()
-        '''
-        
-        
-
-       
+    #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

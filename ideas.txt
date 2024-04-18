@@ -124,3 +124,8 @@ Putting it all together:
         - use that to calculate latency and throughput
 
     - based on results from index selection, can probably increase scale of sysbench_tpcc to 50
+
+
+#TODO: anneal ddpg noise_scale
+
+Might need to increase size of min_memory in knobs to be the default on my system
