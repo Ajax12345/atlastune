@@ -205,7 +205,7 @@ class Atlas_Knob_Tune:
     def __enter__(self) -> 'Atlas_Knob_Tune':
         self.mount_entities()
         self.tuning_log = open(f"logs/knob_tuning_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.txt", 'a')
-        #self.conn.set_log_file(self.tuning_log)
+        self.conn.set_log_file(self.tuning_log)
 
         return self
 
@@ -948,11 +948,11 @@ if __name__ == '__main__':
     #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     with Atlas_Knob_Tune('tpcc_1000') as a:
         
-        a.update_config(**{'replay_size':50, 'noise_scale':0.8, 'noise_decay':0.004, 'batch_size':20, 'tpcc_time':4})
+        a.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4})
         results = a.tune(500)
-        with open('outputs/knob_tuning_data/rl_ddpg5.json', 'a') as f:
+        with open('outputs/knob_tuning_data/rl_ddpg6.json', 'a') as f:
             json.dump(results, f)
         
-        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg5.json')
+        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg6.json')
     
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

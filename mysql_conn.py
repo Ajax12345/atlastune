@@ -299,7 +299,8 @@ class MySQL:
                 min_val, max_val, _ = [knob_activation_payload.get(i, i) for i in val_range]
                 return max(min_val, int(max_val*val))
 
-            return val_range[min(int(len(val_range)*val), len(val_range) - 1)]
+            
+            return val_range[min(max(0, int(len(val_range)*val)), len(val_range) - 1)]
 
 
         result = [activate_knob(val, knob) for val, knob in zip(output, cls.KNOBS)]

@@ -678,3 +678,17 @@
         outputs/knob_tuning_data/rl_ddpg5.json
 
     Observations: might be overshooting: try smaller learning rate
+
+04/18/2024 @ 4:43 (experiment 38)
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+    - iterations: 500
+            'alr':0.001,
+            'clr':0.001
+
+    Experience replay:
+        experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg6.json
+
