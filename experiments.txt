@@ -599,4 +599,36 @@
         outputs/tuning_data/rl_dqn15.json
 
 
+######################### KNOB TUNING #########################
 
+04/18/2024 @ 4:25 (experiment 36)
+    - DDPG
+    - Might need to increase size of min_memory in knobs to be the default on my system
+    - need delay between apply_knob_config and tpcc_metrics?
+        - IMPORTANT: verify sequential action here
+    - for training only knob tuning, remove indices from the state 
+    - should "selected_action" be saved in memory replay without noise added to it?
+
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':0.5, 'noise_decay':0.001, 'batch_size':20, 'tpcc_time':4}
+    - iterations: 100
+            'alr':0.001,
+            'clr':0.001
+
+    Ideas:
+        - take average of rewards instead of min
+        - pass larger time value to tpcc_metrics
+        - #TODO: increase noise_scale for more exploration
+        - verify that knobs being used are useful
+        - increase database size
+        - use sysbench_tpcc
+        - use cdbtune's reward function
+    
+    Knobs to use:
+        - 
+    
+    Experience replay:
+        experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg4.json

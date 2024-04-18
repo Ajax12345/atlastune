@@ -175,12 +175,14 @@ class Atlas_Index_QNet(nn.Module):
 
 class Atlas_Knob_Tune:
     def __init__(self, database:str, conn = None, config = {
-            'alr':0.0001,
-            'clr':0.0001,
+            'alr':0.001,
+            'clr':0.001,
             'gamma':0.9,
             'noise_scale':0.5,
             'noise_decay':0.001,
-            'replay_size':20,
+            'replay_size':50,
+            'batch_size':20,
+            'tpcc_time':4,
             'tau':0.9999
         }) -> None:
         self.database = database
@@ -252,14 +254,19 @@ class Atlas_Knob_Tune:
         self.log_message('Getting default metrics')
         with open('experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json') as f:
             self.experience_replay = json.load(f)
+            skip_experience = len(self.experience_replay)
 
-        #self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(4)]]
+        #self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(self.config['tpcc_time'])]]
         rewards = []
         noise_scale = self.config['noise_scale']
         for i in range(iterations):
             print('iteration', i+1)
             self.log_message(f'Iteration {i+1}')
             self.actor.eval()
+            self.actor_target.eval()
+            self.critic.eval()
+            self.critic_target.eval()
+
             knob_activation_payload = {
                 'memory_size':self.conn.memory_size('b')[self.database]*2
             }
@@ -270,7 +277,7 @@ class Atlas_Knob_Tune:
             self.conn.apply_knob_configuration(knob_dict)
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
-                reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.conn.tpcc_metrics(4)),
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.conn.tpcc_metrics(self.config['tpcc_time'])),
                 [*indices, *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
@@ -287,11 +294,48 @@ class Atlas_Knob_Tune:
 
                 print('experience replay saved to:', e_f_file)
                 '''
-                
+                inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_size'])
+                _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+                s = torch.tensor([Normalize.normalize(i) for i in _s])
+                a = torch.tensor([[float(j) for j in i] for i in _a])
+                s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
+                r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
 
-            self.actor.train()
+                target_action = self.actor_target(s_prime)
+
+                target_q_value = self.critic_target(s_prime, target_action)
+                next_value = r + self.config['gamma']*target_q_value
+
+                current_value = self.critic(s, a)
+                
+                u = self.actor(s)
+                predicted_q_value = self.critic(s, u)
+
+                self.actor.train()
+                self.actor_target.train()
+                self.critic.train()
+                self.critic_target.train()
+
+                loss = self.loss_criterion(current_value, next_value)
+                print(loss)
+            
+                
+                self.critic_optimizer.zero_grad()
+                loss.backward()
+
+                pqv = -1*predicted_q_value
+                actor_loss = pqv.mean()
+                self.actor_optimizer.zero_grad()
+                actor_loss.backward()
+
+                self.critic_optimizer.step()
+                self.actor_optimizer.step()
+
+                self.update_target_weights(self.critic_target, self.critic)
+                self.update_target_weights(self.actor_target, self.actor)
+
         
-        return {'rewards':rewards, 'metrics':[i[-1] for i in self.experience_replay]}
+        return {'rewards':rewards, 'metrics':[i[-1] for i in self.experience_replay[skip_experience:]]}
 
 
 
@@ -851,7 +895,37 @@ def display_tuning_results(f_name:str) -> None:
     a2.set_ylabel("Workload cost")
 
     plt.show()
+
+def display_knob_tuning_results(f_name:str) -> None:
+    with open(f_name) as f:
+        tuning_data = json.load(f)
+
+    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+
     
+    a1.plot([*range(1, len(tuning_data['rewards'])+1)], tuning_data['rewards'])
+
+    a1.title.set_text("Reward")
+    a1.legend(loc="lower right")
+
+    a1.set_xlabel("iteration")
+    a1.set_ylabel("Reward")
+
+    a2.plot([*range(1, len(tuning_data['metrics'])+1)], [i['latency'] for i in tuning_data['metrics']])
+    a2.title.set_text("Latency")
+    a2.legend(loc="lower right")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("latency")
+
+    a3.plot([*range(1, len(tuning_data['metrics'])+1)], [i['throughput'] for i in tuning_data['metrics']])
+    a3.title.set_text("Throughput")
+    a3.legend(loc="lower right")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("throughput")
+
+    plt.show()
 
 def atlas_index_tune_dqn() -> None:
     with Atlas_Index_Tune_DQN('tpcc_1000') as a:
@@ -872,9 +946,12 @@ if __name__ == '__main__':
 
     #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
     with Atlas_Knob_Tune('tpcc_1000') as a:
-        a.update_config(**{'replay_size':50})
+        '''
+        a.update_config(**{'replay_size':50, 'noise_scale':0.5, 'noise_decay':0.001, 'batch_size':20, 'tpcc_time':4})
         results = a.tune(100)
         with open('outputs/knob_tuning_data/rl_ddpg4.json', 'a') as f:
             json.dump(results, f)
+        '''
+        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg4.json')
     
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

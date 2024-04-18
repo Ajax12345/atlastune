@@ -131,3 +131,5 @@ Putting it all together:
 Might need to increase size of min_memory in knobs to be the default on my system
 
 Todo: need delay between apply_knob_config and tpcc_metrics?
+
+TODO: for training only knob tuning, remove indices from the state 

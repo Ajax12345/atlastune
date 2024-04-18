@@ -39,7 +39,7 @@ class MySQL:
         #1
         #'innodb_log_files_in_group': ['integer', [2, 100, 2]],
         #1
-        #'innodb_log_file_size': ['integer', [134217728, 5497558138, 15569256448]],
+        #'innodb_log_file_size' (Depreciated): ['integer', [134217728, 5497558138, 15569256448]],
         'innodb_purge_threads': ['integer', [1, 32, 1]],
         'innodb_read_io_threads': ['integer', [1, 64, 12]],
         'innodb_write_io_threads': ['integer', [1, 64, 12]],
