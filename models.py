@@ -205,7 +205,7 @@ class Atlas_Knob_Tune:
     def __enter__(self) -> 'Atlas_Knob_Tune':
         self.mount_entities()
         self.tuning_log = open(f"logs/knob_tuning_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.txt", 'a')
-        self.conn.set_log_file(self.tuning_log)
+        #self.conn.set_log_file(self.tuning_log)
 
         return self
 
