@@ -234,6 +234,11 @@ class Atlas_Knob_Tune:
         return min((w1['latency'] - w2['latency'])/w1['latency'],
             (w2['throughput'] - w1['throughput'])/w1['throughput'])
 
+    def compute_delta_avg_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
+        w1 = experience_replay[0][-1]
+        return ((w1['latency'] - w2['latency'])/w1['latency'] + 
+            (w2['throughput'] - w1['throughput'])/w1['throughput'])/2
+
     def log_message(self, message:str) -> None:
         self.tuning_log.write('\n'+'#'*16+message+'#'*16)
 
@@ -251,13 +256,15 @@ class Atlas_Knob_Tune:
 
         self.init_models(state_num, action_num)
 
+        '''
         self.log_message('Getting default metrics')
         with open('experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json') as f:
             self.experience_replay = json.load(f)
             skip_experience = len(self.experience_replay)
-
-        #self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(self.config['tpcc_time'])]]
+        '''
+        self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(self.config['tpcc_time'])]]
         rewards = []
+        skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
         for i in range(iterations):
             print('iteration', i+1)
@@ -336,7 +343,7 @@ class Atlas_Knob_Tune:
                 self.update_target_weights(self.actor_target, self.actor)
 
         
-        return {'rewards':rewards, 'metrics':[i[-1] for i in self.experience_replay[skip_experience:]]}
+        return {'rewards':rewards[skip_experience:], 'metrics':[i[-1] for i in self.experience_replay[skip_experience:]]}
 
 
 
@@ -949,10 +956,9 @@ if __name__ == '__main__':
     with Atlas_Knob_Tune('tpcc_1000') as a:
         
         a.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4})
-        results = a.tune(500)
-        with open('outputs/knob_tuning_data/rl_ddpg6.json', 'a') as f:
+        results = a.tune(500, reward_func = 'compute_delta_avg_reward')
+        with open('outputs/knob_tuning_data/rl_ddpg7.json', 'a') as f:
             json.dump(results, f)
         
-        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg6.json')
-    
+        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg7.json')
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

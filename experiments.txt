@@ -609,6 +609,8 @@
     - for training only knob tuning, remove indices from the state 
     - should "selected_action" be saved in memory replay without noise added to it?
 
+    reward function: compute_delta_min_reward
+
     Database: tpcc_1000
     - {'replay_size':50, 'noise_scale':0.5, 'noise_decay':0.001, 'batch_size':20, 'tpcc_time':4}
     - iterations: 100
@@ -671,6 +673,8 @@
             'alr':0.001,
             'clr':0.001
 
+    reward function: compute_delta_min_reward
+
     Experience replay:
         experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json
 
@@ -686,9 +690,32 @@
             'alr':0.001,
             'clr':0.001
 
+    reward function: compute_delta_min_reward
+
     Experience replay:
         experience_replay/ddpg_knob_tune/tpcc_1000_2024-04-1815:57:59283850.json
 
     Output:
         outputs/knob_tuning_data/rl_ddpg6.json
 
+
+04/18/2024 @ 4:43 (experiment 39)
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+    - iterations: 500
+            'alr':0.001,
+            'clr':0.001
+
+    reward function: compute_delta_avg_reward
+
+    Need tradeoff between latency reward and throughput reward
+        - perhaps multiply throughput by some integer n?
+    
+    Simplify model architecture
+   
+    Output:
+        outputs/knob_tuning_data/rl_ddpg7.json
+
+    Observations:
+        on all graphs, it seems like convergence happens around 250 - 300 iterations
+        The variance between the rewards decreases considerably and becomes very tight
