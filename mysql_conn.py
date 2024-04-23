@@ -48,11 +48,8 @@ class MySQL:
         #'binlog_cache_size': ['integer', [4096, 4294967296, 18446744073709547520]],
         #'max_binlog_size': ['integer', [4096, 1073741824, 1073741824]],
         ###'innodb_adaptive_flushing_lwm': ['integer', [0, 70, 10]],
-        ###'innodb_adaptive_max_sleep_delay': ['integer', [0, 1000000, 150000]],
         #4
-        #'innodb_change_buffer_max_size': ['integer', [0, 50, 25]],
         #'innodb_flush_log_at_timeout': ['integer', [1, 2700, 1]],
-        #'innodb_flushing_avg_loops': ['integer', [1, 1000, 30]],
         #'innodb_max_purge_lag': ['integer', [0, 4294967295, 0]],
         ###'innodb_old_blocks_pct': ['integer', [5, 95, 37]],
         'innodb_read_ahead_threshold': ['integer', [0, 64, 56]],
@@ -78,13 +75,11 @@ class MySQL:
         ###'innodb_disable_sort_file_cache': [' boolean', ['ON', 'OFF']],
         #2
         #'innodb_large_prefix': ['boolean', ['OFF', 'ON']],
-        #'innodb_log_buffer_size': ['integer', [262144, min(memory_size, 4294967295), 67108864]],
         'tmp_table_size': ['integer', [1024, 'memory_size', 1073741824]],
         #2
         #'innodb_max_dirty_pages_pct': ['numeric', [0, 99, 75]],
         #'innodb_max_dirty_pages_pct_lwm': ['numeric', [0, 99, 0]],
         'innodb_random_read_ahead': ['boolean', ['ON', 'OFF']],
-        ###'eq_range_index_dive_limit': ['integer', [0, 2000, 200]],
         ###'max_length_for_sort_data': ['integer', [4, 10240, 1024]],
         ###'read_rnd_buffer_size': ['integer', [1, min(memory_size, 5242880), 524288]],
         'table_open_cache_instances': ['integer', [1, 64, 16]],
@@ -97,7 +92,6 @@ class MySQL:
         ###'query_cache_type': ['enum', ['ON', 'DEMAND', 'OFF']],
         ###'query_prealloc_size': ['integer', [8192, min(memory_size, 134217728), 8192]],
         ###'transaction_prealloc_size': ['integer', [1024, min(memory_size, 131072), 4096]],
-        ###'join_buffer_size': ['integer', [128, min(memory_size, 26214400), 262144]],
         #1
         #'max_seeks_for_key': ['integer', [1, 18446744073709551615, 18446744073709551615]],
         ###'sort_buffer_size': ['integer', [32768, min(memory_size, 134217728), 524288]],
@@ -128,6 +122,14 @@ class MySQL:
         #'innodb_thread_sleep_delay' : ['integer', [0, 1000000, 10000]],
         ##'thread_stack' : ['integer', [131072, memory_size, 524288]],
         #'back_log' : ['integer', [1, 65535, 900]],
+        #BELOW: potential knob additions
+        #'innodb_adaptive_max_sleep_delay': ['integer', [0, 1000000, 150000]],
+        #'eq_range_index_dive_limit': ['integer', [0, 10000, 200]],
+        #'innodb_change_buffer_max_size': ['integer', [0, 50, 25]],
+        #'innodb_log_buffer_size': ['integer', [262144, 'memory_lower_bound', 67108864]],
+        #'join_buffer_size': ['integer', [128, 'memory_lower_bound', 262144]],
+        #'innodb_flushing_avg_loops': ['integer', [1, 1000, 30]],
+
     }
     KNOB_DEFAULTS = {
         "table_open_cache": 4000,
@@ -150,7 +152,13 @@ class MySQL:
         "innodb_spin_wait_delay": 6,
         "innodb_adaptive_hash_index_parts": 8,
         "innodb_page_cleaners": 1,
-        "innodb_flush_neighbors": 0
+        "innodb_flush_neighbors": 0,
+        #"innodb_adaptive_max_sleep_delay": 150000,
+        #"eq_range_index_dive_limit": 200,
+        #"innodb_change_buffer_max_size": 25,
+        #"innodb_log_buffer_size": 16777216,
+        #"join_buffer_size": 262144,
+        #"innodb_flushing_avg_loops": 30,
     }
     def __init__(self, host:str = "localhost", user:str = "root", 
                 passwd:str = "Gobronxbombers2", database:typing.Union[str, None] = None,
@@ -389,7 +397,7 @@ class MySQL:
     @DB_EXISTS()
     def workload_cost(self) -> dict:
         queries = {}
-        if self.database in ['tpcc100', 'tpcc_1000']:
+        if self.database in ['tpcc100', 'tpcc_1000', 'tpcc_30']:
             for q in os.listdir('tpc/tpcc/queries'):
                 with open(os.path.join('tpc/tpcc/queries', q)) as f:
                     queries[q] = self.get_query_stats(f.read())
@@ -553,7 +561,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "tpcc_1000") as conn:
+    with MySQL(database = "tpcc_30") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -580,12 +588,13 @@ if __name__ == '__main__':
         #print(json.dumps({i:conn.get_knob_value(i) for i in MySQL.KNOBS}, indent=4))
         
 
-        print('before', conn.get_knob_value('table_open_cache'))
-        print('before', conn.get_knob_value('innodb_random_read_ahead'))
+        #print('before', conn.get_knob_value('table_open_cache'))
+        #print('before', conn.get_knob_value('innodb_random_read_ahead'))
         #conn.apply_knob_configuration({'innodb_read_ahead_threshold': 30, 'innodb_random_read_ahead':'ON'})
         #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
         #conn.reset_knob_configuration()
         #print(conn.memory_size('gb'))
+        conn.drop_all_indices()
         
         #print(conn.tpcc_metrics(2))
         '''

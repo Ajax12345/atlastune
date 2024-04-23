@@ -24,6 +24,9 @@ tps is throughput
 tpcc_1000
     ./tpcc_load -h127.0.0.1 -d tpcc_1000 -u root -p "Gobronxbombers2" -w 50
     
+tpcc_30
+    mysql -u root -p tpcc_30 < create_table.sql
+    ./tpcc_load -h127.0.0.1 -d tpcc_30 -u root -p "Gobronxbombers2" -w 30
 
 alter table customer1 drop foreign key fkey_customer_1_1;
 alter table customer1 drop foreign key fkey_customer_1_1;

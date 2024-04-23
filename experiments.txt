@@ -601,7 +601,7 @@
 
 ######################### KNOB TUNING #########################
 
-04/18/2024 @ 4:25 (experiment 36)
+04/18/2024 @ 4:25 PM (experiment 36)
     - DDPG
     - Might need to increase size of min_memory in knobs to be the default on my system
     - need delay between apply_knob_config and tpcc_metrics?
@@ -628,35 +628,39 @@
     
     Knobs to use:
         - innodb_adaptive_flushing_lwm (0, 70)
-        - innodb_adaptive_max_sleep_delay (0, 1000000)
-        - innodb_change_buffering ['none', 'inserts', 'deletes', 'changes', 'purges', 'all']
+        - innodb_adaptive_max_sleep_delay *** (0, 1000000)
+        - innodb_change_buffering *** ['none', 'inserts', 'deletes', 'changes', 'purges', 'all']
         - innodb_max_dirty_pages_pct [0, 99, 75]
         - innodb_max_dirty_pages_pct_lwm [0, 99, 0]
         - max_heap_table_size [16384, memory_size*5]
         - binlog_cache_size
         - binlog_max_flush_queue_time
-        - eq_range_index_dive_limit [0, 2000, 200]
-        - host_cache_size [0, 65536]
-        - innodb_adaptive_flushing
+        - eq_range_index_dive_limit *** [0, 10000, 200]
+        - host_cache_size ** [0, 65536]
+        - innodb_adaptive_flushing *
         - innodb_autoextend_increment
         - innodb_buffer_pool_load_at_startup
-        - innodb_change_buffer_max_size
-        - innodb_commit_concurrency
-        - innodb_concurrency_tickets
-        - innodb_flush_log_at_timeout
-        - innodb_flushing_avg_loops
+        - innodb_change_buffer_max_size ***
+        - innodb_commit_concurrency **
+        - innodb_concurrency_tickets ** [1, 4294967295]
+        - innodb_flush_log_at_timeout **
+        - innodb_flushing_avg_loops ***
         - innodb_ft_sort_pll_degree [1, 16]
-        - innodb_log_buffer_size [1048576, 4294967295]
-        - innodb_max_purge_lag
-        - innodb_old_blocks_pct
-        - innodb_old_blocks_time
-        - innodb_rollback_segments
-        - innodb_ddl_buffer_size [65536, 4294967295]
-        - join_buffer_size
-        - max_binlog_cache_size
+        - innodb_log_buffer_size *** [1048576, 4294967295]
+        - innodb_max_purge_lag *
+        - innodb_old_blocks_pct **
+        - innodb_old_blocks_time **
+        - innodb_rollback_segments *
+        - innodb_ddl_buffer_size *** [65536, 4294967295]
+        - join_buffer_size ***
+        - max_binlog_cache_size *?
         - max_binlog_size
-        - max_seeks_for_key
-        - max_write_lock_count
+        - max_seeks_for_key **
+        - max_write_lock_count *
+        - innodb_lock_wait_timeout [1, 	1073741824]
+        - query_alloc_block_size **
+
+    Important knobs: query_cache_size, innodb_buffer_pool_size, join_buffer_size, eq_range_index_dive_limit
 
 
     Experience replay:
@@ -666,7 +670,7 @@
         outputs/knob_tuning_data/rl_ddpg4.json
 
 
-04/18/2024 @ 4:43 (experiment 37)
+04/18/2024 @ 4:43 PM (experiment 37)
     Database: tpcc_1000
     - {'replay_size':50, 'noise_scale':0.8, 'noise_decay':0.004, 'batch_size':20, 'tpcc_time':4}
     - iterations: 500
@@ -699,7 +703,7 @@
         outputs/knob_tuning_data/rl_ddpg6.json
 
 
-04/18/2024 @ 4:43 (experiment 39)
+04/18/2024 @ 4:43 PM (experiment 39)
     Database: tpcc_1000
     - {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
     - iterations: 500
@@ -719,3 +723,118 @@
     Observations:
         on all graphs, it seems like convergence happens around 250 - 300 iterations
         The variance between the rewards decreases considerably and becomes very tight
+        unclear if avg is better than min
+
+    Since rewards tend to be negative, multiply a positive result by some weight
+
+    Increase size of innodb_buffer_pool_size
+
+04/21/2024 @ 12:46 PM (experiment 40)
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+    - iterations: 500
+            'alr':0.001,
+            'clr':0.001
+
+    - reward function: compute_delta_avg_reward
+    - 'memory_size':(mem_size:=self.conn.memory_size('b')[self.database]*4),
+
+    New knobs added:
+        - innodb_adaptive_max_sleep_delay
+        - eq_range_index_dive_limit
+        - innodb_change_buffer_max_size
+        - innodb_log_buffer_size
+        - join_buffer_size
+        - innodb_flushing_avg_loops
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg8.json
+
+
+    Ideas:
+        - increase noise_scale so as to compensate for experience replay creation
+            - perhaps only decay when loss calculations begin? (when len(self.experience_replay) >= self.config['replay_size'])
+
+
+    To do:
+        - remove max(min((sum(k)/len(k))*10, 10), -10) clipping from compute_cost_delta_per_query
+            - or apply a multiplication by 10 to the knob reward values
+
+    Observations:
+        - converged even more quickly than last time
+
+
+04/21/2024 @ 2:05 PM (experiment 41)
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+    - iterations: 500
+            'alr':0.001,
+            'clr':0.001
+
+    - reward function: compute_delta_avg_reward
+
+    500 iterations
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg9.json
+
+    Reproducibility check
+
+04/21/2024 @ 3:30 PM (experiment 42, 43, and 44)
+    Database: tpcc_1000
+    - {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+    - iterations: 500
+            'alr':0.001,
+            'clr':0.001
+
+    - reward function: compute_delta_avg_reward
+
+    300 - 400 iterations
+
+    - removal of new knobs added
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg10.json (best)
+        outputs/knob_tuning_data/rl_ddpg11.json
+        outputs/knob_tuning_data/rl_ddpg12.json
+
+04/21/2024 @ 5:52 PM (experiment 45)
+    Database: tpcc100
+    DQN index tuning
+    - {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006}
+    - iterations: 400
+            'alr':0.0001,
+
+    - reward function: compute_cost_delta_per_query_unscaled
+
+    Output:
+        outputs/tuning_data/rl_dqn16.json
+
+    
+
+04/23/2024 @ 11:56 AM (experiment 46)
+    Database: tpcc_30
+    DQN index tuning
+    - {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006}
+    - iterations: 400
+            'alr':0.0001,
+
+    - reward function: compute_cost_delta_per_query_unscaled
+
+    Output:
+        outputs/tuning_data/rl_dqn17.json
+
+    Testing new database
+
+    Seems to work!
+
+04/23/2024 @ 12:21 PM (experiment 47)
+    Database: tpcc_30
+    Knob tuning
+    {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg13.json
+
+    Testing new database
+

@@ -173,7 +173,90 @@ class Atlas_Index_QNet(nn.Module):
         return self.layers(x)
 
 
-class Atlas_Knob_Tune:
+class Atlas:
+    def compute_delta_min_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
+        '''knob tuning reward function'''
+        w1 = experience_replay[0][-1]['knob']
+        w2 = w2['knob']
+        return min((w1['latency'] - w2['latency'])/w1['latency'],
+            (w2['throughput'] - w1['throughput'])/w1['throughput'])
+
+    def compute_delta_avg_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
+        '''knob tuning reward function'''
+        w1 = experience_replay[0][-1]['knob']
+        w2 = w2['knob']
+        return ((w1['latency'] - w2['latency'])/w1['latency'] + 
+            (w2['throughput'] - w1['throughput'])/w1['throughput'])/2
+
+
+    def workload_cost(self, w:dict) -> float:
+        return sum(w[i]['cost'] for i in w)
+
+    def compute_cost_delta(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        j = self.workload_cost(experience_replay[0][-1]['index']) 
+        k = self.workload_cost(w2['index'])
+        if j > k:
+            return 5
+        
+        if j < k:
+            return -5
+
+        return 1
+
+    def compute_min_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        return min(map(self.workload_cost, costs[-50:])) - self.workload_cost(w2['index'])
+
+    def compute_increment_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        return (self.workload_cost(costs[-1]) - self.workload_cost(w2['index']))/self.workload_cost(costs[0])
+
+    def compute_cost_delta_per_query(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        w1 = experience_replay[0][-1]['index']
+        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2['index'].items()]
+        return max(min((sum(k)/len(k))*10, 10), -10)
+
+    def compute_cost_delta_per_query_unscaled(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        w1 = experience_replay[0][-1]['index']
+        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2['index'].items()]
+        return sum(k)/len(k)
+
+    def compute_total_cost_reward(self, _, costs:typing.List[dict], w:dict) -> float:
+        '''index selection reward function'''
+        return -1*self.workload_cost(w['index'])
+
+    def compute_ranking_reward(self, experience_replay:typing.List[list], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        c = [self.workload_cost(i[-1]['index']) for i in experience_replay]
+        w2_c = self.workload_cost(w2['index'])
+        '''
+        s1, s2 = sum(w2_c > i for i in c), sum(w2_c <= i for i in c)
+        if s1 > s2:
+            return 5
+        
+        if s1 < s2:
+            return -5
+        
+        return 1
+        '''
+        return sum(w2_c < i for i in c)/len(c)
+
+    def compute_step_reward(self, w1:dict, w2:dict) -> float:
+        '''index selection reward function'''
+        w1 = w1['index']
+        k = [j for a, b in w2['index'].items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
+        if not k:
+            return 1
+
+        return max(min((sum(k)/len(k))*10, 10), -10)
+        '''
+        return -0.5 if not (l:=(sum(k)/len(k))*10) else l
+        '''
+
+class Atlas_Knob_Tune(Atlas):
     def __init__(self, database:str, conn = None, config = {
             'alr':0.001,
             'clr':0.001,
@@ -229,20 +312,17 @@ class Atlas_Knob_Tune:
                 target_param.data * self.config['tau'] + param.data * (1-self.config['tau'])
             )
 
-    def compute_delta_min_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
-        w1 = experience_replay[0][-1]
-        return min((w1['latency'] - w2['latency'])/w1['latency'],
-            (w2['throughput'] - w1['throughput'])/w1['throughput'])
-
-    def compute_delta_avg_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
-        w1 = experience_replay[0][-1]
-        return ((w1['latency'] - w2['latency'])/w1['latency'] + 
-            (w2['throughput'] - w1['throughput'])/w1['throughput'])/2
-
     def log_message(self, message:str) -> None:
         self.tuning_log.write('\n'+'#'*16+message+'#'*16)
 
-    def tune(self, iterations:int, reward_func:str = 'compute_delta_min_reward', reset_knobs:bool = True) -> dict:
+    def build_workload_payload(self, is_marl:bool = False) -> dict:
+        d = {'knob': self.conn.tpcc_metrics(self.config['tpcc_time'])}
+        if is_marl:
+            d['index'] = self.conn.workload_cost()
+
+        return d
+
+    def tune(self, iterations:int, reward_func:str = 'compute_delta_min_reward', reset_knobs:bool = True, is_marl:bool = False) -> dict:
         if reset_knobs:
             self.log_message('Resetting knobs')
             self.conn.reset_knob_configuration()
@@ -262,7 +342,7 @@ class Atlas_Knob_Tune:
             self.experience_replay = json.load(f)
             skip_experience = len(self.experience_replay)
         '''
-        self.experience_replay = [[state, None, None, None, self.conn.tpcc_metrics(self.config['tpcc_time'])]]
+        self.experience_replay = [[state, None, None, None, self.build_workload_payload(is_marl)]]
         rewards = []
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
@@ -275,7 +355,8 @@ class Atlas_Knob_Tune:
             self.critic_target.eval()
 
             knob_activation_payload = {
-                'memory_size':self.conn.memory_size('b')[self.database]*2
+                'memory_size':(mem_size:=self.conn.memory_size('b')[self.database]*4),
+                'memory_lower_bound':min(4294967168, mem_size)
             }
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
@@ -284,7 +365,7 @@ class Atlas_Knob_Tune:
             self.conn.apply_knob_configuration(knob_dict)
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
-                reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.conn.tpcc_metrics(self.config['tpcc_time'])),
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.build_workload_payload(is_marl)),
                 [*indices, *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
@@ -343,8 +424,7 @@ class Atlas_Knob_Tune:
                 self.update_target_weights(self.actor_target, self.actor)
 
         
-        return {'rewards':rewards[skip_experience:], 'metrics':[i[-1] for i in self.experience_replay[skip_experience:]]}
-
+        return {'rewards':rewards[skip_experience:], 'metrics':[i[-1]['knob'] for i in self.experience_replay[skip_experience:]]}
 
 
     def __exit__(self, *_) -> None:
@@ -356,7 +436,7 @@ class Atlas_Knob_Tune:
 
 
 
-class Atlas_Index_Tune:
+class Atlas_Index_Tune(Atlas):
     def __init__(self, database:str, conn = None, config = {
             'alr':0.0001,
             'clr':0.0001,
@@ -435,59 +515,6 @@ class Atlas_Index_Tune:
 
         self.save_experience_replay(f1_name:=f"experience_replay/ddpg_index_tune/custom_exprience_replay{str(datetime.datetime.now()).replace('.','').replace(' ','')}.json")
         print('experience replay saved to: ', f1_name)
-
-    def workload_cost(self, w:dict) -> float:
-        return sum(w[i]['cost'] for i in w)
-
-    def compute_cost_delta(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
-        j = self.workload_cost(experience_replay[0][-1]) 
-        k = self.workload_cost(w2)
-        if j > k:
-            return 5
-        
-        if j < k:
-            return -5
-
-        return 1
-
-    def compute_min_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
-        return min(map(self.workload_cost, costs[-50:])) - self.workload_cost(w2)
-
-    def compute_increment_step_cost(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
-        return (self.workload_cost(costs[-1]) - self.workload_cost(w2))/self.workload_cost(costs[0])
-
-    def compute_cost_delta_per_query(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
-        w1 = experience_replay[0][-1]
-        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2.items()]
-        return max(min((sum(k)/len(k))*10, 10), -10)
-
-    def compute_total_cost_reward(self, _, costs:typing.List[dict], w:dict) -> float:
-        return -1*self.workload_cost(w)
-
-    def compute_ranking_reward(self, experience_replay:typing.List[list], costs:typing.List[dict], w2:dict) -> float:
-        c = [self.workload_cost(i[-1]) for i in experience_replay]
-        w2_c = self.workload_cost(w2)
-        '''
-        s1, s2 = sum(w2_c > i for i in c), sum(w2_c <= i for i in c)
-        if s1 > s2:
-            return 5
-        
-        if s1 < s2:
-            return -5
-        
-        return 1
-        '''
-        return sum(w2_c < i for i in c)/len(c)
-
-    def compute_step_reward(self, w1:dict, w2:dict) -> float:
-        k = [j for a, b in w2.items() if (j:=((float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost']))]
-        if not k:
-            return 1
-
-        return max(min((sum(k)/len(k))*10, 10), -10)
-        '''
-        return -0.5 if not (l:=(sum(k)/len(k))*10) else l
-        '''
 
     def _test_experience_replay(self) -> None:
         with open('experience_replay/ddpg_index_tune/experience_replay3.json') as f:
@@ -650,7 +677,7 @@ class Atlas_Index_Tune:
         return f'{self.__class__.__name__}(database="{self.database}")'
 
 
-class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
+class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
     def __init__(self, database:str, conn = None, config = {
             'lr':0.0001,
             'gamma':0.9,
@@ -689,7 +716,14 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         _indices[ind] = int(not _indices[ind])
         return ind, _indices
 
-    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List[int], iterations:int, reward_func:str, from_buffer:typing.Union[bool, str] = False) -> None:
+    def build_workload_payload(self, is_marl:bool = False) -> dict:
+        d = {'index': self.conn.workload_cost()}
+        if is_marl:
+            d['knob'] = self.conn.tpcc_metrics(self.config['tpcc_time'])
+
+        return d
+
+    def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List[int], iterations:int, reward_func:str, is_marl:bool, from_buffer:typing.Union[bool, str] = False) -> None:
         print('experience replay reward func:', reward_func)
         if from_buffer:
             print('loading experience replay from buffer ', from_buffer)
@@ -698,18 +732,18 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             
             return
 
-        self.experience_replay = [[[*indices, *metrics], None, None, None, w2_o:=self.conn.workload_cost()]]
-        costs = [w2_o]
+        self.experience_replay = [[[*indices, *metrics], None, None, None, w2_o:=self.build_workload_payload(is_marl)]]
+        costs = [w2_o['index']]
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
 
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *metrics], ind, 
                 getattr(self, reward_func)(self.experience_replay, costs,
-                        w2:=self.conn.workload_cost()), 
+                        w2:=self.build_workload_payload(is_marl)), 
                 [*_indices, *metrics], w2])
             indices = _indices
-            costs.append(w2)
+            costs.append(w2['index'])
 
         print('experience replay saved to:')
         print(self.save_experience_replay())
@@ -722,13 +756,13 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
 
         return f_name
 
-    def tune(self, iterations:int, reward_func:str = 'compute_cost_delta_per_query', is_epoch:bool = False) -> dict:
+    def tune(self, iterations:int, reward_func:str = 'compute_cost_delta_per_query', is_epoch:bool = False, is_marl:bool = False) -> dict:
         print('tuning reward function:', reward_func)
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 150, reward_func)
+        self.generate_experience_replay(indices, metrics, 150, reward_func, is_marl)
         state = [*indices, *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
@@ -745,8 +779,9 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
         
         rewards, costs = [], [self.conn.workload_cost()]
         delta_rewards = []
+        epsilon = self.config['epsilon']
         for iteration in range(iterations):
-            if random.random() < self.config['epsilon']:
+            if random.random() < epsilon:
                 print('random')
                 ind, _indices = self.random_action(indices)
 
@@ -761,16 +796,16 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune):
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([state, ind, 
                 reward:=getattr(self, reward_func)(self.experience_replay, costs,
-                        w2:=self.conn.workload_cost()), 
+                        w2:=self.build_workload_payload(is_marl)), 
                 [*_indices, *metrics], w2])
 
             rewards.append(reward)
             delta_rewards.append(self.compute_cost_delta_per_query(self.experience_replay, costs, w2))
-            costs.append(w2)
+            costs.append(w2['index'])
             indices = _indices
             state = [*indices, *metrics]
             start_state = torch.tensor([Normalize.normalize(state)])
-            self.config['epsilon'] -= self.config['epsilon']*self.config['epsilon_decay']
+            epsilon -= epsilon*self.config['epsilon_decay']
 
             inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_sample_size'])
             _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
@@ -875,11 +910,11 @@ def display_tuning_results(f_name:str) -> None:
         fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
         delta_rewards = [i['delta_rewards'] for i in tuning_data]
         a3.plot([*range(1,len(delta_rewards[0])+1)], [sum(i)/len(i) for i in zip(*delta_rewards)], label = 'dqn')
-        a3.title.set_text("Delta workload cost at each iteration")
+        a3.title.set_text("Absolute Difference in Initial Cost")
         a3.legend(loc="lower right")
 
         a3.set_xlabel("iteration")
-        a3.set_ylabel("Workload cost")
+        a3.set_ylabel("Absolute delta cost")
 
     else:
         fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
@@ -911,7 +946,7 @@ def display_knob_tuning_results(f_name:str) -> None:
     fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
 
     
-    a1.plot([*range(1, len(tuning_data['rewards'])+1)], tuning_data['rewards'])
+    a1.plot([*range(1, len(tuning_data['rewards'])+1)], tuning_data['rewards'], label = 'reward')
 
     a1.title.set_text("Reward")
     a1.legend(loc="lower right")
@@ -919,14 +954,14 @@ def display_knob_tuning_results(f_name:str) -> None:
     a1.set_xlabel("iteration")
     a1.set_ylabel("Reward")
 
-    a2.plot([*range(1, len(tuning_data['metrics'])+1)], [i['latency'] for i in tuning_data['metrics']])
+    a2.plot([*range(1, len(tuning_data['metrics'])+1)], [i['latency'] for i in tuning_data['metrics']], label = 'latency', color = 'orange')
     a2.title.set_text("Latency")
-    a2.legend(loc="lower right")
+    a2.legend(loc="upper right")
 
     a2.set_xlabel("iteration")
     a2.set_ylabel("latency")
 
-    a3.plot([*range(1, len(tuning_data['metrics'])+1)], [i['throughput'] for i in tuning_data['metrics']])
+    a3.plot([*range(1, len(tuning_data['metrics'])+1)], [i['throughput'] for i in tuning_data['metrics']], label = 'throughput', color = 'green')
     a3.title.set_text("Throughput")
     a3.legend(loc="lower right")
 
@@ -937,28 +972,30 @@ def display_knob_tuning_results(f_name:str) -> None:
 
 def atlas_index_tune_dqn() -> None:
     with Atlas_Index_Tune_DQN('tpcc_1000') as a:
-        
+
         tuning_data = []
-        for i in range(4):
+        for i in range(1):
             print(i + 1)
             a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006})
-            tuning_data.append(a.tune(400, reward_func = 'compute_cost_delta_per_query'))
+            tuning_data.append(a.tune(400, reward_func = 'compute_cost_delta_per_query_unscaled'))
         
-        with open(f'outputs/tuning_data/rl_dqn15.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn19.json', 'a') as f:
             json.dump(tuning_data, f)
         
+
+        display_tuning_results('outputs/tuning_data/rl_dqn19.json')
+
+def atlas_knob_tune():
+    with Atlas_Knob_Tune('tpcc_30') as a:
         
-        display_tuning_results('outputs/tuning_data/rl_dqn15.json')
+        a.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4})
+        results = a.tune(400, reward_func = 'compute_delta_avg_reward')
+        with open('outputs/knob_tuning_data/rl_ddpg13.json', 'a') as f:
+            json.dump(results, f)
+        
+        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg13.json')
 
 if __name__ == '__main__':
 
-    #display_tuning_results('outputs/tuning_data/rl_dqn3.json')
-    with Atlas_Knob_Tune('tpcc_1000') as a:
-        
-        a.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4})
-        results = a.tune(500, reward_func = 'compute_delta_avg_reward')
-        with open('outputs/knob_tuning_data/rl_ddpg7.json', 'a') as f:
-            json.dump(results, f)
-        
-        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg7.json')
+    atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

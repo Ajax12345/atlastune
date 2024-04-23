@@ -135,3 +135,10 @@ Todo: need delay between apply_knob_config and tpcc_metrics?
 TODO: for training only knob tuning, remove indices from the state 
 
 https://ottertune.com/blog/mysql-configuration-settings-list
+
+
+A faster index selector:
+    - use query planner/query analysis to get initial set of columns that could use an index
+        - Or, index every column, use query-planner to identify indices that are used
+    - if the suggested q-value points to a column that is not in the set, penalize
+        - else, apply knob configuration, get the delta cost change, and continue
