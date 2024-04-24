@@ -594,7 +594,7 @@ if __name__ == '__main__':
         #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
         #conn.reset_knob_configuration()
         #print(conn.memory_size('gb'))
-        conn.drop_all_indices()
+        print(conn.db_column_count, len(MySQL.col_indices_to_list(conn.get_columns_from_database())))
         
         #print(conn.tpcc_metrics(2))
         '''

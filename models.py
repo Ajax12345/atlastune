@@ -174,14 +174,14 @@ class Atlas_Index_QNet(nn.Module):
 
 
 class Atlas:
-    def compute_delta_min_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
+    def compute_delta_min_reward(self, experience_replay:typing.List[tuple], costs, w2:dict) -> float:
         '''knob tuning reward function'''
         w1 = experience_replay[0][-1]['knob']
         w2 = w2['knob']
         return min((w1['latency'] - w2['latency'])/w1['latency'],
             (w2['throughput'] - w1['throughput'])/w1['throughput'])
 
-    def compute_delta_avg_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
+    def compute_delta_avg_reward(self, experience_replay:typing.List[tuple], costs, w2:dict) -> float:
         '''knob tuning reward function'''
         w1 = experience_replay[0][-1]['knob']
         w2 = w2['knob']
@@ -256,6 +256,29 @@ class Atlas:
         return -0.5 if not (l:=(sum(k)/len(k))*10) else l
         '''
 
+    def compute_team_reward_avg(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''MARL team reward'''
+        w1 = experience_replay[0][-1]['knob']
+        w2_knob = w2['knob']
+        d = [
+            self.compute_cost_delta_per_query_unscaled(experience_replay, costs, w2),
+            (w1['latency'] - w2_knob['latency'])/w1['latency'],
+            (w2_knob['throughput'] - w1['throughput'])/w1['throughput']
+        ]
+        return sum(d)/len(d)
+
+    def compute_team_reward_min(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''MARL team reward'''
+        w1 = experience_replay[0][-1]['knob']
+        w2_knob = w2['knob']
+        d = [
+            self.compute_cost_delta_per_query_unscaled(experience_replay, costs, w2),
+            (w1['latency'] - w2_knob['latency'])/w1['latency'],
+            (w2_knob['throughput'] - w1['throughput'])/w1['throughput']
+        ]
+        return min(d)
+
+
 class Atlas_Knob_Tune(Atlas):
     def __init__(self, database:str, conn = None, config = {
             'alr':0.001,
@@ -317,7 +340,7 @@ class Atlas_Knob_Tune(Atlas):
 
     def build_workload_payload(self, is_marl:bool = False) -> dict:
         d = {'knob': self.conn.tpcc_metrics(self.config['tpcc_time'])}
-        if is_marl:
+        if is_marl and not getattr(self, 'DISABLE_MARL_REWARD', False):
             d['index'] = self.conn.workload_cost()
 
         return d
@@ -330,7 +353,7 @@ class Atlas_Knob_Tune(Atlas):
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        state = [*indices, *metrics]
+        state = [*(indices if is_marl else []), *metrics]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         state_num, action_num = len(state), db.MySQL.knob_num
 
@@ -365,13 +388,13 @@ class Atlas_Knob_Tune(Atlas):
             self.conn.apply_knob_configuration(knob_dict)
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
-                reward:=getattr(self, reward_func)(self.experience_replay, w2:=self.build_workload_payload(is_marl)),
-                [*indices, *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
+                reward:=getattr(self, reward_func)(self.experience_replay, None, w2:=self.build_workload_payload(is_marl)),
+                [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
             #print('new stats computed')
             rewards.append(reward)
-            state = [*indices, *metrics]
+            state = [*(indices if is_marl else []), *metrics]
             print('noise scale:', noise_scale)
             noise_scale -= noise_scale*self.config['noise_decay']
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
@@ -423,8 +446,18 @@ class Atlas_Knob_Tune(Atlas):
                 self.update_target_weights(self.critic_target, self.critic)
                 self.update_target_weights(self.actor_target, self.actor)
 
-        
-        return {'rewards':rewards[skip_experience:], 'metrics':[i[-1]['knob'] for i in self.experience_replay[skip_experience:]]}
+            if i and not i%self.config['marl_step']:
+                yield {
+                'experience_replay':self.experience_replay,
+                'rewards':rewards[skip_experience:], 
+                'metrics':[i[-1]['knob'] 
+                    for i in self.experience_replay[skip_experience:]]}, False
+                
+        yield {
+            'experience_replay':self.experience_replay,
+            'rewards':rewards[skip_experience:], 
+            'metrics':[i[-1]['knob'] 
+                for i in self.experience_replay[skip_experience:]]}, True
 
 
     def __exit__(self, *_) -> None:
@@ -711,14 +744,16 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
         self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
         
     def random_action(self, indices:typing.List[int]) -> typing.Tuple[int, typing.List[int]]:
-        ind = random.choice([*range(len(indices))])
+        ind = random.choice([*range(len(indices)+1)])
         _indices = copy.deepcopy(indices)
-        _indices[ind] = int(not _indices[ind])
+        if ind < len(_indices):
+            _indices[ind] = int(not _indices[ind])
+
         return ind, _indices
 
     def build_workload_payload(self, is_marl:bool = False) -> dict:
         d = {'index': self.conn.workload_cost()}
-        if is_marl:
+        if is_marl and not getattr(self, 'DISABLE_MARL_REWARD', False):
             d['knob'] = self.conn.tpcc_metrics(self.config['tpcc_time'])
 
         return d
@@ -732,16 +767,16 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
             
             return
 
-        self.experience_replay = [[[*indices, *metrics], None, None, None, w2_o:=self.build_workload_payload(is_marl)]]
+        self.experience_replay = [[[*indices, *(metrics if is_marl else [])], None, None, None, w2_o:=self.build_workload_payload(is_marl)]]
         costs = [w2_o['index']]
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
 
             self.conn.apply_index_configuration(_indices)
-            self.experience_replay.append([[*indices, *metrics], ind, 
+            self.experience_replay.append([[*indices, *(metrics if is_marl else [])], ind, 
                 getattr(self, reward_func)(self.experience_replay, costs,
                         w2:=self.build_workload_payload(is_marl)), 
-                [*_indices, *metrics], w2])
+                [*_indices, *(metrics if is_marl else [])], w2])
             indices = _indices
             costs.append(w2['index'])
 
@@ -756,17 +791,17 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
 
         return f_name
 
-    def tune(self, iterations:int, reward_func:str = 'compute_cost_delta_per_query', is_epoch:bool = False, is_marl:bool = False) -> dict:
+    def tune(self, iterations:int, reward_func:str = 'compute_cost_delta_per_query', from_buffer = None, is_epoch:bool = False, is_marl:bool = False) -> typing.Iterator:
         print('tuning reward function:', reward_func)
         self.conn.drop_all_indices()
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 150, reward_func, is_marl)
-        state = [*indices, *metrics]
+        self.generate_experience_replay(indices, metrics, 150, reward_func, is_marl, from_buffer = from_buffer)
+        state = [*indices, *(metrics if is_marl else [])]
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
-        action_num, state_num = len(indices), len(state)
+        action_num, state_num = len(indices)+1, len(state)
 
         if not is_epoch or self.q_net is None:
             print('setting weights')
@@ -790,20 +825,21 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
                 with torch.no_grad():
                     ind = self.q_net(start_state).max(1)[1].item()
                     _indices = copy.deepcopy(indices)
-                    _indices[ind] = int(not _indices[ind])
+                    if ind < len(_indices):
+                        _indices[ind] = int(not _indices[ind])
                 
             
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([state, ind, 
                 reward:=getattr(self, reward_func)(self.experience_replay, costs,
                         w2:=self.build_workload_payload(is_marl)), 
-                [*_indices, *metrics], w2])
+                [*_indices, *(metrics if is_marl else [])], w2])
 
             rewards.append(reward)
             delta_rewards.append(self.compute_cost_delta_per_query(self.experience_replay, costs, w2))
             costs.append(w2['index'])
             indices = _indices
-            state = [*indices, *metrics]
+            state = [*indices, *(metrics if is_marl else [])]
             start_state = torch.tensor([Normalize.normalize(state)])
             epsilon -= epsilon*self.config['epsilon_decay']
 
@@ -830,7 +866,16 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
             if iteration and not iteration%self.config['weight_copy_interval']:
                 self.reset_target_weights()
 
-        return {'rewards':rewards, 'delta_rewards':delta_rewards, 'costs':costs}
+            if iteration and not iteration%self.config['marl_step']:
+                yield {'experience_replay':self.experience_replay, 
+                    'rewards':rewards, 
+                    'delta_rewards':delta_rewards, 
+                    'costs':costs}, False
+
+        yield {'experience_replay':self.experience_replay, 
+                    'rewards':rewards, 
+                    'delta_rewards':delta_rewards, 
+                    'costs':costs}, True
     
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -860,9 +905,6 @@ def atlas_index_tune_ddpg() -> None:
             with open(f'outputs/rl_ddpg14.json', 'a') as f:
                 json.dump(rewards, f)
        
-  
-        
-        
         plt.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label="ddpg")
         '''
         
@@ -971,31 +1013,116 @@ def display_knob_tuning_results(f_name:str) -> None:
     plt.show()
 
 def atlas_index_tune_dqn() -> None:
-    with Atlas_Index_Tune_DQN('tpcc_1000') as a:
-
+    with Atlas_Index_Tune_DQN('tpcc_30') as a_index:
+        a_index.DISABLE_MARL_REWARD = True
+        a_index.conn.reset_knob_configuration()
         tuning_data = []
-        for i in range(1):
-            print(i + 1)
-            a.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.006})
-            tuning_data.append(a.tune(400, reward_func = 'compute_cost_delta_per_query_unscaled'))
+        for i in range(2):
+            #print(i + 1)
+            a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'marl_step':50})
+            a_index_prog = a_index.tune(400, reward_func = 'compute_cost_delta_per_query_unscaled', is_marl = True)
+            while True:
+                payload, flag = next(a_index_prog)
+                if flag:
+                    tuning_data.append(payload)
+                    break
         
-        with open(f'outputs/tuning_data/rl_dqn19.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn20.json', 'a') as f:
             json.dump(tuning_data, f)
         
-
-        display_tuning_results('outputs/tuning_data/rl_dqn19.json')
-
-def atlas_knob_tune():
-    with Atlas_Knob_Tune('tpcc_30') as a:
         
-        a.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4})
-        results = a.tune(400, reward_func = 'compute_delta_avg_reward')
-        with open('outputs/knob_tuning_data/rl_ddpg13.json', 'a') as f:
+        display_tuning_results('outputs/tuning_data/rl_dqn20.json')
+
+def atlas_knob_tune() -> None:
+    with Atlas_Knob_Tune('tpcc_30') as a_knob:
+        a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50})
+        a_knob_prog = a_knob.tune(200, reward_func = 'compute_delta_avg_reward', is_marl = True)
+        while True:
+            results, flag = next(a_knob_prog)
+            if flag:
+                break
+
+        with open('outputs/knob_tuning_data/rl_ddpg14.json', 'a') as f:
             json.dump(results, f)
         
-        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg13.json')
+        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg14.json')
+
+
+def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> None:
+    with Atlas_Index_Tune_DQN(database) as a_index:
+        with Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
+            a_index.conn.reset_knob_configuration()
+            index_results, knob_results = [], []
+            db_stats = []
+            for _ in range(epochs):
+                a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step})
+                a_index_prog = a_index.tune(iterations, 
+                    reward_func = 'compute_team_reward_avg', 
+                    from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2318:44:44768074.json',
+                    is_marl = True)
+
+                a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step})
+                a_knob_prog = a_knob.tune(iterations, 
+                    reward_func = 'compute_team_reward_avg', 
+                    is_marl = True)
+
+                iteration_db_stats = []
+                while True:
+                    index_payload, index_flag = next(a_index_prog)
+                    ep = index_payload['experience_replay'][-1*marl_step:]
+                    iteration_db_stats.extend([i[-1] for i in ep])
+                    best_index_config = max(ep, key=lambda x:x[2])[3][:a_index.conn.db_column_count]
+                    print('best index config')
+                    print(best_index_config)
+                    a_index.conn.apply_index_configuration(best_index_config)
+
+                    knob_payload, knob_flag = next(a_knob_prog)
+                    ep = knob_payload['experience_replay'][-1*marl_step:]
+                    iteration_db_stats.extend([i[-1] for i in ep])
+                    best_knob_config = max(ep, key=lambda x:x[2])[1]
+                    knob_activation_payload = {
+                        'memory_size':(mem_size:=a_index.conn.memory_size('b')[a_index.database]*4),
+                        'memory_lower_bound':min(4294967168, mem_size)
+                    }
+                    chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(best_knob_config, knob_activation_payload)
+                    a_index.conn.apply_knob_configuration(knob_dict)
+                    print('chosen knob config', knob_dict)
+
+                    if knob_flag:
+                        index_results.append(index_payload)
+                        knob_results.append(knob_payload)
+                        break
+
+
+                db_stats.append(iteration_db_stats)
+
+            with open('outputs/marl_tuning_data/marl1.json', 'a') as f:
+                json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
+
+def display_marl_results(f_name:str) -> None:
+    with open(f_name) as f:
+        data = json.load(f)
+
+    data = data['db_stats'][0]
+    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+    a2.plot([*range(1, len(data)+1)], [i['knob']['latency'] for i in data], label = 'latency', color = 'orange')
+    a2.title.set_text("Latency")
+    a2.legend(loc="upper right")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("latency")
+
+    a3.plot([*range(1, len(data)+1)], [i['knob']['throughput'] for i in data], label = 'throughput', color = 'green')
+    a3.title.set_text("Throughput")
+    a3.legend(loc="lower right")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("throughput")
+
+    plt.show()
 
 if __name__ == '__main__':
-
-    atlas_knob_tune()
+    display_marl_results('outputs/marl_tuning_data/marl1.json')
+    #atlas_marl_tune('tpcc_30', 50, 1, 400)
+    #atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

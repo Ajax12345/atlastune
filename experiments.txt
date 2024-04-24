@@ -838,3 +838,63 @@
 
     Testing new database
 
+04/23/2024 @ 2:43 PM (experiment 48)
+    Database: tpcc_30
+    DQN index selection
+    {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4}
+
+
+    compute_cost_delta_per_query_unscaled
+
+    Test of single-agent MARL
+
+    Output:
+        outputs/tuning_data/rl_dqn19.json
+
+    Testing new database
+
+
+04/23/2024 @ 4:00 PM (experiment 49)
+    Database: tpcc_30
+    DQN index selection
+    {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.003, 'batch_size':40, 'tpcc_time':4}
+
+    - added a "do nothing" option
+
+    compute_cost_delta_per_query_unscaled
+
+    Test of single-agent MARL
+
+    Output:
+        outputs/tuning_data/rl_dqn20.json
+
+04/23/2024 @ 4:45 PM (experiment 50)
+    Database: tpcc_30
+    Knob tuning
+    {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50}
+
+    200 iterations
+
+    Test of single-agent MARL
+
+    Output:
+        outputs/knob_tuning_data/rl_ddpg14.json
+
+04/23/2024 @ 6:45 PM (experiment 51)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    200 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':50}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50}
+
+
+    compute_team_reward_avg
+
+    Output:
+        outputs/marl_tuning_data/marl1.json
+        experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2318:44:44768074.json
