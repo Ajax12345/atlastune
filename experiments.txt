@@ -898,3 +898,78 @@
     Output:
         outputs/marl_tuning_data/marl1.json
         experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2318:44:44768074.json
+
+
+04/23/2024 @ 12:48 PM (experiment 52)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    200 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':50}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50}
+
+
+    compute_team_reward_scaled
+
+    Output:
+        outputs/marl_tuning_data/marl3.json
+        experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2412:29:18214111.json
+
+
+
+    Idea:
+        - don't have team rewards?
+        - simply train on shared states?
+
+
+04/23/2024 @ 6:30 PM (experiment 53)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    300 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':50}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50}
+
+
+    Back to compute_cost_delta_per_query_unscaled and compute_team_reward_min
+
+    Output:
+        outputs/marl_tuning_data/marl4.json
+        experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2417:56:31942583.json
+
+
+    Idea:
+        - don't have team rewards?
+        - simply train on shared states?
+        - use team reward function, but deprioritize the values of the other components via a weight
+            index selection reward:
+                computed_workload_cost + 0.2*latency + 0.1*throughput
+
+            knob tuning reward:
+                avg(latency, throughput) + 0.2*computed_workload_cost
+
+04/27/2024 @ 1:21 PM (experiment 54)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    300 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':50}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50}
+
+    compute_cost_delta_per_query_unscaled
+    compute_delta_avg_reward
+
+    Output:
+        outputs/marl_tuning_data/marl5.json

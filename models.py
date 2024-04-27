@@ -278,6 +278,21 @@ class Atlas:
         ]
         return min(d)
 
+    def compute_team_reward_scaled(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        w1 = experience_replay[0][-1]['knob']
+        w2_knob = w2['knob']
+        c = self.compute_cost_delta_per_query_unscaled(experience_replay, costs, w2)*0.5
+        if w1['latency'] < w2_knob['latency']:
+            c -= 3
+        else:
+            c += 3
+        
+        if w2_knob['throughput'] < w1['throughput']:
+            c -= 3
+        else:
+            c += 3
+
+        return c
 
 class Atlas_Knob_Tune(Atlas):
     def __init__(self, database:str, conn = None, config = {
@@ -1047,6 +1062,27 @@ def atlas_knob_tune() -> None:
         
         display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg14.json')
 
+def display_marl_results(f_name:str) -> None:
+    with open(f_name) as f:
+        data = json.load(f)
+
+    data = data['db_stats'][0]
+    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+    a2.plot([*range(1, len(data)+1)], [i['knob']['latency'] for i in data], label = 'latency', color = 'orange')
+    a2.title.set_text("Latency")
+    a2.legend(loc="upper right")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("latency")
+
+    a3.plot([*range(1, len(data)+1)], [i['knob']['throughput'] for i in data], label = 'throughput', color = 'green')
+    a3.title.set_text("Throughput")
+    a3.legend(loc="lower right")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("throughput")
+
+    plt.show()
 
 def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> None:
     with Atlas_Index_Tune_DQN(database) as a_index:
@@ -1057,13 +1093,13 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> 
             for _ in range(epochs):
                 a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step})
                 a_index_prog = a_index.tune(iterations, 
-                    reward_func = 'compute_team_reward_avg', 
-                    from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2318:44:44768074.json',
+                    reward_func = 'compute_cost_delta_per_query_unscaled',
+                    from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2417:56:31942583.json', 
                     is_marl = True)
 
                 a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step})
                 a_knob_prog = a_knob.tune(iterations, 
-                    reward_func = 'compute_team_reward_avg', 
+                    reward_func = 'compute_delta_avg_reward', 
                     is_marl = True)
 
                 iteration_db_stats = []
@@ -1096,33 +1132,16 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> 
 
                 db_stats.append(iteration_db_stats)
 
-            with open('outputs/marl_tuning_data/marl1.json', 'a') as f:
+            with open('outputs/marl_tuning_data/marl5.json', 'a') as f:
                 json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
 
-def display_marl_results(f_name:str) -> None:
-    with open(f_name) as f:
-        data = json.load(f)
 
-    data = data['db_stats'][0]
-    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-    a2.plot([*range(1, len(data)+1)], [i['knob']['latency'] for i in data], label = 'latency', color = 'orange')
-    a2.title.set_text("Latency")
-    a2.legend(loc="upper right")
-
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("latency")
-
-    a3.plot([*range(1, len(data)+1)], [i['knob']['throughput'] for i in data], label = 'throughput', color = 'green')
-    a3.title.set_text("Throughput")
-    a3.legend(loc="lower right")
-
-    a3.set_xlabel("iteration")
-    a3.set_ylabel("throughput")
-
-    plt.show()
+            display_marl_results('outputs/marl_tuning_data/marl5.json')
 
 if __name__ == '__main__':
-    display_marl_results('outputs/marl_tuning_data/marl1.json')
-    #atlas_marl_tune('tpcc_30', 50, 1, 400)
+    #display_marl_results('outputs/marl_tuning_data/marl1.json')
+    atlas_marl_tune('tpcc_30', 50, 1, 300)
     #atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))
+
+

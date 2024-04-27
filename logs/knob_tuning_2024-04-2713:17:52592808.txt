@@ -1,0 +1,964 @@
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 23, 95: 11.863, 99: 15.291, max_rt: 15.289, 21|9.431, 2|6.678, 4|18.775, 0|0.000
+   4, trx: 17, 95: 11.810, 99: 12.279, max_rt: 12.277, 23|6.429, 2|6.041, 4|19.944, 1|45.393
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:5 lt:35  rt:58131  fl:28 avg_rt: 7.9 (5)
+  [1] sc:39 lt:5  rt:52843  fl:26 avg_rt: 3.3 (5)
+  [2] sc:1 lt:3  rt:5997  fl:3 avg_rt: 5.3 (5)
+  [3] sc:8 lt:0  rt:0  fl:0 avg_rt: 9.6 (80)
+  [4] sc:0 lt:1  rt:11738  fl:5 avg_rt: 45.4 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:5  lt:35  rt:58133  fl:28 
+  [1] sc:39  lt:5  rt:52846  fl:26 
+  [2] sc:1  lt:3  rt:5997  fl:3 
+  [3] sc:8  lt:0  rt:0  fl:0 
+  [4] sc:0  lt:1  rt:11738  fl:5 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 45.36% (>=43.0%) [OK]
+   Order-Status: 4.12% (>= 4.0%) [OK]
+       Delivery: 8.25% (>= 4.0%) [OK]
+    Stock-Level: 1.03% (>= 4.0%) [NG] *
+ [response time (at least 90% passed)]
+      New-Order: 12.50%  [NG] *
+        Payment: 88.64%  [NG] *
+   Order-Status: 25.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 0.00%  [NG] *
+
+<TpmC>
+                 600.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 10, 95: 14.459, 99: 14.459, max_rt: 14.459, 15|8.467, 0|0.000, 2|17.058, 1|23.778
+   4, trx: 17, 95: 11.291, 99: 12.572, max_rt: 12.571, 12|6.026, 3|8.359, 3|20.292, 2|20.459
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:5 lt:22  rt:47970  fl:24 avg_rt: 7.7 (5)
+  [1] sc:11 lt:16  rt:43946  fl:20 avg_rt: 4.5 (5)
+  [2] sc:2 lt:1  rt:4018  fl:2 avg_rt: 4.5 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 8.1 (80)
+  [4] sc:1 lt:2  rt:3998  fl:2 avg_rt: 21.1 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:5  lt:22  rt:47976  fl:24 
+  [1] sc:11  lt:16  rt:43955  fl:20 
+  [2] sc:2  lt:1  rt:4018  fl:2 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:1  lt:2  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 41.54% (>=43.0%) [NG] *
+   Order-Status: 4.62% (>= 4.0%) [OK]
+       Delivery: 7.69% (>= 4.0%) [OK]
+    Stock-Level: 4.62% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 18.52%  [NG] *
+        Payment: 40.74%  [NG] *
+   Order-Status: 66.67%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 33.33%  [NG] *
+
+<TpmC>
+                 405.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 18, 95: 9.789, 99: 15.775, max_rt: 15.773, 15|6.711, 1|2.361, 3|11.443, 2|18.709
+   4, trx: 15, 95: 7.130, 99: 8.726, max_rt: 8.726, 15|7.051, 0|0.000, 2|27.021, 0|0.000
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:8 lt:25  rt:32489  fl:15 avg_rt: 6.5 (5)
+  [1] sc:22 lt:8  rt:40753  fl:19 avg_rt: 3.3 (5)
+  [2] sc:1 lt:0  rt:7996  fl:4 avg_rt: 2.4 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 11.6 (80)
+  [4] sc:2 lt:0  rt:5997  fl:3 avg_rt: 18.0 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:8  lt:25  rt:32492  fl:15 
+  [1] sc:22  lt:8  rt:40754  fl:19 
+  [2] sc:1  lt:0  rt:7996  fl:4 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:2  lt:0  rt:5997  fl:3 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 42.25% (>=43.0%) [NG] *
+   Order-Status: 1.41% (>= 4.0%) [NG] *
+       Delivery: 7.04% (>= 4.0%) [OK]
+    Stock-Level: 2.82% (>= 4.0%) [NG] *
+ [response time (at least 90% passed)]
+      New-Order: 24.24%  [NG] *
+        Payment: 73.33%  [NG] *
+   Order-Status: 100.00%  [OK]
+       Delivery: 100.00%  [OK]
+    Stock-Level: 100.00%  [OK]
+
+<TpmC>
+                 495.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 14, 95: 6.376, 99: 6.683, max_rt: 6.684, 19|6.637, 1|6.879, 3|20.193, 1|17.490
+   4, trx: 10, 95: 6.715, 99: 6.715, max_rt: 6.716, 11|5.201, 0|0.000, 1|0.749, 2|22.275
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:10 lt:14  rt:40667  fl:18 avg_rt: 5.2 (5)
+  [1] sc:19 lt:11  rt:36688  fl:18 avg_rt: 3.5 (5)
+  [2] sc:0 lt:1  rt:5997  fl:3 avg_rt: 6.9 (5)
+  [3] sc:4 lt:0  rt:0  fl:0 avg_rt: 5.6 (80)
+  [4] sc:1 lt:2  rt:3998  fl:2 avg_rt: 20.4 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:10  lt:14  rt:40670  fl:18 
+  [1] sc:19  lt:11  rt:36689  fl:18 
+  [2] sc:0  lt:1  rt:5997  fl:3 
+  [3] sc:4  lt:0  rt:0  fl:0 
+  [4] sc:1  lt:2  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 48.39% (>=43.0%) [OK]
+   Order-Status: 1.61% (>= 4.0%) [NG] *
+       Delivery: 6.45% (>= 4.0%) [OK]
+    Stock-Level: 4.84% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 41.67%  [NG] *
+        Payment: 63.33%  [NG] *
+   Order-Status: 0.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 33.33%  [NG] *
+
+<TpmC>
+                 360.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 16, 95: 7.495, 99: 8.734, max_rt: 8.734, 21|8.104, 2|8.532, 3|22.549, 1|18.398
+   4, trx: 14, 95: 6.953, 99: 7.958, max_rt: 7.957, 11|5.523, 2|6.574, 2|11.127, 2|18.009
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:15 lt:15  rt:50747  fl:25 avg_rt: 5.2 (5)
+  [1] sc:20 lt:12  rt:47375  fl:22 avg_rt: 3.4 (5)
+  [2] sc:1 lt:3  rt:1999  fl:1 avg_rt: 6.1 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 10.9 (80)
+  [4] sc:3 lt:0  rt:3998  fl:2 avg_rt: 17.6 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:15  lt:15  rt:50751  fl:25 
+  [1] sc:20  lt:12  rt:47379  fl:22 
+  [2] sc:1  lt:3  rt:1999  fl:1 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:3  lt:0  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 43.24% (>=43.0%) [OK]
+   Order-Status: 5.41% (>= 4.0%) [OK]
+       Delivery: 6.76% (>= 4.0%) [OK]
+    Stock-Level: 4.05% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 50.00%  [NG] *
+        Payment: 62.50%  [NG] *
+   Order-Status: 25.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 100.00%  [OK]
+
+<TpmC>
+                 450.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 16, 95: 7.153, 99: 9.110, max_rt: 9.111, 12|5.348, 0|0.000, 3|20.003, 1|18.019
+   4, trx: 10, 95: 7.276, 99: 7.276, max_rt: 7.277, 9|134.773, 1|2.462, 2|0.771, 1|17.879
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:12 lt:14  rt:28781  fl:11 avg_rt: 5.5 (5)
+  [1] sc:18 lt:3  rt:39979  fl:20 avg_rt: 9.9 (5)
+  [2] sc:1 lt:0  rt:5997  fl:3 avg_rt: 2.5 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 6.6 (80)
+  [4] sc:2 lt:0  rt:3998  fl:2 avg_rt: 17.9 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:12  lt:14  rt:28784  fl:11 
+  [1] sc:18  lt:3  rt:39980  fl:20 
+  [2] sc:1  lt:0  rt:5997  fl:3 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:2  lt:0  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 38.18% (>=43.0%) [NG] *
+   Order-Status: 1.82% (>= 4.0%) [NG] *
+       Delivery: 9.09% (>= 4.0%) [OK]
+    Stock-Level: 3.64% (>= 4.0%) [NG] *
+ [response time (at least 90% passed)]
+      New-Order: 46.15%  [NG] *
+        Payment: 85.71%  [NG] *
+   Order-Status: 100.00%  [OK]
+       Delivery: 100.00%  [OK]
+    Stock-Level: 100.00%  [OK]
+
+<TpmC>
+                 390.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 13, 95: 7.200, 99: 8.368, max_rt: 8.369, 18|6.011, 1|7.044, 3|15.489, 1|23.864
+   4, trx: 14, 95: 7.776, 99: 8.316, max_rt: 8.315, 15|8.847, 3|7.968, 2|25.832, 2|20.967
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:10 lt:17  rt:46380  fl:21 avg_rt: 5.7 (5)
+  [1] sc:22 lt:11  rt:32690  fl:16 avg_rt: 3.2 (5)
+  [2] sc:0 lt:4  rt:1999  fl:1 avg_rt: 7.1 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 15.1 (80)
+  [4] sc:1 lt:2  rt:3998  fl:2 avg_rt: 21.3 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:10  lt:17  rt:46384  fl:21 
+  [1] sc:22  lt:11  rt:32692  fl:16 
+  [2] sc:0  lt:4  rt:1999  fl:1 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:1  lt:2  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 45.83% (>=43.0%) [OK]
+   Order-Status: 5.56% (>= 4.0%) [OK]
+       Delivery: 6.94% (>= 4.0%) [OK]
+    Stock-Level: 4.17% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 37.04%  [NG] *
+        Payment: 66.67%  [NG] *
+   Order-Status: 0.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 33.33%  [NG] *
+
+<TpmC>
+                 405.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 16, 95: 7.807, 99: 8.760, max_rt: 8.761, 19|9.524, 2|7.027, 3|19.701, 1|23.056
+   4, trx: 14, 95: 9.960, 99: 11.018, max_rt: 11.019, 12|5.804, 3|7.152, 2|19.348, 2|23.148
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:9 lt:21  rt:49407  fl:24 avg_rt: 6.1 (5)
+  [1] sc:15 lt:16  rt:50559  fl:23 avg_rt: 4.2 (5)
+  [2] sc:2 lt:3  rt:1999  fl:1 avg_rt: 5.6 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 13.6 (80)
+  [4] sc:0 lt:3  rt:4007  fl:2 avg_rt: 23.0 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:9  lt:21  rt:49415  fl:24 
+  [1] sc:15  lt:16  rt:50563  fl:23 
+  [2] sc:2  lt:3  rt:1999  fl:1 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:0  lt:3  rt:4007  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 41.89% (>=43.0%) [NG] *
+   Order-Status: 6.76% (>= 4.0%) [OK]
+       Delivery: 6.76% (>= 4.0%) [OK]
+    Stock-Level: 4.05% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 30.00%  [NG] *
+        Payment: 48.39%  [NG] *
+   Order-Status: 40.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 0.00%  [NG] *
+
+<TpmC>
+                 450.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 23, 95: 9.328, 99: 9.415, max_rt: 9.416, 21|7.638, 4|7.262, 3|22.330, 2|20.891
+   4, trx: 18, 95: 8.333, 99: 8.640, max_rt: 8.641, 17|7.620, 2|6.441, 3|20.353, 1|21.788
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:13 lt:28  rt:36982  fl:18 avg_rt: 6.0 (5)
+  [1] sc:18 lt:20  rt:46000  fl:22 avg_rt: 4.3 (5)
+  [2] sc:0 lt:6  rt:0  fl:0 avg_rt: 6.5 (5)
+  [3] sc:6 lt:0  rt:0  fl:0 avg_rt: 15.8 (80)
+  [4] sc:1 lt:2  rt:5997  fl:3 avg_rt: 20.8 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:13  lt:28  rt:36985  fl:18 
+  [1] sc:18  lt:20  rt:46003  fl:22 
+  [2] sc:0  lt:6  rt:0  fl:0 
+  [3] sc:6  lt:0  rt:0  fl:0 
+  [4] sc:1  lt:2  rt:5997  fl:3 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 40.43% (>=43.0%) [NG] *
+   Order-Status: 6.38% (>= 4.0%) [OK]
+       Delivery: 6.38% (>= 4.0%) [OK]
+    Stock-Level: 3.19% (>= 4.0%) [NG] *
+ [response time (at least 90% passed)]
+      New-Order: 31.71%  [NG] *
+        Payment: 47.37%  [NG] *
+   Order-Status: 0.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 33.33%  [NG] *
+
+<TpmC>
+                 615.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 17, 95: 8.080, 99: 8.789, max_rt: 8.789, 18|8.158, 0|0.000, 3|1.204, 1|19.312
+   4, trx: 10, 95: 9.675, 99: 9.675, max_rt: 9.676, 14|8.736, 1|2.427, 2|19.146, 2|80.190
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:7 lt:20  rt:45047  fl:22 avg_rt: 6.5 (5)
+  [1] sc:14 lt:18  rt:33866  fl:16 avg_rt: 4.8 (5)
+  [2] sc:1 lt:0  rt:7996  fl:4 avg_rt: 2.4 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 4.6 (80)
+  [4] sc:2 lt:1  rt:3998  fl:2 avg_rt: 39.8 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:7  lt:20  rt:45049  fl:22 
+  [1] sc:14  lt:18  rt:33868  fl:16 
+  [2] sc:1  lt:0  rt:7996  fl:4 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:2  lt:1  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 47.06% (>=43.0%) [OK]
+   Order-Status: 1.47% (>= 4.0%) [NG] *
+       Delivery: 7.35% (>= 4.0%) [OK]
+    Stock-Level: 4.41% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 25.93%  [NG] *
+        Payment: 43.75%  [NG] *
+   Order-Status: 100.00%  [OK]
+       Delivery: 100.00%  [OK]
+    Stock-Level: 66.67%  [NG] *
+
+<TpmC>
+                 405.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 15, 95: 7.922, 99: 8.330, max_rt: 8.330, 15|6.186, 1|2.860, 3|18.993, 1|17.581
+   4, trx: 14, 95: 10.334, 99: 10.890, max_rt: 10.891, 13|6.087, 1|6.537, 2|0.897, 1|21.055
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:7 lt:22  rt:45675  fl:22 avg_rt: 6.2 (5)
+  [1] sc:16 lt:12  rt:47429  fl:23 avg_rt: 3.6 (5)
+  [2] sc:1 lt:1  rt:6090  fl:3 avg_rt: 4.7 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 9.4 (80)
+  [4] sc:1 lt:1  rt:5997  fl:3 avg_rt: 19.3 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:7  lt:22  rt:45678  fl:22 
+  [1] sc:16  lt:12  rt:47435  fl:23 
+  [2] sc:1  lt:1  rt:6090  fl:3 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:1  lt:1  rt:5997  fl:3 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 42.42% (>=43.0%) [NG] *
+   Order-Status: 3.03% (>= 4.0%) [NG] *
+       Delivery: 7.58% (>= 4.0%) [OK]
+    Stock-Level: 3.03% (>= 4.0%) [NG] *
+ [response time (at least 90% passed)]
+      New-Order: 24.14%  [NG] *
+        Payment: 57.14%  [NG] *
+   Order-Status: 50.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 50.00%  [NG] *
+
+<TpmC>
+                 435.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 13, 95: 8.301, 99: 9.312, max_rt: 9.313, 12|7.100, 0|0.000, 2|13.011, 2|19.288
+   4, trx: 17, 95: 7.091, 99: 9.529, max_rt: 9.528, 11|5.627, 1|6.930, 2|12.720, 1|19.296
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:11 lt:19  rt:24899  fl:11 avg_rt: 5.7 (5)
+  [1] sc:17 lt:6  rt:38677  fl:18 avg_rt: 3.4 (5)
+  [2] sc:0 lt:1  rt:5997  fl:3 avg_rt: 6.9 (5)
+  [3] sc:4 lt:0  rt:0  fl:0 avg_rt: 9.8 (80)
+  [4] sc:3 lt:0  rt:1999  fl:1 avg_rt: 18.8 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:11  lt:19  rt:24901  fl:11 
+  [1] sc:17  lt:6  rt:38678  fl:18 
+  [2] sc:0  lt:1  rt:5997  fl:3 
+  [3] sc:4  lt:0  rt:0  fl:0 
+  [4] sc:3  lt:0  rt:1999  fl:1 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 37.70% (>=43.0%) [NG] *
+   Order-Status: 1.64% (>= 4.0%) [NG] *
+       Delivery: 6.56% (>= 4.0%) [OK]
+    Stock-Level: 4.92% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 36.67%  [NG] *
+        Payment: 73.91%  [NG] *
+   Order-Status: 0.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 100.00%  [OK]
+
+<TpmC>
+                 450.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 13, 95: 6.523, 99: 8.246, max_rt: 8.245, 19|7.000, 1|7.594, 3|20.131, 3|22.417
+   4, trx: 7, 95: 6.469, 99: 6.469, max_rt: 6.468, 6|4.928, 2|6.735, 1|0.747, 2|18.511
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:6 lt:14  rt:37246  fl:17 avg_rt: 5.7 (5)
+  [1] sc:22 lt:3  rt:32858  fl:16 avg_rt: 2.9 (5)
+  [2] sc:0 lt:3  rt:3998  fl:2 avg_rt: 6.8 (5)
+  [3] sc:4 lt:0  rt:0  fl:0 avg_rt: 5.6 (80)
+  [4] sc:3 lt:2  rt:0  fl:0 avg_rt: 19.8 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:6  lt:14  rt:37248  fl:17 
+  [1] sc:22  lt:3  rt:32858  fl:16 
+  [2] sc:0  lt:3  rt:3998  fl:2 
+  [3] sc:4  lt:0  rt:0  fl:0 
+  [4] sc:3  lt:2  rt:0  fl:0 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 43.86% (>=43.0%) [OK]
+   Order-Status: 5.26% (>= 4.0%) [OK]
+       Delivery: 7.02% (>= 4.0%) [OK]
+    Stock-Level: 8.77% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 30.00%  [NG] *
+        Payment: 88.00%  [NG] *
+   Order-Status: 0.00%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 60.00%  [NG] *
+
+<TpmC>
+                 300.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 10, 95: 8.182, 99: 8.182, max_rt: 8.183, 13|6.904, 1|2.567, 2|18.770, 0|0.000
+   4, trx: 7, 95: 46.244, 99: 46.244, max_rt: 46.247, 13|7.358, 0|0.000, 3|22.017, 3|31.263
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:3 lt:14  rt:48776  fl:24 avg_rt: 8.6 (5)
+  [1] sc:13 lt:13  rt:39450  fl:19 avg_rt: 3.7 (5)
+  [2] sc:1 lt:0  rt:7856  fl:3 avg_rt: 2.6 (5)
+  [3] sc:5 lt:0  rt:0  fl:0 avg_rt: 12.4 (80)
+  [4] sc:1 lt:2  rt:3998  fl:2 avg_rt: 24.0 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:3  lt:14  rt:48781  fl:24 
+  [1] sc:13  lt:13  rt:39452  fl:19 
+  [2] sc:1  lt:0  rt:7856  fl:3 
+  [3] sc:5  lt:0  rt:0  fl:0 
+  [4] sc:1  lt:2  rt:3998  fl:2 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 50.00% (>=43.0%) [OK]
+   Order-Status: 1.92% (>= 4.0%) [NG] *
+       Delivery: 9.62% (>= 4.0%) [OK]
+    Stock-Level: 5.77% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 17.65%  [NG] *
+        Payment: 50.00%  [NG] *
+   Order-Status: 100.00%  [OK]
+       Delivery: 100.00%  [OK]
+    Stock-Level: 33.33%  [NG] *
+
+<TpmC>
+                 255.000 TpmC
+
+
+***************************************
+*** ###easy### TPC-C Load Generator ***
+***************************************
+option h with value '127.0.0.1'
+option d with value 'tpcc_30'
+option u with value 'root'
+option p with value 'Gobronxbombers2'
+option w with value '50'
+option c with value '6'
+option r with value '0'
+option l with value '4'
+option i with value '2'
+<Parameters>
+     [server]: 127.0.0.1
+     [port]: 3306
+     [DBname]: tpcc_30
+       [user]: root
+       [pass]: Gobronxbombers2
+  [warehouse]: 50
+ [connection]: 6
+     [rampup]: 0 (sec.)
+    [measure]: 4 (sec.)
+
+RAMP-UP TIME.(0 sec.)
+
+MEASURING START.
+
+   2, trx: 7, 95: 7.237, 99: 7.237, max_rt: 7.237, 5|5.964, 2|7.292, 2|0.748, 2|20.574
+   4, trx: 13, 95: 6.687, 99: 7.732, max_rt: 7.733, 14|6.664, 1|2.237, 2|12.177, 2|19.827
+
+STOPPING THREADS......
+
+<Raw Results>
+  [0] sc:9 lt:11  rt:44528  fl:20 avg_rt: 5.4 (5)
+  [1] sc:12 lt:7  rt:46844  fl:22 avg_rt: 3.8 (5)
+  [2] sc:1 lt:2  rt:2148  fl:1 avg_rt: 5.3 (5)
+  [3] sc:4 lt:0  rt:0  fl:0 avg_rt: 3.6 (80)
+  [4] sc:3 lt:1  rt:0  fl:0 avg_rt: 19.3 (20)
+ in 4 sec.
+
+<Raw Results2(sum ver.)>
+  [0] sc:9  lt:11  rt:44528  fl:20 
+  [1] sc:12  lt:7  rt:46849  fl:22 
+  [2] sc:1  lt:2  rt:2148  fl:1 
+  [3] sc:4  lt:0  rt:0  fl:0 
+  [4] sc:3  lt:1  rt:0  fl:0 
+
+<Constraint Check> (all must be [OK])
+ [transaction percentage]
+        Payment: 38.00% (>=43.0%) [NG] *
+   Order-Status: 6.00% (>= 4.0%) [OK]
+       Delivery: 8.00% (>= 4.0%) [OK]
+    Stock-Level: 8.00% (>= 4.0%) [OK]
+ [response time (at least 90% passed)]
+      New-Order: 45.00%  [NG] *
+        Payment: 63.16%  [NG] *
+   Order-Status: 33.33%  [NG] *
+       Delivery: 100.00%  [OK]
+    Stock-Level: 75.00%  [NG] *
+
+<TpmC>
+                 300.000 TpmC
+
