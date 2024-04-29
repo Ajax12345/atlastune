@@ -6,6 +6,7 @@ import mysql_conn as db, random
 import copy, json, datetime
 import collections, time
 import matplotlib.pyplot as plt
+import statistics
 
 class Normalize:
     @classmethod
@@ -1084,6 +1085,34 @@ def display_marl_results(f_name:str) -> None:
 
     plt.show()
 
+
+def marl_agg_stats(files:typing.List[str], agg_func:typing.Callable = statistics.median) -> None:
+    latency, throughput = [], []
+    for i in files:
+        with open(i) as f:
+            data = json.load(f)['db_stats'][0]
+            latency.append([j['knob']['latency'] for j in data])
+            throughput.append([j['knob']['throughput'] for j in data])
+
+    agg_latency = [agg_func(i) for i in zip(*latency)]
+    agg_throughput = [agg_func(i) for i in zip(*throughput)]
+    fig, [a2, a3] = plt.subplots(nrows=1, ncols=2)
+    a2.plot([*range(1, len(agg_latency)+1)], agg_latency, label = 'latency', color = 'orange')
+    a2.title.set_text("Latency")
+    a2.legend(loc="upper right")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("latency")
+
+    a3.plot([*range(1, len(agg_throughput)+1)], agg_throughput, label = 'throughput', color = 'green')
+    a3.title.set_text("Throughput")
+    a3.legend(loc="lower right")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("throughput")
+
+    plt.show()
+
 def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> None:
     with Atlas_Index_Tune_DQN(database) as a_index:
         with Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
@@ -1132,15 +1161,23 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> 
 
                 db_stats.append(iteration_db_stats)
 
-            with open('outputs/marl_tuning_data/marl5.json', 'a') as f:
+            with open('outputs/marl_tuning_data/marl9.json', 'a') as f:
                 json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
 
 
-            display_marl_results('outputs/marl_tuning_data/marl5.json')
+            display_marl_results('outputs/marl_tuning_data/marl9.json')
 
 if __name__ == '__main__':
     #display_marl_results('outputs/marl_tuning_data/marl1.json')
-    atlas_marl_tune('tpcc_30', 50, 1, 300)
+    #atlas_marl_tune('tpcc_30', 50, 1, 300)
+    marl_agg_stats([
+        'outputs/marl_tuning_data/marl5.json',
+        'outputs/marl_tuning_data/marl6.json',
+        'outputs/marl_tuning_data/marl7.json',
+        'outputs/marl_tuning_data/marl8.json',
+        'outputs/marl_tuning_data/marl9.json'
+    ], statistics.mean)
+    #display_marl_results('outputs/marl_tuning_data/marl6.json')
     #atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))
 
