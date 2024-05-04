@@ -977,3 +977,28 @@
         outputs/marl_tuning_data/marl7.json
         outputs/marl_tuning_data/marl8.json
         outputs/marl_tuning_data/marl9.json
+        Graph: experiment_54_agg.png
+
+
+04/27/2024 @ 11:08 AM (experiment 55)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    Non-MARL
+
+    300 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':50}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50}
+
+    compute_cost_delta_per_query_unscaled
+    compute_delta_avg_reward
+
+    Output:
+        outputs/marl_tuning_data/marl11.json
+        outputs/marl_tuning_data/marl12.json
+
+    Experience replay: experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2914:23:35380520.json
