@@ -1125,7 +1125,7 @@ def marl_agg_stats(file_blocks:typing.List[typing.List[str]], agg_func:typing.Ca
 
     plt.show()
 
-def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> None:
+def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int, is_marl:bool) -> None:
     with Atlas_Index_Tune_DQN(database) as a_index:
         with Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
             a_index.ENABLE_MARL_REWARD = True
@@ -1136,14 +1136,14 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> 
             for _ in range(epochs):
                 a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step})
                 a_index_prog = a_index.tune(iterations, 
-                    reward_func = 'compute_cost_delta_per_query_unscaled',
-                    from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2914:23:35380520.json',
-                    is_marl = False)
+                    reward_func = 'compute_delta_avg_reward',
+                    #from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2914:23:35380520.json',
+                    is_marl = is_marl)
 
                 a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step})
                 a_knob_prog = a_knob.tune(iterations, 
                     reward_func = 'compute_delta_avg_reward', 
-                    is_marl = False)
+                    is_marl = is_marl)
 
                 iteration_db_stats = []
                 while True:
@@ -1175,16 +1175,16 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int) -> 
 
                 db_stats.append(iteration_db_stats)
 
-            with open('outputs/marl_tuning_data/marl12.json', 'a') as f:
+            with open('outputs/marl_tuning_data/marl14.json', 'a') as f:
                 json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
 
 
-            display_marl_results('outputs/marl_tuning_data/marl12.json')
+            display_marl_results('outputs/marl_tuning_data/marl14.json')
 
 if __name__ == '__main__':
     #display_marl_results('outputs/marl_tuning_data/marl1.json')
-    #atlas_marl_tune('tpcc_30', 50, 1, 300)
-    
+    atlas_marl_tune('tpcc_30', 50, 1, 300, True)
+    '''
     marl_agg_stats([('MARL', [
         'outputs/marl_tuning_data/marl5.json',
         'outputs/marl_tuning_data/marl6.json',
@@ -1196,7 +1196,7 @@ if __name__ == '__main__':
             'outputs/marl_tuning_data/marl11.json',
             'outputs/marl_tuning_data/marl12.json',
     ])], statistics.mean)
-    
+    '''
     #display_marl_results('outputs/marl_tuning_data/marl6.json')
     #atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))

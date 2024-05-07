@@ -1002,3 +1002,93 @@
         outputs/marl_tuning_data/marl12.json
 
     Experience replay: experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2914:23:35380520.json
+
+
+    Ideas:
+        - Need to train both agents on the same workload
+            - this could be either the custom index selection query set or TPC-C
+                - might want to use TPC-H
+
+            - If using custom read workload:
+                - remove knobs that do not contribute to read functionality?
+            
+            - Use only TPC-C workload
+                - have index selection reward function be the same as the one used for knobs
+
+            - Can continue double workload paradignm, but change index selection workload to be:
+                computed_workload_cost + 0.4*latency + 0.4*throughput
+                or min(computed_workload_cost, latency, throughput)
+                 
+                - and keep knob tuner reward function the same
+
+            - Instead of interleaving, run both to convergence sequentially 
+
+            - https://github.com/tvondra/pg_tpch
+            - https://github.com/catarinaribeir0/queries-tpch-dbgen-mysql
+            - https://github.com/acshulyak/mysql_tpch
+            - https://github.com/xinglin/tpch
+
+            - https://github.com/spetrunia/tpcds-run-tool
+
+
+            - https://github.com/stanislawbartkowski/mytpcds
+
+            - https://github.com/FdeFabricio/tpcds-mysql
+
+            Use this project:
+                - https://github.com/QasimKhan5x/TPC-DS-MySQL
+
+            - Just use TPCH as workload
+
+05/06/2024 @ 5:19 PM (experiment 56)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    300 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step}
+
+    Index reward: compute_team_reward_min
+
+    Knob reward: compute_delta_avg_reward
+
+    Output:
+        outputs/marl_tuning_data/marl13.json
+
+    Experience replay:
+        experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0617:56:55410465.json
+
+    Testing to see if latency and throughput improve by forcing index selection to account more for the reward of the knob tuner
+
+    Todo: use compute_delta_avg_reward for index reward
+
+
+05/06/2024 @ 8:34 PM (experiment 57)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    300 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step}
+
+    Index reward: compute_delta_avg_reward
+
+    Knob reward: compute_delta_avg_reward
+
+    Outputs:
+        outputs/marl_tuning_data/marl14.json
+
+    Experience replay:
+        experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0621:00:06438973.json
+
+    No meaningful change from prior experiments
+
+    Now trying the same reward function for both agents
