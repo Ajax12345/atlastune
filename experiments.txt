@@ -1027,6 +1027,7 @@
             - https://github.com/catarinaribeir0/queries-tpch-dbgen-mysql
             - https://github.com/acshulyak/mysql_tpch
             - https://github.com/xinglin/tpch
+            - https://github.com/Chotom/tpch-mysql-implementation
 
             - https://github.com/spetrunia/tpcds-run-tool
 
@@ -1092,3 +1093,101 @@
     No meaningful change from prior experiments
 
     Now trying the same reward function for both agents
+
+    Ideas:
+        - try compute_cost_delta_per_query_unscaled as reward function for both
+            - turn off latency and throughput calculations
+            - write insert, update, and deletion queries to add to workload as a second step
+
+        - Rerun experiment 56, this time tuning knobs directly after index selection
+
+            - 200 or 300 iterations for index, then 300 for knob
+
+            - Run agent until convergence, then switch
+
+        - Try with TPCH, using standard metrics as reward function
+
+        - Just focus on optimizing latency or throughput, but not both
+            - i.e use one or the other as the reward signal
+
+
+05/07/2024 @ 4:25 PM (experiment 58)
+    Database: tpcc_30
+    Both index and knob tuning
+
+    300 iterations
+
+    Index tuner:
+        {'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step}
+
+    Knob tuner:
+        {'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step}
+
+    Index reward: compute_cost_delta_per_query_unscaled
+
+    Knob reward: compute_cost_delta_per_query_unscaled
+
+    Outputs (interleaved MARL):
+        outputs/marl_tuning_data/marl15.json (possibly ignore)
+        outputs/marl_tuning_data/marl16.json (good)
+        outputs/marl_tuning_data/marl17.json (great results)
+        outputs/marl_tuning_data/marl18.json (also great results)
+        outputs/marl_tuning_data/marl19.json (ignore)
+        outputs/marl_tuning_data/marl20.json (possibly ignore)
+        outputs/marl_tuning_data/marl21.json (good)
+        outputs/marl_tuning_data/marl22.json (good)
+        outputs/marl_tuning_data/marl23.json (possibly ignore)
+
+        Experience replay:
+            experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0717:29:57645925.json
+
+    Outputs (interleaved, no MARL):
+        outputs/marl_tuning_data/marl24.json
+        outputs/marl_tuning_data/marl25.json
+        outputs/marl_tuning_data/marl26.json
+        outputs/marl_tuning_data/marl27.json
+        outputs/marl_tuning_data/marl28.json
+        outputs/marl_tuning_data/marl29.json
+        outputs/marl_tuning_data/marl30.json
+
+        Experience replay:
+            experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0911:32:20994976.json
+
+    Run over more epochs?
+
+    Interleaving becomes effectively redundant when measuring the same thing (i.e having the same reward function)
+    Also, any overcompensations can take place in subsequent epochs/the next agent switch
+
+
+    Observations:
+        - steady and constant decrease in workload cost while clear evidence of reward optimization/learning
+
+    - Try TPCH, remove queries that take up exorbitant amount of time
+        - use query planner!!
+
+    - Check if sysbench has faster benchmarks for both read and write
+        - Use sysbench OTLP if faster than TPCH
+        - https://severalnines.com/blog/how-benchmark-performance-mysql-mariadb-using-sysbench/
+
+    - adequately scale workload cost and then compare with latency and throughput
+
+    - current experiments needed:
+        - get more training runs for MARL
+    
+        - five training runs for interleaving, no state sharing
+
+        - five training runs for staggered execution (agent after agent), no state sharing
+
+
+05/08/2024 @ 6:41 PM (experiment 59)
+    Database: tpcc_30
+    ONLY Index tuning
+
+    testing compute_cost_delta_per_query_unscaled_geometric
+
+    250 iterations
+
+    Outputs:
+        outputs/tuning_data/rl_dqn21.json
+
+    Oberservations: does not work. Not a strong reward signal

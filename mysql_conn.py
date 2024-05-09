@@ -486,63 +486,6 @@ class MySQL:
         with open('tpc/tpch/queries.sql') as f:
             return [i.strip(';\n') for i in f]
 
-    @classmethod
-    def tpch_query_tests(cls, database:str="tpch1") -> typing.List[float]:
-        results = []
-        with cls(database = database, buffered = True) as conn:
-            for query in cls.queries():
-                t = time.time()
-                conn.execute(query).fetchone()
-                results.append(time.time() - t)
-                print('here')
-        return results
-
-    @classmethod
-    def tpch_tbl_id_offsets(cls, database:str="tpch1") -> typing.Any:
-        with cls(database = database) as conn:
-            o = conn.execute("select max(o_orderkey) m from orders").fetchone()['m']
-            l = conn.execute("select max(l_orderkey) m from lineitem").fetchone()['m']
-            o_r = random.sample([i['o_orderkey'] for i in conn.execute("select o_orderkey from orders limit 4500")], 1500)
-            l_r = random.sample([i['l_orderkey'] for i in conn.execute("select l_orderkey from lineitem limit 4500")], 1500)
-            with open('tpc/tpch/ref1.json') as f1, open('tpc/tpch/ref2.json') as f2:
-                return o, l, o_r, l_r, json.load(f1), json.load(f2) 
-
-    @classmethod
-    def tpch_ref1(cls, conn, o:int, l:int, f1_data:typing.List[list], f2_data:typing.List[list], database:str="tpch1") -> None:
-        for i, r in zip(range(1, len(f1_data)+1), f1_data):
-            conn.execute('insert into orders values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', [o+i, *r])
-
-        for i, r in zip(range(1, len(f2_data)+1), f2_data):
-            conn.execute('insert into lineitem values (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)', [l+i, *r])
-
-        conn.commit()
-
-    @classmethod
-    def tpch_ref2(cls, conn, o_r:typing.List[int], l_r:typing.List[int], database:str="tpch1") -> float:
-        t = time.time()
-        for i in o_r:
-            conn.execute('delete from orders where o_orderkey = %s', [int(i)])
-
-        '''
-        for i in l_r:
-            conn.execute('delete from lineitem where l_orderkey = %s', [int(i)])
-        '''
-        conn.commit()
-        return time.time() - t
-
-    @classmethod
-    def tpch_power_test(cls, database:str="tpch1") -> float:
-        o, l, o_r, l_r, f1_data, f2_data  = cls.tpch_tbl_id_offsets(database = database)
-        with cls(database = database) as refresh_stream:
-            rf1_t = cls.tpch_ref1(refresh_stream, o, l, f1_data, f2_data, database = database)
-            q_t = cls.tpch_query_tests(database)
-            rf2_t = cls.tpch_ref2(refresh_stream, o_r, l_r, database = database)
-
-    @classmethod
-    def tpch_metrics(cls, database:str="tpch1") -> typing.Any:
-        o, l, o_r, l_r, f1_data, f2_data  = cls.tpch_tbl_id_offsets(database = database)
-        cls.tpch_ref1(o, l, f1_data, f2_data, database = database)
-        cls.tpch_ref2(o_r, l_r, database = database)
 
     def commit(self) -> None:
         self.conn.commit()
@@ -594,8 +537,8 @@ if __name__ == '__main__':
         #print('after', conn.get_knob_value('innodb_read_ahead_threshold'), conn.get_knob_value('thread_cache_size'))
         #conn.reset_knob_configuration()
         #print(conn.memory_size('gb'))
-        print(conn.db_column_count, len(MySQL.col_indices_to_list(conn.get_columns_from_database())))
-        
+        #print(conn.db_column_count, len(MySQL.col_indices_to_list(conn.get_columns_from_database())))
+        print(conn.workload_cost())
         #print(conn.tpcc_metrics(2))
         '''
         t = time.time()

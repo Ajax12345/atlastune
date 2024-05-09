@@ -1,3 +1,6 @@
+/usr/local/mysql/bin/mysql -u root -pGobronxbombers2
+
+
 TPC-H
     - https://www.metricfire.com/blog/a-modern-guide-to-mysql-performance-monitoring/
     - https://dev.mysql.com/doc/refman/8.0/en/server-status-variables.html
@@ -12,6 +15,8 @@ TPC-H
     - https://github.com/electrum/tpch-dbgen
     - https://github.com/dhuny/tpch/tree/main VERY USEFUL
     - https://github.com/pola-rs/tpch/tree/700a440212aada40fbe3431591cb19d0cb0b530e VERY USEFUL
+
+    - /Users/jamespetullo/Downloads/TPC_H_official/dbgen
 
     Need to create one additional table:
         create table if not exists revenue0 (supplier_no int, total_revenue int);

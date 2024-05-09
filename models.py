@@ -225,6 +225,19 @@ class Atlas:
         k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2['index'].items()]
         return sum(k)/len(k)
 
+    def compute_cost_delta_per_query_unscaled_geometric(self, experience_replay:typing.List[dict], costs:typing.List[dict], w2:dict) -> float:
+        '''index selection reward function'''
+        w1 = experience_replay[0][-1]['index']
+        k = [(float(w1[a]['cost']) - float(b['cost']))/w1[a]['cost'] for a, b in w2['index'].items()]
+        pos, neg = [], []
+        for i in k:
+            if i > 0:
+                pos.append(i)
+            elif i < 0:
+                neg.append(abs(i))
+
+        return (0 if not pos else statistics.geometric_mean(pos)) - (0 if not neg else statistics.geometric_mean(neg))
+
     def compute_total_cost_reward(self, _, costs:typing.List[dict], w:dict) -> float:
         '''index selection reward function'''
         return -1*self.workload_cost(w['index'])
@@ -355,13 +368,14 @@ class Atlas_Knob_Tune(Atlas):
         self.tuning_log.write('\n'+'#'*16+message+'#'*16)
 
     def build_workload_payload(self, is_marl:bool = False) -> dict:
-        d = {'knob': self.conn.tpcc_metrics(self.config['tpcc_time'])}
+        #d = {'knob': self.conn.tpcc_metrics(self.config['tpcc_time'])}
+        d = {}
         if getattr(self, 'ENABLE_MARL_REWARD', True) or (is_marl and not getattr(self, 'DISABLE_MARL_REWARD', False)):
             d['index'] = self.conn.workload_cost()
 
         return d
 
-    def tune(self, iterations:int, reward_func:str = 'compute_delta_min_reward', reset_knobs:bool = True, is_marl:bool = False) -> dict:
+    def tune(self, iterations:int, reward_func:str = 'compute_delta_min_reward', reset_knobs:bool = True, is_marl:bool = False, is_epoch:bool = False) -> dict:
         if reset_knobs:
             self.log_message('Resetting knobs')
             self.conn.reset_knob_configuration()
@@ -374,7 +388,8 @@ class Atlas_Knob_Tune(Atlas):
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         state_num, action_num = len(state), db.MySQL.knob_num
 
-        self.init_models(state_num, action_num)
+        if not is_epoch or self.actor is None:
+            self.init_models(state_num, action_num)
 
         '''
         self.log_message('Getting default metrics')
@@ -382,7 +397,10 @@ class Atlas_Knob_Tune(Atlas):
             self.experience_replay = json.load(f)
             skip_experience = len(self.experience_replay)
         '''
-        self.experience_replay = [[state, None, None, None, self.build_workload_payload(is_marl)]]
+
+        if not self.experience_replay:
+            self.experience_replay = [[state, None, None, None, self.build_workload_payload(is_marl)]]
+        
         rewards = []
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
@@ -401,7 +419,6 @@ class Atlas_Knob_Tune(Atlas):
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
-            t = time.time()
             self.conn.apply_knob_configuration(knob_dict)
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
@@ -466,14 +483,14 @@ class Atlas_Knob_Tune(Atlas):
             if i and not i%self.config['marl_step']:
                 yield {
                 'experience_replay':self.experience_replay,
-                'rewards':rewards[skip_experience:], 
-                'metrics':[i[-1]['knob'] 
+                'rewards':rewards, 
+                'metrics':[i[-1].get('knob') 
                     for i in self.experience_replay[skip_experience:]]}, False
                 
         yield {
             'experience_replay':self.experience_replay,
-            'rewards':rewards[skip_experience:], 
-            'metrics':[i[-1]['knob'] 
+            'rewards':rewards, 
+            'metrics':[i[-1].get('knob') 
                 for i in self.experience_replay[skip_experience:]]}, True
 
 
@@ -770,9 +787,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
 
     def build_workload_payload(self, is_marl:bool = False) -> dict:
         d = {'index': self.conn.workload_cost()}
+        '''
         if getattr(self, 'ENABLE_MARL_REWARD', True) or (is_marl and not getattr(self, 'DISABLE_MARL_REWARD', False)):
             d['knob'] = self.conn.tpcc_metrics(self.config['tpcc_time'])
-
+        '''
         return d
 
     def generate_experience_replay(self, indices:typing.List[int], metrics:typing.List[int], iterations:int, reward_func:str, is_marl:bool, from_buffer:typing.Union[bool, str] = False) -> None:
@@ -814,9 +832,11 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas):
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        self.generate_experience_replay(indices, metrics, 150, reward_func, is_marl, from_buffer = from_buffer)
+        if not self.experience_replay:
+            self.generate_experience_replay(indices, metrics, 150, reward_func, is_marl, from_buffer = from_buffer)
+        
         state = [*indices, *(metrics if is_marl else [])]
-        print('length of state in index tune', len(state))
+        print('length of state in index tune', len(state), state)
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         
         action_num, state_num = len(indices)+1, len(state)
@@ -965,7 +985,7 @@ def display_tuning_results(f_name:str) -> None:
         tuning_data = json.load(f)
 
     rewards = [i['rewards'] for i in tuning_data]
-    costs = [[sum(j[k]['cost'] for k in j) for j in i['costs']] for i in tuning_data]
+    costs = [[statistics.geometric_mean(j[k]['cost'] for k in j) for j in i['costs']] for i in tuning_data]
     if 'delta_rewards' in tuning_data[0]:
         fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
         delta_rewards = [i['delta_rewards'] for i in tuning_data]
@@ -1035,9 +1055,9 @@ def atlas_index_tune_dqn() -> None:
         a_index.DISABLE_MARL_REWARD = True
         a_index.conn.reset_knob_configuration()
         tuning_data = []
-        for i in range(2):
+        for i in range(1):
             #print(i + 1)
-            a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'marl_step':50})
+            a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.0055, 'marl_step':50})
             a_index_prog = a_index.tune(400, reward_func = 'compute_cost_delta_per_query_unscaled', is_marl = True)
             while True:
                 payload, flag = next(a_index_prog)
@@ -1045,11 +1065,11 @@ def atlas_index_tune_dqn() -> None:
                     tuning_data.append(payload)
                     break
         
-        with open(f'outputs/tuning_data/rl_dqn20.json', 'a') as f:
+        with open(f'outputs/tuning_data/rl_dqn23.json', 'a') as f:
             json.dump(tuning_data, f)
         
         
-        display_tuning_results('outputs/tuning_data/rl_dqn20.json')
+        display_tuning_results('outputs/tuning_data/rl_dqn23.json')
 
 def atlas_knob_tune() -> None:
     with Atlas_Knob_Tune('tpcc_30') as a_knob:
@@ -1125,7 +1145,88 @@ def marl_agg_stats(file_blocks:typing.List[typing.List[str]], agg_func:typing.Ca
 
     plt.show()
 
-def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int, is_marl:bool) -> None:
+def marl_results_v2_file_results(f_name:str) -> tuple:
+    with open(f_name) as f:
+        data = json.load(f)
+
+    index_rewards = data['index_results'][0]['rewards']
+    knob_rewards = [(j:=sum(i)/len(i)) for i in zip(*[i['rewards'] for i in data['knob_results']][:1])]
+    knob_rewards = [max(i, -1) for i in knob_rewards]
+    costs = [[statistics.geometric_mean([j['cost'] for j in i['index'].values()])for i in k] for k in data['db_stats']]
+    costs= [sum(i)/len(i) for i in zip(*costs)]
+    return index_rewards, knob_rewards, costs
+
+def display_marl_results_v2(f_name:str) -> None:
+    index_rewards, knob_rewards, costs = marl_results_v2_file_results(f_name)
+    
+    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+
+    print(len(costs))
+    a1.plot([*range(1, len(costs)+1)], costs)
+    a1.title.set_text("Total workload cost at each iteration")
+    a1.legend(loc="lower right")
+
+    a1.set_xlabel("Time increment")
+    a1.set_ylabel("Workload cost")
+
+    a2.plot([*range(1, len(index_rewards)+1)], index_rewards)
+    a2.title.set_text("Index Tuner Rewards")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("Reward")
+
+    a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards)
+    a3.title.set_text("Knob Tuner Rewards")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("Reward")
+
+
+    plt.show()
+
+def marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
+    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+
+    for l, files in blocks:
+        _index_rewards, _knob_rewards, _costs = zip(*[marl_results_v2_file_results(f_name) for f_name in files])
+        index_rewards = [sum(i)/len(i) for i in zip(*_index_rewards)]
+        knob_rewards = [sum(i)/len(i) for i in zip(*_knob_rewards)]
+        costs = [sum(i)/len(i) for i in zip(*_costs)]
+        a1.plot([*range(1, len(costs)+1)], costs, label = l)
+        a2.plot([*range(1, len(index_rewards)+1)], index_rewards, label = l)
+        a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards, label = l)
+    
+    a1.legend(loc="upper right")
+
+    a1.set_xlabel("Time increment")
+    a1.set_ylabel("Workload cost")
+
+    a2.title.set_text("Index Tuner Rewards")
+
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("Reward")
+    a2.legend(loc="lower right")
+
+    a3.title.set_text("Knob Tuner Rewards")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("Reward")
+    a3.legend(loc="lower right")
+
+
+    plt.show()
+
+def atlas_marl_tune(config:dict) -> None:
+    database = config['database']
+    marl_step = config['marl_step']
+    epochs = config['epochs']
+    iterations = config['iterations']
+    is_marl = config['is_marl']
+    index_reward_func = config['index_reward_func']
+    knob_reward_func = config['knob_reward_func']
+    output_file = config['output_file']
+    from_buffer = config.get('from_buffer')
+
     with Atlas_Index_Tune_DQN(database) as a_index:
         with Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
             a_index.ENABLE_MARL_REWARD = True
@@ -1136,14 +1237,16 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int, is_
             for _ in range(epochs):
                 a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step})
                 a_index_prog = a_index.tune(iterations, 
-                    reward_func = 'compute_delta_avg_reward',
-                    #from_buffer = 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-04-2914:23:35380520.json',
-                    is_marl = is_marl)
+                    reward_func = index_reward_func,
+                    from_buffer = from_buffer,
+                    is_marl = is_marl,
+                    is_epoch = True)
 
                 a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step})
                 a_knob_prog = a_knob.tune(iterations, 
-                    reward_func = 'compute_delta_avg_reward', 
-                    is_marl = is_marl)
+                    reward_func = knob_reward_func, 
+                    is_marl = is_marl,
+                    is_epoch = True)
 
                 iteration_db_stats = []
                 while True:
@@ -1175,15 +1278,31 @@ def atlas_marl_tune(database:str, marl_step:int, epochs:int, iterations:int, is_
 
                 db_stats.append(iteration_db_stats)
 
-            with open('outputs/marl_tuning_data/marl14.json', 'a') as f:
+            with open(output_file, 'a') as f:
                 json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
 
 
-            display_marl_results('outputs/marl_tuning_data/marl14.json')
+            #display_marl_results(output_file)
+            display_marl_results_v2(output_file)
 
 if __name__ == '__main__':
-    #display_marl_results('outputs/marl_tuning_data/marl1.json')
-    atlas_marl_tune('tpcc_30', 50, 1, 300, True)
+    #display_marl_results_v2('outputs/marl_tuning_data/marl29.json')
+    #atlas_index_tune_dqn()
+    #display_tuning_results('outputs/tuning_data/rl_dqn23.json')
+    #atlas_marl_tune('tpcc_30', 50, 1, 300, True)
+    '''
+    atlas_marl_tune({
+        'database':'tpcc_30',
+        'marl_step':50,
+        'epochs':1,
+        'iterations':300,
+        'is_marl':False,
+        'index_reward_func':'compute_cost_delta_per_query_unscaled',
+        'knob_reward_func':'compute_cost_delta_per_query_unscaled',
+        'output_file':'outputs/marl_tuning_data/marl30.json'
+    })
+    '''
+    
     '''
     marl_agg_stats([('MARL', [
         'outputs/marl_tuning_data/marl5.json',
@@ -1197,6 +1316,25 @@ if __name__ == '__main__':
             'outputs/marl_tuning_data/marl12.json',
     ])], statistics.mean)
     '''
+    
+    marl_agg_stats_v2([('Interleaved MARL', [
+            'outputs/marl_tuning_data/marl15.json',
+            'outputs/marl_tuning_data/marl16.json',
+            'outputs/marl_tuning_data/marl17.json',
+            'outputs/marl_tuning_data/marl18.json',
+            'outputs/marl_tuning_data/marl21.json',
+            'outputs/marl_tuning_data/marl22.json',
+        ]),
+        ('Interleaved', [
+            'outputs/marl_tuning_data/marl24.json',
+            'outputs/marl_tuning_data/marl25.json',
+            'outputs/marl_tuning_data/marl26.json',
+            'outputs/marl_tuning_data/marl27.json',
+            'outputs/marl_tuning_data/marl28.json',
+            'outputs/marl_tuning_data/marl29.json',
+            'outputs/marl_tuning_data/marl30.json',
+        ])
+    ])
     #display_marl_results('outputs/marl_tuning_data/marl6.json')
     #atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))
