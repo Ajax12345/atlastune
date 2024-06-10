@@ -1153,6 +1153,12 @@
         Experience replay:
             experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0911:32:20994976.json
 
+    Outputs (sequential MARL)
+        outputs/marl_tuning_data/marl32.json
+
+        Experience replay:
+            experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0920:06:08138200.json
+
     Run over more epochs?
 
     Interleaving becomes effectively redundant when measuring the same thing (i.e having the same reward function)

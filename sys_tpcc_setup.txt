@@ -102,3 +102,123 @@ with cte(tbl, c) as (
 select c.* from cte c where c.c= (select max(c1.c) from cte c1);
 
 password: Gobronxbombers2
+
+
+
+----------
+
+
+sysbench_tune
+
+    /usr/local/mysql/bin/mysql -u root -pGobronxbombers2
+
+
+    sysbench oltp_read_write \
+        --db-driver=mysql \
+        --mysql-db=sysbench_tune \
+        --mysql-user=root \
+        --mysql-password=Gobronxbombers2 \
+        --mysql_storage_engine=innodb \
+        --auto_inc=off \
+        --create_secondary=off \
+        --delete_inserts=2 \
+        --distinct_ranges=2 \
+        --index_updates=2 \
+        --non_index_updates=2 \
+        --order_ranges=2 \
+        --point_selects=2 \
+        --simple_ranges=1 \
+        --sum_ranges=2 \
+        --range_selects=on \
+        --secondary=off \
+        --table_size=500000 \
+        --tables=10 \
+        --rand-type=uniform \
+        prepare
+
+
+    sysbench oltp_read_write \
+        --db-driver=mysql \
+        --mysql-db=sysbench_tune \
+        --mysql-user=root \
+        --mysql-password=Gobronxbombers2 \
+        --mysql_storage_engine=innodb \
+        --threads=50 \
+        --time=10 \
+        --forced-shutdown=1 \
+        --auto_inc=off \
+        --create_secondary=off \
+        --delete_inserts=2 \
+        --distinct_ranges=2 \
+        --index_updates=2 \
+        --non_index_updates=2 \
+        --order_ranges=2 \
+        --point_selects=2 \
+        --simple_ranges=1 \
+        --sum_ranges=2 \
+        --range_selects=on \
+        --secondary=off \
+        --table_size=500000 \
+        --tables=10 \
+        --rand-type=uniform \
+        run
+
+        - https://severalnines.com/blog/how-benchmark-performance-mysql-mariadb-using-sysbench/
+
+TPCH queries that run in reasonable time:
+1, 2, 3, 4, 5, 6, 7 (4 sec), 8, 9 (8 sec), 11, 12 (2 sec), 13, 18, 19 (3 sec), 21, 22
+
+alter table customer add primary key(c_custkey);
+
+create index primary_altastune1 on customer(c_custkey);
+
+alter table customer drop primary key;
+
+alter table lineitem add primary key(l_orderkey, l_linenumber);
+
+create index primary_altastune1 on lineitem(l_orderkey);
+create index primary_altastune2 on lineitem(l_linenumber);
+
+alter table lineitem drop primary key;
+
+alter table nation add primary key(n_nationkey);
+
+create index primary_altastune1 on nation(n_nationkey);
+
+alter table nation drop primary key;
+
+alter table orders add primary key(o_orderkey);
+
+create index primary_altastune1 on orders(o_orderkey);
+
+alter table orders drop primary key;
+
+alter table part add primary key (P_PARTKEY);
+
+create index primary_altastune1 on part(P_PARTKEY);
+
+alter table part drop primary key;
+
+alter table partsupp add primary key(PS_PARTKEY, PS_SUPPKEY);
+
+create index primary_altastune1 on partsupp(PS_PARTKEY);
+create index primary_altastune2 on partsupp(PS_SUPPKEY);
+
+alter table partsupp drop primary key;
+
+alter table region add primary key (R_REGIONKEY);
+
+create index primary_altastune1 on region(R_REGIONKEY);
+
+alter table region drop primary key;
+
+alter table supplier add primary key(S_SUPPKEY);
+
+create index primary_altastune1 on supplier(S_SUPPKEY);
+
+alter table supplier drop primary key;
+
+To run TPC-H: remove all default primary keys and add a conventional primary_atlastune in their place
+
+https://www.tpc.org/TPC_Documents_Current_Versions/pdf/TPC-H_v3.0.1.pdf
+https://github.com/mir-pucrs/smartix-rl/commit/5108d821ea2e6ac4d07d23a0af32c93bd9f1ea73

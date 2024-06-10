@@ -1,5 +1,6 @@
 /usr/local/mysql/bin/mysql -u root -pGobronxbombers2
 
+/usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server start
 
 TPC-H
     - https://www.metricfire.com/blog/a-modern-guide-to-mysql-performance-monitoring/
@@ -147,3 +148,15 @@ A faster index selector:
         - Or, index every column, use query-planner to identify indices that are used
     - if the suggested q-value points to a column that is not in the set, penalize
         - else, apply knob configuration, get the delta cost change, and continue
+
+
+Sysbench:
+
+    - https://blog.csdn.net/cxin917/article/details/81557453
+    - https://imysql.com/wp-content/uploads/2014/10/sysbench-manual.pdf
+    - https://www.mortensi.com/2021/06/how-to-install-and-use-sysbench/
+    - https://webhostinggeeks.com/howto/how-to-use-sysbench-to-test-database-performance-on-a-linux-machine/
+    - https://github.com/HustAIsGroup/CDBTune/blob/abfbc25b6bc223c8be158b453fdf76bef43030eb/scripts/run_sysbench.sh#L13
+
+
+    

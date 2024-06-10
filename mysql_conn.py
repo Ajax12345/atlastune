@@ -2,7 +2,8 @@ import mysql.connector, typing
 import contextlib, csv, time
 import collections, subprocess
 import datetime, re, json, os
-import random, io
+import random, io, concurrent.futures
+import functools
 
 #https://dev.mysql.com/doc/connector-python/en/connector-python-example-connecting.html
 #https://dev.mysql.com/doc/refman/8.0/en/innodb-parameters.html
@@ -342,6 +343,43 @@ class MySQL:
         return {'throughput':tps/count, 'latency':latency/count}
 
     @DB_EXISTS()
+    def sysbench_metrics(self, seconds:int = 10) -> dict:
+        assert self.database in ['sysbench_tune']
+        results = str(subprocess.run(['sysbench', 'oltp_read_write',
+            '--db-driver=mysql',
+            '--mysql-db=sysbench_tune',
+            '--mysql-user=root',
+            '--mysql-password=Gobronxbombers2',
+            '--mysql_storage_engine=innodb',
+            '--threads=50',
+            f'--time={seconds}',
+            '--forced-shutdown=1',
+            '--auto_inc=off',
+            '--create_secondary=off',
+            '--delete_inserts=2',
+            '--distinct_ranges=2',
+            '--index_updates=2',
+            '--non_index_updates=2',
+            '--order_ranges=2',
+            '--point_selects=2',
+            '--simple_ranges=1',
+            '--sum_ranges=2',
+            '--range_selects=on',
+            '--secondary=off',
+            '--table_size=500000',
+            '--tables=10',
+            '--rand-type=uniform', 
+        'run'], capture_output=True).stdout.decode())
+        throughput = float(re.findall('queries\:\s+\d+\s+\((\d+(?:\.\d+)*)\sper sec\.\)', results)[0])
+        latency_max = float(re.findall('max\:\s+(\d+(?:\.\d+)*)', results)[0])
+        latency_95th = float(re.findall('95th percentile\:\s+(\d+(?:\.\d+)*)', results)[0])
+        return {
+            'throughput': throughput,
+            'latency_max': latency_max,
+            'latency_95th': latency_95th
+        }
+
+    @DB_EXISTS()
     def tpcc_sysbench_metrics(self, seconds:int = 10, scale:int = 25) -> typing.List:
         assert self.database in ['sysbench_tpcc']
         results = str(subprocess.run(['./tpcc.lua', '--mysql-user=root', 
@@ -424,7 +462,7 @@ class MySQL:
         col_state = self.get_columns_from_database()
         assert len(indices) == len(col_state)
         for i, (ind_state, col_data) in enumerate(zip(indices, col_state), 1):
-            if col_data['INDEX_NAME'] == 'PRIMARY':
+            if col_data['INDEX_NAME'] is not None and col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
                 continue
 
             if ind_state:
@@ -486,6 +524,92 @@ class MySQL:
         with open('tpc/tpch/queries.sql') as f:
             return [i.strip(';\n') for i in f]
 
+    @classmethod
+    def refresh_function1(cls, sf:int, stream) -> float:
+        orders = '170|510698|P|167013.41|1995-06-06|3-MEDIUM|Clerk#000001498|0|breach fluffily above the pinto|'.split('|')
+        orders[0] = random.randint(1, 6006000)
+
+        lineitem = '12|787559|7598|5|10|16465.20|0.00|0.02|A|F|1993-01-25|1993-01-07|1993-02-13|DELIVER IN PERSON|AIR|uriously ironic excuses. blithely iron|'.split('|')
+        lineitem[0] = random.randint(1, 6006012)
+        t = time.time()
+        for _ in range(sf*1500):
+            stream.execute(f'insert into orders values({", ".join("%s" for _ in orders)})', orders)
+        
+            for _ in range(random.randint(1, 7)):
+                stream.execute(f'insert into lineitem values({", ".join("%s" for _ in lineitem)})', lineitem)
+
+        stream.commit()
+        return time.time() - t
+
+    @classmethod
+    def refresh_function2(cls, sf:int, stream) -> float:
+        t = time.time()
+        for _ in range(sf*1500):
+            stream.execute('delete from orders where o_orderkey = %s', [random.randint(1, 6006000)])
+            stream.execute('delete from lineitem where l_orderkey = %s', [random.randint(1, 6006012)])
+            
+        stream.commit()
+        return time.time() - t
+
+    @classmethod
+    def refresh_stream(cls, sf:int) -> float:
+        with cls(database = "tpch1") as rf1:
+            with cls(database = "tpch1") as rf2:
+                cls.refresh_function1(sf, rf1)
+                cls.refresh_function2(sf, rf2)
+
+    @classmethod
+    def tpch_query_set(cls, query_ids:typing.List[int], stream) -> typing.List[float]:
+        with open('tpc/tpch/queries.sql') as f:
+            q_times = []
+            for i, a in enumerate(f, 1):
+                if i in query_ids:
+                    t = time.time()
+                    stream.execute(a.strip(';\n'))
+                    _ = stream.cur.fetchall()
+                    q_times.append(time.time() - t)
+            
+            return q_times
+
+    @classmethod
+    def tpch_query_stream(cls, query_ids:typing.List[int]) -> None:
+        with cls(database = "tpch1") as stream:
+            _ = cls.tpch_query_set(query_ids, stream)
+        
+
+    @classmethod
+    def tpch_power_test(cls, sf:int, query_ids:typing.List[int]) -> float:
+        with cls(database = "tpch1") as rf_stream:
+            rf1_t = cls.refresh_function1(sf, rf_stream)
+            with cls(database = "tpch1") as query_stream:
+                q_times = cls.tpch_query_set(query_ids, query_stream)
+
+            rf2_t = cls.refresh_function2(sf, rf_stream)
+
+        return (3600*sf)/pow(functools.reduce(lambda x, y:x*y, q_times) * rf1_t * rf2_t, 1/(len(query_ids) + 2))
+
+    @classmethod
+    def tpch_throughput_test(cls, S:int, sf:int, query_ids:typing.List[int]) -> float:
+        with concurrent.futures.ProcessPoolExecutor() as pool:
+            t = time.time()
+            qs1 = pool.submit(cls.tpch_query_stream, query_ids)
+            qs2 = pool.submit(cls.tpch_query_stream, query_ids)
+            rf = pool.submit(cls.refresh_stream, sf)
+
+            _ = qs1.result()
+            _ = qs2.result()
+            _ = rf.result()
+            T = time.time() - t
+
+        return (S*len(query_ids)*3600)/T * sf
+
+
+    @DB_EXISTS()
+    def tpch_qphH_size(self) -> float:
+        assert self.database in ['tpch1']
+        power = cls.tpch_power_test(1, [1, 2, 3, 4, 5, 6, 7])
+        throughput = cls.tpch_throughput_test(2, 1, [1, 2, 3, 4, 5, 6, 7])
+        return pow(power*throughput, 0.5)
 
     def commit(self) -> None:
         self.conn.commit()
@@ -504,7 +628,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "tpcc_30") as conn:
+    with MySQL(database = "sysbench_tune") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -538,7 +662,7 @@ if __name__ == '__main__':
         #conn.reset_knob_configuration()
         #print(conn.memory_size('gb'))
         #print(conn.db_column_count, len(MySQL.col_indices_to_list(conn.get_columns_from_database())))
-        print(conn.workload_cost())
+        #print(conn.workload_cost())
         #print(conn.tpcc_metrics(2))
         '''
         t = time.time()
@@ -546,11 +670,19 @@ if __name__ == '__main__':
         print(time.time() - t)
         #print(time.time() - t)
         '''
+        #print(conn.memory_size('gb'))
+        #print([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()])
         #print(conn.tpcc_metrics(2))
         #print(conn.memory_size('b')[conn.database])
-
+        #simple_refresh()
         #conn.drop_all_indices()
-    #print(MySQL.tpch_query_tests())
+        #print([col_data['INDEX_NAME']for col_data in conn.get_columns_from_database()])
+        '''
+        t = time.time()
+        print(conn.tpch_qphH_size())
+        print(time.time() - t)
+        '''
+        print(conn.sysbench_metrics())
 
     """
     select t.table_name, t.column_name, s.index_name

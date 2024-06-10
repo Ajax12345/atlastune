@@ -986,6 +986,7 @@ def display_tuning_results(f_name:str) -> None:
 
     rewards = [i['rewards'] for i in tuning_data]
     costs = [[statistics.geometric_mean(j[k]['cost'] for k in j) for j in i['costs']] for i in tuning_data]
+    '''
     if 'delta_rewards' in tuning_data[0]:
         fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
         delta_rewards = [i['delta_rewards'] for i in tuning_data]
@@ -997,25 +998,66 @@ def display_tuning_results(f_name:str) -> None:
         a3.set_ylabel("Absolute delta cost")
 
     else:
-        fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
+    '''
+    fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
 
-    a1.plot([*range(1,len(rewards[0])+1)], [sum(i)/len(i) for i in zip(*rewards)], label = 'dqn')
+    a1.plot([*range(1,len(rewards[0])+1)][:150], [sum(i)/len(i) for i in zip(*rewards)][:150], label = 'Earned reward')
 
-    a2.plot([*range(1,len(costs[0])+1)], [sum(i)/len(i) for i in zip(*costs)], label="dqn")
+    a2.plot([*range(1,len(costs[0])+1)][:150], [sum(i)/len(i) for i in zip(*costs)][:150], label="Workload cost")
 
     
 
     a1.title.set_text("Reward at each iteration")
     a1.legend(loc="lower right")
 
-    a1.set_xlabel("iteration")
-    a1.set_ylabel("reward")
+    a1.set_xlabel("Iteration")
+    a1.set_ylabel("Reward")
 
     a2.title.set_text("Total workload cost at each iteration")
-    a2.legend(loc="lower right")
+    a2.legend(loc="upper right")
+
+    a2.set_xlabel("Iteration")
+    a2.set_ylabel("Workload cost")
+
+    plt.show()
+
+def display_knob_tuning_results_agg(f_names:typing.List[str]) -> None:
+    rewards, latency, throughput = [], [], []
+    for i in f_names:
+        with open(i) as f:
+            tuning_data = json.load(f)
+            rewards.append(tuning_data['rewards'])
+            latency.append([i['latency'] for i in tuning_data['metrics']])
+            throughput.append([i['throughput'] for i in tuning_data['metrics']])
+
+    rewards = [statistics.mean(i) for i in zip(*rewards)]
+    latency = [statistics.mean(i) for i in zip(*latency)]
+    throughput = [statistics.mean(i) for i in zip(*throughput)]
+
+    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+
+    
+    a1.plot([*range(1, 201)], rewards[:200], label = 'reward')
+
+    a1.title.set_text("Reward")
+    a1.legend(loc="lower right")
+
+    a1.set_xlabel("iteration")
+    a1.set_ylabel("Reward")
+
+    a2.plot([*range(1, 201)], latency[:200], label = 'latency', color = 'orange')
+    a2.title.set_text("Latency")
+    a2.legend(loc="upper right")
 
     a2.set_xlabel("iteration")
-    a2.set_ylabel("Workload cost")
+    a2.set_ylabel("latency")
+
+    a3.plot([*range(1, 201)], throughput[:200], label = 'throughput', color = 'green')
+    a3.title.set_text("Throughput")
+    a3.legend(loc="lower right")
+
+    a3.set_xlabel("iteration")
+    a3.set_ylabel("throughput")
 
     plt.show()
 
@@ -1184,8 +1226,41 @@ def display_marl_results_v2(f_name:str) -> None:
 
     plt.show()
 
-def marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
+def ___marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
     fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
+
+    for l, files in blocks:
+        _index_rewards, _knob_rewards, _costs = zip(*[marl_results_v2_file_results(f_name) for f_name in files])
+        index_rewards = [sum(i)/len(i) for i in zip(*_index_rewards)][:150]
+        knob_rewards = [sum(i)/len(i) for i in zip(*_knob_rewards)][:150]
+        costs = [sum(i)/len(i) for i in zip(*_costs)][:300]
+        a1.plot([*range(1, len(costs)+1)], costs, label = l)
+        a2.plot([*range(1, len(index_rewards)+1)], index_rewards, label = l)
+        a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards, label = l)
+    
+    a1.legend(loc="upper right")
+    a1.title.set_text("Total Workload Cost")
+    a1.set_xlabel("Iteration")
+    a1.set_ylabel("Workload cost")
+    
+    a2.title.set_text("Index Tuner Reward")
+
+    a2.set_xlabel("Iteration")
+    a2.set_ylabel("Reward")
+    a2.legend(loc="lower right")
+    
+    a3.title.set_text("Knob Tuner Reward")
+
+    a3.set_xlabel("Iteration")
+    a3.set_ylabel("Reward")
+    a3.legend(loc="lower right")
+
+    
+    plt.show()
+
+
+def marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
+    fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
 
     for l, files in blocks:
         _index_rewards, _knob_rewards, _costs = zip(*[marl_results_v2_file_results(f_name) for f_name in files])
@@ -1194,26 +1269,26 @@ def marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
         costs = [sum(i)/len(i) for i in zip(*_costs)]
         a1.plot([*range(1, len(costs)+1)], costs, label = l)
         a2.plot([*range(1, len(index_rewards)+1)], index_rewards, label = l)
-        a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards, label = l)
+        #a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards, label = l)
     
     a1.legend(loc="upper right")
-
-    a1.set_xlabel("Time increment")
+    a1.title.set_text("Total Workload Cost")
+    a1.set_xlabel("Iteration")
     a1.set_ylabel("Workload cost")
+    
+    a2.title.set_text("Index Tuner Reward")
 
-    a2.title.set_text("Index Tuner Rewards")
-
-    a2.set_xlabel("iteration")
+    a2.set_xlabel("Iteration")
     a2.set_ylabel("Reward")
     a2.legend(loc="lower right")
+    '''
+    a3.title.set_text("Knob Tuner Reward")
 
-    a3.title.set_text("Knob Tuner Rewards")
-
-    a3.set_xlabel("iteration")
+    a3.set_xlabel("Iteration")
     a3.set_ylabel("Reward")
     a3.legend(loc="lower right")
-
-
+    '''
+    
     plt.show()
 
 def atlas_marl_tune(config:dict) -> None:
@@ -1286,20 +1361,32 @@ def atlas_marl_tune(config:dict) -> None:
             display_marl_results_v2(output_file)
 
 if __name__ == '__main__':
-    #display_marl_results_v2('outputs/marl_tuning_data/marl29.json')
+    #display_marl_results_v2('outputs/marl_tuning_data/marl31.json')
     #atlas_index_tune_dqn()
-    #display_tuning_results('outputs/tuning_data/rl_dqn23.json')
+    #display_tuning_results('outputs/tuning_data/rl_dqn16.json')
+    #display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg7.json')
+    '''
+    display_knob_tuning_results_agg([
+        'outputs/knob_tuning_data/rl_ddpg7.json',
+        'outputs/knob_tuning_data/rl_ddpg8.json',
+        'outputs/knob_tuning_data/rl_ddpg9.json',
+        'outputs/knob_tuning_data/rl_ddpg10.json',
+        'outputs/knob_tuning_data/rl_ddpg11.json',
+        'outputs/knob_tuning_data/rl_ddpg12.json',
+    ])
+    '''
     #atlas_marl_tune('tpcc_30', 50, 1, 300, True)
     '''
     atlas_marl_tune({
         'database':'tpcc_30',
-        'marl_step':50,
+        'marl_step':300,
         'epochs':1,
         'iterations':300,
-        'is_marl':False,
+        'is_marl':True,
         'index_reward_func':'compute_cost_delta_per_query_unscaled',
         'knob_reward_func':'compute_cost_delta_per_query_unscaled',
-        'output_file':'outputs/marl_tuning_data/marl30.json'
+        'from_buffer': 'experience_replay/dqn_index_tune/experience_replay_tpcc_30_2024-05-0920:06:08138200.json',
+        'output_file':'outputs/marl_tuning_data/marl32.json'
     })
     '''
     
@@ -1316,7 +1403,7 @@ if __name__ == '__main__':
             'outputs/marl_tuning_data/marl12.json',
     ])], statistics.mean)
     '''
-    
+
     marl_agg_stats_v2([('Interleaved MARL', [
             'outputs/marl_tuning_data/marl15.json',
             'outputs/marl_tuning_data/marl16.json',
@@ -1335,6 +1422,7 @@ if __name__ == '__main__':
             'outputs/marl_tuning_data/marl30.json',
         ])
     ])
+    
     #display_marl_results('outputs/marl_tuning_data/marl6.json')
     #atlas_knob_tune()
     #print(Normalize.add_noise([[1, 1, 1, 1, 1, 1, 1, 1, 1]], 0.1))
