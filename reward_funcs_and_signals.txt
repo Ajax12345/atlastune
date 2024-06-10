@@ -1,0 +1,9 @@
+Reward signals:
+
+    basic_query_workload_cost:
+        #note: computes the workload cost for each query via the query planner
+
+        - Supported reward functions:
+            compute_cost_delta_per_query_unscaled
+
+        

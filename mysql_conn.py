@@ -484,7 +484,7 @@ class MySQL:
     @DB_EXISTS()
     def drop_all_indices(self) -> None:
         for col_data in self.get_columns_from_database():
-            if col_data['INDEX_NAME'] == 'PRIMARY':
+            if col_data['INDEX_NAME'] and col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
                 continue
             
             if col_data['INDEX_NAME'] is not None:
@@ -628,7 +628,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "sysbench_tune") as conn:
+    with MySQL(database = "tpch1") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -682,7 +682,8 @@ if __name__ == '__main__':
         print(conn.tpch_qphH_size())
         print(time.time() - t)
         '''
-        print(conn.sysbench_metrics())
+        print(conn.workload_cost())
+        #print(conn.sysbench_metrics())
 
     """
     select t.table_name, t.column_name, s.index_name
