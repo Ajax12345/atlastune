@@ -1197,3 +1197,17 @@
         outputs/tuning_data/rl_dqn21.json
 
     Oberservations: does not work. Not a strong reward signal
+
+06/11/2024 @ 4:05 PM (Experiment 60)
+    Database: tpch1
+
+    TPC-H queries chosen: [1, 2, 3, 4, 5, 6, 7]
+
+    Testing refractored index tuner
+
+    Notes:
+        - not enough of a problem gradient
+        - might want to drop a few indexes
+        - might want to try on all the queries
+    
+    

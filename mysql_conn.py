@@ -474,7 +474,7 @@ class MySQL:
                         self.cur.execute(f'create index ATLAS_INDEX_{i} on {col_data["TABLE_NAME"]}({col_data["COLUMN_NAME"]})')
 
             else:
-                if col_data['INDEX_NAME'] is not None:
+                if col_data['INDEX_NAME'] is not None and not col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
                     try:
                         self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
                     except:
@@ -487,7 +487,7 @@ class MySQL:
             if col_data['INDEX_NAME'] and col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
                 continue
             
-            if col_data['INDEX_NAME'] is not None:
+            if col_data['INDEX_NAME'] is not None and not col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
                 try:
                     self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
                 except:
@@ -607,8 +607,9 @@ class MySQL:
     @DB_EXISTS()
     def tpch_qphH_size(self) -> float:
         assert self.database in ['tpch1']
-        power = cls.tpch_power_test(1, [1, 2, 3, 4, 5, 6, 7])
-        throughput = cls.tpch_throughput_test(2, 1, [1, 2, 3, 4, 5, 6, 7])
+        #[1, 2, 3, 4, 5, 6, 7, 9, 12, 17, 18, 19]
+        power = self.__class__.tpch_power_test(1, [1, 2, 3, 4, 5, 6, 7])
+        throughput = self.__class__.tpch_throughput_test(2, 1, [1, 2, 3, 4, 5, 6, 7])
         return pow(power*throughput, 0.5)
 
     def commit(self) -> None:
@@ -682,7 +683,11 @@ if __name__ == '__main__':
         print(conn.tpch_qphH_size())
         print(time.time() - t)
         '''
-        print(conn.workload_cost())
+        conn.drop_all_indices()
+        for i in conn.get_columns_from_database():
+            print(i['INDEX_NAME'])
+
+        
         #print(conn.sysbench_metrics())
 
     """

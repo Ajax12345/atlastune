@@ -6,4 +6,9 @@ Reward signals:
         - Supported reward functions:
             compute_cost_delta_per_query_unscaled
 
+    tpch_queries_per_hour:
+        #note: runs TPC-H benchmark
+
+        - Supported reward functions:
+            compute_tpch_qph_reward
         

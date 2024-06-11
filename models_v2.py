@@ -300,12 +300,24 @@ class Atlas_Rewards:
 
         return c
 
+    def compute_tpch_qph_reward(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        o_qph = experience_replay[0][-1]['qph']
+        return (w2['qph'] - o_qph)/o_qph
+
 
 class Atlas_Reward_Signals:
-    def basic_query_workload_cost(self, conn:'db.MySQL') -> dict:
-        full_query_cost = conn.workload_cost()
+    def basic_query_workload_cost(self) -> dict:
+        full_query_cost = self.conn.workload_cost()
         return {'index': full_query_cost,
             'params': {'geo_avg_workload_cost':statistics.geometric_mean([full_query_cost[i]['cost'] for i in full_query_cost])}}
+
+    def tpch_queries_per_hour(self) -> dict:
+        qph = self.conn.tpch_qphH_size()
+        return {'qph': qph,
+            'params': {
+                'qph': qph
+            }
+        }
 
 
 class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
@@ -802,14 +814,14 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
             return
 
         self.experience_replay = [[[*indices, *(metrics if is_marl else [])], 
-                None, None, None, w2_o:=getattr(self, reward_signal)(self.conn)]]
+                None, None, None, w2_o:=getattr(self, reward_signal)()]]
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
 
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([[*indices, *(metrics if is_marl else [])], ind, 
                 getattr(self, reward_func)(self.experience_replay,
-                        w2:=getattr(self, reward_signal)(self.conn)), 
+                        w2:=getattr(self, reward_signal)()), 
                 [*_indices, *(metrics if is_marl else [])], w2])
             indices = _indices
 
@@ -876,7 +888,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
             self.conn.apply_index_configuration(_indices)
             self.experience_replay.append([state, ind, 
                 reward:=getattr(self, reward_func)(self.experience_replay,
-                        w2:=getattr(self, reward_signal)(self.conn)), 
+                        w2:=getattr(self, reward_signal)()), 
                 [*_indices, *(metrics if is_marl else [])], w2])
 
             rewards.append(reward)
@@ -1142,7 +1154,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
             json.dump(tuning_data, f)
         
         print('Index tuning outputs saved to', rl_output_f)
-        print('knob tuning complete!!')
+        print('index tuning complete!!')
         display_tuning_results(rl_output_f)
 
 
@@ -1394,22 +1406,22 @@ def atlas_marl_tune(config:dict) -> None:
             display_marl_results_v2(output_file)
 
 if __name__ == '__main__':
-
+    
     atlas_index_tune_dqn({
         'database': 'tpch1',
         'weight_copy_interval': 10,
         'epsilon': 1,
         'epsilon_decay': 0.0055,
         'marl_step': 50,
-        'iterations': 100,
-        'reward_func': 'compute_cost_delta_per_query_unscaled',
-        'reward_signal': 'basic_query_workload_cost',
+        'iterations': 200,
+        'reward_func': 'compute_tpch_qph_reward',
+        'reward_signal': 'tpch_queries_per_hour',
         'is_marl': True,
         'epochs': 1,
         'reward_buffer': None,
-        'reward_buffer_size':20,
-        'batch_sample_size':5
+        'reward_buffer_size':60,
+        'batch_sample_size':50
     })
     
-    #display_tuning_results('outputs/tuning_data/rl_dqn24.json')
+    #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     
