@@ -131,7 +131,7 @@ sysbench_tune
         --sum_ranges=2 \
         --range_selects=on \
         --secondary=off \
-        --table_size=500000 \
+        --table_size=1000000 \
         --tables=10 \
         --rand-type=uniform \
         prepare
@@ -162,6 +162,32 @@ sysbench_tune
         --tables=10 \
         --rand-type=uniform \
         run
+
+    sysbench oltp_read_write \
+        --db-driver=mysql \
+        --mysql-db=sysbench_tune \
+        --mysql-user=root \
+        --mysql-password=Gobronxbombers2 \
+        --mysql_storage_engine=innodb \
+        --threads=50 \
+        --time=10 \
+        --forced-shutdown=1 \
+        --auto_inc=off \
+        --create_secondary=off \
+        --delete_inserts=2 \
+        --distinct_ranges=2 \
+        --index_updates=2 \
+        --non_index_updates=2 \
+        --order_ranges=2 \
+        --point_selects=2 \
+        --simple_ranges=1 \
+        --sum_ranges=2 \
+        --range_selects=on \
+        --secondary=off \
+        --table_size=500000 \
+        --tables=10 \
+        --rand-type=uniform \
+        cleanup
 
         - https://severalnines.com/blog/how-benchmark-performance-mysql-mariadb-using-sysbench/
 

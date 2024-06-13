@@ -1208,6 +1208,10 @@
     Notes:
         - not enough of a problem gradient
         - might want to drop a few indexes
-        - might want to try on all the queries
+        - might want to try on all the queries (or more of them)
+        - try on a larger database
+
+
+        - for latency and throughput, just compute min(latency, throughput), do not find difference between begining and end
     
-    
+

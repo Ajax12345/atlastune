@@ -11,4 +11,11 @@ Reward signals:
 
         - Supported reward functions:
             compute_tpch_qph_reward
+
+
+    sysbench_latency_throughput
+        #note: computes throughput and latency on sysbench_tune
+
+        - Supported reward functions:
+            compute_sysbench_reward
         

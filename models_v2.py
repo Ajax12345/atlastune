@@ -304,14 +304,20 @@ class Atlas_Rewards:
         o_qph = experience_replay[0][-1]['qph']
         return (w2['qph'] - o_qph)/o_qph
 
+    def compute_sysbench_reward(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        return min([
+            (experience_replay[0][-1]['latency'] - w2['latency'])/experience_replay[0][-1]['latency'],
+            (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
+        ])
+
 
 class Atlas_Reward_Signals:
-    def basic_query_workload_cost(self) -> dict:
+    def basic_query_workload_cost(self, *args, **kwargs) -> dict:
         full_query_cost = self.conn.workload_cost()
         return {'index': full_query_cost,
             'params': {'geo_avg_workload_cost':statistics.geometric_mean([full_query_cost[i]['cost'] for i in full_query_cost])}}
 
-    def tpch_queries_per_hour(self) -> dict:
+    def tpch_queries_per_hour(self, *args, **kwargs) -> dict:
         qph = self.conn.tpch_qphH_size()
         return {'qph': qph,
             'params': {
@@ -319,6 +325,16 @@ class Atlas_Reward_Signals:
             }
         }
 
+    def sysbench_latency_throughput(self, seconds:int = 10) -> dict:
+        d = self.conn.sysbench_metrics(seconds)
+        return {
+            'latency': d['latency_max'],
+            'throughput': d['throughput'],
+            'params': {
+                'latency': d['latency_max'],
+                'throughput': d['throughput']
+            }
+        }
 
 class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
     def __init__(self, database:str, conn = None, config = {
@@ -329,7 +345,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
             'noise_decay':0.001,
             'replay_size':50,
             'batch_size':20,
-            'tpcc_time':4,
+            'workload_exec_time':4,
             'tau':0.9999
         }) -> None:
         self.database = database
@@ -379,15 +395,13 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
     def log_message(self, message:str) -> None:
         self.tuning_log.write('\n'+'#'*16+message+'#'*16)
 
-    def build_workload_payload(self, is_marl:bool = False) -> dict:
-        #d = {'knob': self.conn.tpcc_metrics(self.config['tpcc_time'])}
-        d = {}
-        if getattr(self, 'ENABLE_MARL_REWARD', True) or (is_marl and not getattr(self, 'DISABLE_MARL_REWARD', False)):
-            d['index'] = self.conn.workload_cost()
+    def tune(self, iterations:int, 
+            reward_func:str = None,
+            reward_signal:str = None, 
+            reset_knobs:bool = True, 
+            is_marl:bool = False, 
+            is_epoch:bool = False) -> dict:
 
-        return d
-
-    def tune(self, iterations:int, reward_func:str = 'compute_delta_min_reward', reset_knobs:bool = True, is_marl:bool = False, is_epoch:bool = False) -> dict:
         if reset_knobs:
             self.log_message('Resetting knobs')
             self.conn.reset_knob_configuration()
@@ -411,7 +425,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
         '''
 
         if not self.experience_replay:
-            self.experience_replay = [[state, None, None, None, self.build_workload_payload(is_marl)]]
+            self.experience_replay = [[state, None, None, None, getattr(self, reward_signal)(self.config['workload_exec_time'])]]
         
         rewards = []
         skip_experience = self.config['replay_size']
@@ -434,7 +448,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
             self.conn.apply_knob_configuration(knob_dict)
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
-                reward:=getattr(self, reward_func)(self.experience_replay, None, w2:=self.build_workload_payload(is_marl)),
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
                 [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
@@ -495,15 +509,11 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
             if i and not i%self.config['marl_step']:
                 yield {
                 'experience_replay':self.experience_replay,
-                'rewards':rewards, 
-                'metrics':[i[-1].get('knob') 
-                    for i in self.experience_replay[skip_experience:]]}, False
+                'rewards':rewards}, False
                 
         yield {
             'experience_replay':self.experience_replay,
-            'rewards':rewards, 
-            'metrics':[i[-1].get('knob') 
-                for i in self.experience_replay[skip_experience:]]}, True
+            'rewards':rewards}, True
 
 
     def __exit__(self, *_) -> None:
@@ -921,10 +931,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
                 self.reset_target_weights()
 
             if iteration and not iteration%self.config['marl_step']:
-                yield {'experience_replay':self.experience_replay[reward_buffer_size:], 
+                yield {'experience_replay':self.experience_replay, 
                     'rewards':rewards}, False
 
-        yield {'experience_replay':self.experience_replay[reward_buffer_size:], 
+        yield {'experience_replay':self.experience_replay, 
                     'rewards':rewards}, True
     
     def mount_entities(self) -> None:
@@ -1035,82 +1045,15 @@ def display_tuning_results(f_name:str) -> None:
 
 
     plt.show()
-    
 
-def display_knob_tuning_results_agg(f_names:typing.List[str]) -> None:
-    rewards, latency, throughput = [], [], []
-    for i in f_names:
-        with open(i) as f:
-            tuning_data = json.load(f)
-            rewards.append(tuning_data['rewards'])
-            latency.append([i['latency'] for i in tuning_data['metrics']])
-            throughput.append([i['throughput'] for i in tuning_data['metrics']])
-
-    rewards = [statistics.mean(i) for i in zip(*rewards)]
-    latency = [statistics.mean(i) for i in zip(*latency)]
-    throughput = [statistics.mean(i) for i in zip(*throughput)]
-
-    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-
-    
-    a1.plot([*range(1, 201)], rewards[:200], label = 'reward')
-
-    a1.title.set_text("Reward")
-    a1.legend(loc="lower right")
-
-    a1.set_xlabel("iteration")
-    a1.set_ylabel("Reward")
-
-    a2.plot([*range(1, 201)], latency[:200], label = 'latency', color = 'orange')
-    a2.title.set_text("Latency")
-    a2.legend(loc="upper right")
-
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("latency")
-
-    a3.plot([*range(1, 201)], throughput[:200], label = 'throughput', color = 'green')
-    a3.title.set_text("Throughput")
-    a3.legend(loc="lower right")
-
-    a3.set_xlabel("iteration")
-    a3.set_ylabel("throughput")
-
-    plt.show()
-
-def display_knob_tuning_results(f_name:str) -> None:
-    with open(f_name) as f:
-        tuning_data = json.load(f)
-
-    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-
-    
-    a1.plot([*range(1, len(tuning_data['rewards'])+1)], tuning_data['rewards'], label = 'reward')
-
-    a1.title.set_text("Reward")
-    a1.legend(loc="lower right")
-
-    a1.set_xlabel("iteration")
-    a1.set_ylabel("Reward")
-
-    a2.plot([*range(1, len(tuning_data['metrics'])+1)], [i['latency'] for i in tuning_data['metrics']], label = 'latency', color = 'orange')
-    a2.title.set_text("Latency")
-    a2.legend(loc="upper right")
-
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("latency")
-
-    a3.plot([*range(1, len(tuning_data['metrics'])+1)], [i['throughput'] for i in tuning_data['metrics']], label = 'throughput', color = 'green')
-    a3.title.set_text("Throughput")
-    a3.legend(loc="lower right")
-
-    a3.set_xlabel("iteration")
-    a3.set_ylabel("throughput")
-
-    plt.show()
 
 def generate_index_tune_output_file() -> str:
     ind = max(int(re.findall('\d+(?=\.json)', i)[0]) for i in os.listdir('outputs/tuning_data') if i.endswith('.json')) + 1
     return f'outputs/tuning_data/rl_dqn{ind}.json'
+
+def generate_knob_tune_output_file() -> str:
+    ind = max(int(re.findall('\d+(?=\.json)', i)[0]) for i in os.listdir('outputs/knob_tuning_data') if i.endswith('.json')) + 1
+    return f'outputs/knob_tuning_data/rl_ddpg{ind}.json'
 
 def atlas_index_tune_dqn(config:dict) -> None:
     database = config['database']
@@ -1158,19 +1101,48 @@ def atlas_index_tune_dqn(config:dict) -> None:
         display_tuning_results(rl_output_f)
 
 
-def atlas_knob_tune() -> None:
-    with Atlas_Knob_Tune('tpcc_30') as a_knob:
-        a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':50})
-        a_knob_prog = a_knob.tune(200, reward_func = 'compute_delta_avg_reward', is_marl = True)
-        while True:
-            results, flag = next(a_knob_prog)
-            if flag:
-                break
+def atlas_knob_tune(config:dict) -> None:
+    database = config['database']
+    epochs = config['epochs']
+    replay_size = config['replay_size']
+    noise_scale = config['noise_scale']
+    noise_decay = config['noise_decay']
+    batch_size = config['batch_size']
+    workload_exec_time = config['workload_exec_time']
+    marl_step = config['marl_step']
+    iterations = config['iterations']
+    reward_func = config['reward_func']
+    reward_signal = config['reward_signal']
+    is_marl = config['is_marl']
 
-        with open('outputs/knob_tuning_data/rl_ddpg14.json', 'a') as f:
-            json.dump(results, f)
+    with Atlas_Knob_Tune(database) as a_knob:
+        tuning_data = []
+        for _ in range(epochs):
+            a_knob.update_config(**{'replay_size':replay_size, 
+                    'noise_scale':noise_scale, 
+                    'noise_decay':noise_decay, 
+                    'batch_size':batch_size, 
+                    'workload_exec_time': workload_exec_time, 
+                    'marl_step':marl_step})
+
+            a_knob_prog = a_knob.tune(iterations, 
+                reward_func = reward_func, 
+                reward_signal = reward_signal,
+                is_marl = is_marl,
+                is_epoch = epochs > 1)
+
+            while True:
+                results, flag = next(a_knob_prog)
+                if flag:
+                    tuning_data.append(results)
+                    break
+
+        with open(f_name:=generate_knob_tune_output_file(), 'a') as f:
+            json.dump(tuning_data, f)
         
-        display_knob_tuning_results('outputs/knob_tuning_data/rl_ddpg14.json')
+        print('knob tuning complete!')
+        print('knob tuning results saved to', f_name)
+        display_tuning_results(f_name)
 
 def display_marl_results(f_name:str) -> None:
     with open(f_name) as f:
@@ -1406,7 +1378,7 @@ def atlas_marl_tune(config:dict) -> None:
             display_marl_results_v2(output_file)
 
 if __name__ == '__main__':
-    
+    '''
     atlas_index_tune_dqn({
         'database': 'tpch1',
         'weight_copy_interval': 10,
@@ -1424,4 +1396,21 @@ if __name__ == '__main__':
     })
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
-    
+    '''
+    '''
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'epochs': 1,
+        'replay_size': 50,
+        'noise_scale': 1.5,
+        'noise_decay': 0.008,
+        'batch_size': 40,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 400,
+        'reward_func': 'compute_sysbench_reward',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True
+    })
+    '''
+    display_tuning_results('outputs/knob_tuning_data/rl_ddpg14.json')

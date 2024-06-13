@@ -351,7 +351,7 @@ class MySQL:
             '--mysql-user=root',
             '--mysql-password=Gobronxbombers2',
             '--mysql_storage_engine=innodb',
-            '--threads=50',
+            '--threads=2',
             f'--time={seconds}',
             '--forced-shutdown=1',
             '--auto_inc=off',
@@ -366,7 +366,7 @@ class MySQL:
             '--sum_ranges=2',
             '--range_selects=on',
             '--secondary=off',
-            '--table_size=500000',
+            '--table_size=1000000',
             '--tables=10',
             '--rand-type=uniform', 
         'run'], capture_output=True).stdout.decode())
@@ -671,10 +671,9 @@ if __name__ == '__main__':
         print(time.time() - t)
         #print(time.time() - t)
         '''
-        #print(conn.memory_size('gb'))
+        print(conn.memory_size('gb'))
         #print([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()])
         #print(conn.tpcc_metrics(2))
-        #print(conn.memory_size('b')[conn.database])
         #simple_refresh()
         #conn.drop_all_indices()
         #print([col_data['INDEX_NAME']for col_data in conn.get_columns_from_database()])
@@ -683,9 +682,7 @@ if __name__ == '__main__':
         print(conn.tpch_qphH_size())
         print(time.time() - t)
         '''
-        conn.drop_all_indices()
-        for i in conn.get_columns_from_database():
-            print(i['INDEX_NAME'])
+        
 
         
         #print(conn.sysbench_metrics())
