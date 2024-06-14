@@ -1214,4 +1214,60 @@
 
         - for latency and throughput, just compute min(latency, throughput), do not find difference between begining and end
     
+06/13/2024 @2:00 PM (Experiment 61)
+    Database: sysbench_tune
 
+    - testing refractored knob tuner
+
+    - todo: try using reward function that only accounts for throughput
+
+06/13/2024 @ 6:39 PM (Experiment 62)
+
+    Database: sysbench_tune
+
+    - Reward function: compute_sysbench_reward_throughput
+
+    - Todo: try with is_marl = True
+
+    outputs/knob_tuning_data/rl_ddpg15.json
+
+    - potential reward functions:
+        - max instead of min (to capture throughput)
+
+        - geometric mean with weighted throughput?
+
+        - normalize and then find min
+
+        - (w*((latency_old - latency_new)/latency_old) + (throughput_new - throughput_old)/throughput_new)/2
+                - w = 0.01
+
+            could also simply add: 0.01*l1 + th
+
+
+    - use sklearn.preprocessing.normalize?
+
+
+06/14/2024 @ 10:50 AM (Experiment 63)
+    Database: sysbench_tune
+
+    Reward function: compute_sysbench_weighted_avg_reward
+
+    Observations:
+        - currently a tradeoff between throughput and latency
+        - latency weight is directly proportional to its priority in tuning
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg16.json
+        outputs/knob_tuning_data/rl_ddpg17.json
+
+    Todo:
+        - Run on TPC-C
+
+
+06/14/2024 @ 2:40 PM (Experiment 64)
+    Database: sysbench_tune
+
+    Reward function: compute_sysbench_discounted_latency_reward
+
+
+    outputs/knob_tuning_data/rl_ddpg18.json

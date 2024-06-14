@@ -7,6 +7,8 @@ import copy, json, datetime
 import collections, time
 import matplotlib.pyplot as plt
 import statistics, os, re
+import whittaker_eilers
+from scipy.signal import savgol_filter
 
 class Normalize:
     @classmethod
@@ -310,6 +312,18 @@ class Atlas_Rewards:
             (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
         ])
 
+    def compute_sysbench_reward_throughput(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
+
+    def compute_sysbench_weighted_avg_reward(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        lt = (experience_replay[0][-1]['latency'] - w2['latency'])/experience_replay[0][-1]['latency']
+        th = (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
+        return (0.01*lt + th)/2
+
+    def compute_sysbench_discounted_latency_reward(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        lt = (experience_replay[0][-1]['latency'] - w2['latency'])/experience_replay[0][-1]['latency']
+        th = (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
+        return 0.001*lt + th
 
 class Atlas_Reward_Signals:
     def basic_query_workload_cost(self, *args, **kwargs) -> dict:
@@ -1002,11 +1016,25 @@ def atlas_index_tune_ddpg() -> None:
         plt.show()
 
 
-def display_tuning_results(f_name:str) -> None:
+def whittaker_smoother(vals):
+    w = whittaker_eilers.WhittakerSmoother(
+        lmbda=70, order=1, data_length=len(vals)
+    )
+    return w.smooth(vals)
+
+def sc_savgol_filter(vals):
+    return savgol_filter(vals, 5, 2)
+
+def display_tuning_results(f_name:str, smoother = None) -> None:
     with open(f_name) as f:
         tuning_data = json.load(f)
 
+    
     rewards = [sum(i)/len(i) for i in zip(*[i['rewards'] for i in tuning_data])]
+
+    if smoother is not None:
+        rewards = smoother(rewards)
+
     params = [[j[-1]['params'] for j in i['experience_replay']] for i in tuning_data]
     param_avgs = []
     for i in zip(*params):
@@ -1029,7 +1057,11 @@ def display_tuning_results(f_name:str) -> None:
     reward_plt.plot([*range(1,len(rewards)+1)], rewards, label = 'Earned reward')
 
     for a, k in zip(param_plt, row_params):
-        a.plot([*range(1, len(row_params[k])+1)], row_params[k])
+        row_param_vals = row_params[k]
+        if smoother is not None:
+            row_param_vals = smoother(row_param_vals)
+
+        a.plot([*range(1, len(row_params[k])+1)], row_param_vals)
         a.title.set_text(k)
         #a.legend(loc="upper right")
 
@@ -1098,7 +1130,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
         
         print('Index tuning outputs saved to', rl_output_f)
         print('index tuning complete!!')
-        display_tuning_results(rl_output_f)
+        display_tuning_results(rl_output_f, whittaker_smoother)
 
 
 def atlas_knob_tune(config:dict) -> None:
@@ -1142,7 +1174,7 @@ def atlas_knob_tune(config:dict) -> None:
         
         print('knob tuning complete!')
         print('knob tuning results saved to', f_name)
-        display_tuning_results(f_name)
+        display_tuning_results(f_name, whittaker_smoother)
 
 def display_marl_results(f_name:str) -> None:
     with open(f_name) as f:
@@ -1408,9 +1440,11 @@ if __name__ == '__main__':
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 400,
-        'reward_func': 'compute_sysbench_reward',
+        'reward_func': 'compute_sysbench_discounted_latency_reward',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True
     })
     '''
-    display_tuning_results('outputs/knob_tuning_data/rl_ddpg14.json')
+    
+    display_tuning_results('outputs/knob_tuning_data/rl_ddpg18.json', whittaker_smoother)
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
