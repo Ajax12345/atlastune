@@ -1271,3 +1271,76 @@
 
 
     outputs/knob_tuning_data/rl_ddpg18.json
+
+
+06/27/2024 @ 3:06 PM (Experiment 65)
+    Database: sysbench_tune
+
+    Reward function: compute_sysbench_discounted_latency_reward
+
+    Iterations: 800
+
+    Investigating model convergence over a larger number of iterations
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg19.json
+
+    Ideas to achieve convergence:
+        - train over more epochs, not just iterations
+        - try a different (simpler?) model architecture
+        - try a new reward function that uses throughput as signal
+        - play around with random noise and annealing
+        - play around with the size of tau
+        - increase size of buffer sample to feed to model
+
+
+07/05/2024 @ 2:05 PM (Experiment 66)
+
+    Database: sysbench_tune
+
+    Iterations: 600
+
+    Reward function: compute_sysbench_reward_throughput
+
+    Noise decay: 0.05
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg20.json
+
+    No improvement
+
+    Ideas:
+        - stronger penalty for decrease in changes
+        - could store a "best seen delta" and reward or penalize based on how delta(t2, t1) compares
+
+
+
+07/05/2024 @ 7:41 PM (Experiment 67)
+
+    Database: sysbench_tune
+
+    Iterations: 400
+
+    Batch size: 50, slightly larger than normal (increase it further?)
+
+    Reward function: compute_sysbench_reward_throughput_max_adjust
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg21.json
+
+    Promising, need more iterations
+
+07/05/2024 @ 8:07 PM (Experiment 68)
+
+    Database: sysbench_tune
+
+    Iterations: 800
+
+    Batch size: 50
+
+    Reward function: compute_sysbench_reward_throughput_max_adjust
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg22.json
+
+    No change. Still volatile

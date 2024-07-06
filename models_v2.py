@@ -315,6 +315,18 @@ class Atlas_Rewards:
     def compute_sysbench_reward_throughput(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
 
+    def compute_sysbench_reward_throughput_raw(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        return w2['throughput']
+
+    def compute_sysbench_reward_throughput_max_adjust(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        m = max([i[-1]['throughput'] for i in experience_replay])
+        w2_t = w2['throughput']
+        if (w2_t - m)/m >= -0.3:
+            return w2_t
+        
+        return w2_t - m
+    
+
     def compute_sysbench_weighted_avg_reward(self, experience_replay:typing.List[dict], w2:dict) -> float:
         lt = (experience_replay[0][-1]['latency'] - w2['latency'])/experience_replay[0][-1]['latency']
         th = (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
@@ -444,7 +456,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
         rewards = []
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
-        for i in range(iterations):
+        for i in range(iterations + self.config['replay_size']):
             print('iteration', i+1)
             self.log_message(f'Iteration {i+1}')
             self.actor.eval()
@@ -474,12 +486,12 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
 
             if len(self.experience_replay) >= self.config['replay_size']:
-                '''
+                
                 with open(e_f_file:=f"experience_replay/ddpg_knob_tune/{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
                     json.dump(self.experience_replay, f)
 
                 print('experience replay saved to:', e_f_file)
-                '''
+                
                 inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_size'])
                 _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
                 s = torch.tensor([Normalize.normalize(i) for i in _s])
@@ -1025,12 +1037,14 @@ def whittaker_smoother(vals):
 def sc_savgol_filter(vals):
     return savgol_filter(vals, 5, 2)
 
-def display_tuning_results(f_name:str, smoother = None) -> None:
+def display_tuning_results(f_name:str, cutoff = None, smoother = None) -> None:
     with open(f_name) as f:
         tuning_data = json.load(f)
 
     
     rewards = [sum(i)/len(i) for i in zip(*[i['rewards'] for i in tuning_data])]
+    if cutoff:
+        rewards = rewards[:cutoff]
 
     if smoother is not None:
         rewards = smoother(rewards)
@@ -1061,7 +1075,10 @@ def display_tuning_results(f_name:str, smoother = None) -> None:
         if smoother is not None:
             row_param_vals = smoother(row_param_vals)
 
-        a.plot([*range(1, len(row_params[k])+1)], row_param_vals)
+        if cutoff:
+            row_param_vals = row_param_vals[:cutoff]
+
+        a.plot([*range(1, len(row_param_vals)+1)], row_param_vals)
         a.title.set_text(k)
         #a.legend(loc="upper right")
 
@@ -1130,7 +1147,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
         
         print('Index tuning outputs saved to', rl_output_f)
         print('index tuning complete!!')
-        display_tuning_results(rl_output_f, whittaker_smoother)
+        display_tuning_results(rl_output_f, smoother = whittaker_smoother)
 
 
 def atlas_knob_tune(config:dict) -> None:
@@ -1433,18 +1450,38 @@ if __name__ == '__main__':
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
-        'replay_size': 50,
+        'replay_size': 60,
         'noise_scale': 1.5,
-        'noise_decay': 0.008,
-        'batch_size': 40,
+        'noise_decay': 0.05,
+        'batch_size': 50,
         'workload_exec_time': 10,
         'marl_step': 50,
-        'iterations': 400,
-        'reward_func': 'compute_sysbench_discounted_latency_reward',
+        'iterations': 800,
+        'reward_func': 'compute_sysbench_reward_throughput_max_adjust',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True
     })
     '''
     
-    display_tuning_results('outputs/knob_tuning_data/rl_ddpg18.json', whittaker_smoother)
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
+    display_tuning_results('outputs/knob_tuning_data/rl_ddpg22.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
+    '''
+    with open('outputs/knob_tuning_data/rl_ddpg20.json') as f:
+        data = json.load(f)
+        d = data[0]['experience_replay']
+        rewards = []
+        for i, a in enumerate(d):
+            if i:
+                w2_t = a[-1]['throughput']
+                m = max([j[-1]['throughput'] for j in d[:i]])
+                if (w2_t - m)/m >= -0.3:
+                    rewards.append(w2_t)
+                else:
+                    rewards.append(w2_t - m)
+
+
+        plt.plot([*range(1, len(rewards)+1)], rewards)
+        plt.show()
+        #print(max([j/d[0][-1]['throughput'] for i in d if (j:=i[-1]['throughput'] - d[0][-1]['throughput']) > 0]))
+        '''
