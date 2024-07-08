@@ -1344,3 +1344,52 @@
         outputs/knob_tuning_data/rl_ddpg22.json
 
     No change. Still volatile
+
+
+    When massive dropoff in reward/throughput occurs, a few things could be done:
+        1. Reapply the knob configuration at the previous maximum
+
+        2. Use a lookahead. At each iteration, check if the net throughput increases or decreases
+            if it decreases below a certain threshold (perhaps the default throughput). Then retain the current configuration
+                - Try adding random noise to current config for five iterations, and if not improvement is found, continue
+            
+        3. Or, increase the annealing scale to encourage exploration. 
+
+
+07/06/2024 @ 9:41 AM (Experiment 69)
+
+    Database: sysbench_tune
+
+    Iterations: 800
+
+    Batch size: 50
+
+    Reward function: compute_sysbench_reward_throughput_raw
+
+    Trying a simpler network architecture
+
+    Outputs:
+        smoother = whittaker_smoother
+
+    Todo:
+        - retry with new architecture and non-annealing 
+        - Switch to ReLU from tanh
+        - train over more episodes
+
+        https://ai.stackexchange.com/questions/22945/ddpg-doesnt-converge-for-mountaincarcontinuous-v0-gym-environment
+        https://towardsdatascience.com/deep-deterministic-policy-gradients-explained-2d94655a9b7b
+
+07/08/2024 @ 10:05 AM (Experiment 70)
+
+    Database: sysbench_tune
+
+    Iterations: 600
+
+    Batch size: 50
+
+    Reward function: compute_sysbench_reward_throughput_raw
+
+    Trying simpler network architecture
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg24.json

@@ -38,6 +38,7 @@ class Atlas_Knob_Critic(nn.Module):
         self.state_input = nn.Linear(self.state_num, 128)
         self.action_input = nn.Linear(self.action_num, 128)
         self.act = nn.Tanh()
+        '''
         self.layers = nn.Sequential(
             nn.Linear(256, 256),
             nn.LeakyReLU(negative_slope=0.2),
@@ -46,6 +47,12 @@ class Atlas_Knob_Critic(nn.Module):
             nn.Tanh(),
             nn.Dropout(0.3),
             nn.BatchNorm1d(64),
+            nn.Linear(64, 1),
+        )
+        '''
+        self.layers = nn.Sequential(
+            nn.Linear(256, 64),
+            nn.Tanh(),
             nn.Linear(64, 1),
         )
         #self._init_weights()
@@ -72,6 +79,7 @@ class Atlas_Knob_Actor(nn.Module):
         super().__init__()
         self.state_num = state_num
         self.action_num = action_num
+        '''
         self.layers = nn.Sequential(
             nn.Linear(self.state_num, 128),
             nn.LeakyReLU(negative_slope=0.2),
@@ -82,6 +90,13 @@ class Atlas_Knob_Actor(nn.Module):
             nn.Linear(128, 64),
             nn.Tanh(),
             nn.BatchNorm1d(64),
+        )
+        '''
+        self.layers = nn.Sequential(
+            nn.Linear(self.state_num, 128),
+            nn.Tanh(),
+            nn.Linear(128, 64),
+            nn.Tanh()
         )
         self.out_layer = nn.Linear(64, self.action_num)
         self.act = nn.Sigmoid()
@@ -428,8 +443,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
             is_marl:bool = False, 
             is_epoch:bool = False) -> dict:
 
-        if reset_knobs:
-            self.log_message('Resetting knobs')
+        if reset_knobs or is_epoch:
+            print('Resetting knobs')
             self.conn.reset_knob_configuration()
 
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
@@ -486,12 +501,12 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
 
             if len(self.experience_replay) >= self.config['replay_size']:
-                
+                '''
                 with open(e_f_file:=f"experience_replay/ddpg_knob_tune/{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
                     json.dump(self.experience_replay, f)
 
                 print('experience replay saved to:', e_f_file)
-                
+                '''
                 inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_size'])
                 _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
                 s = torch.tensor([Normalize.normalize(i) for i in _s])
@@ -1152,7 +1167,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
 
 def atlas_knob_tune(config:dict) -> None:
     database = config['database']
-    epochs = config['epochs']
+    episodes = config['episodes']
     replay_size = config['replay_size']
     noise_scale = config['noise_scale']
     noise_decay = config['noise_decay']
@@ -1166,7 +1181,7 @@ def atlas_knob_tune(config:dict) -> None:
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
-        for _ in range(epochs):
+        for _ in range(episodes):
             a_knob.update_config(**{'replay_size':replay_size, 
                     'noise_scale':noise_scale, 
                     'noise_decay':noise_decay, 
@@ -1178,7 +1193,7 @@ def atlas_knob_tune(config:dict) -> None:
                 reward_func = reward_func, 
                 reward_signal = reward_signal,
                 is_marl = is_marl,
-                is_epoch = epochs > 1)
+                is_epoch = episodes > 1)
 
             while True:
                 results, flag = next(a_knob_prog)
@@ -1446,10 +1461,10 @@ if __name__ == '__main__':
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
-        'epochs': 1,
+        'episodes': 1,
         'replay_size': 60,
         'noise_scale': 1.5,
         'noise_decay': 0.05,
@@ -1457,14 +1472,14 @@ if __name__ == '__main__':
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 800,
-        'reward_func': 'compute_sysbench_reward_throughput_max_adjust',
+        'reward_func': 'compute_sysbench_reward_throughput_raw',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True
     })
-    '''
+    
     
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
-    display_tuning_results('outputs/knob_tuning_data/rl_ddpg22.json', smoother = whittaker_smoother)
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
     '''
     with open('outputs/knob_tuning_data/rl_ddpg20.json') as f:
