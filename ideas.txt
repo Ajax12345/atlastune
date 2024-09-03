@@ -2,6 +2,8 @@
 
 /usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server start
 
+/opt/homebrew/bin/mysql.server
+
 ps aux | grep mysqld
 
 kill -9 id
@@ -163,4 +165,6 @@ Sysbench:
     - https://github.com/HustAIsGroup/CDBTune/blob/abfbc25b6bc223c8be158b453fdf76bef43030eb/scripts/run_sysbench.sh#L13
 
 
-    
+Dockerizing:
+    - https://mothishdeenadayalan.medium.com/containerizing-a-python-app-mysql-python-docker-1ce64e444ed9
+    - https://stackoverflow.com/questions/9766014/connect-to-mysql-on-amazon-ec2-from-a-remote-server

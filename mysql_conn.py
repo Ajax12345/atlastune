@@ -499,7 +499,7 @@ class MySQL:
     def apply_knob_configuration(self, knobs:dict) -> None:
         self.__exit__()
         subprocess.run([
-            '/usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server',
+            '/opt/homebrew/bin/mysql.server',
             'restart', *[f"--{a.replace('_', '-')}={b}" for a, b in knobs.items()]
         ], stdout = self.stdout_f)
         self.conn = mysql.connector.connect(

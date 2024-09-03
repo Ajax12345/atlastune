@@ -1461,7 +1461,7 @@ if __name__ == '__main__':
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1471,13 +1471,13 @@ if __name__ == '__main__':
         'batch_size': 50,
         'workload_exec_time': 10,
         'marl_step': 50,
-        'iterations': 800,
+        'iterations': 600,
         'reward_func': 'compute_sysbench_reward_throughput_raw',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True
     })
-    
-    
+    '''
+    display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')

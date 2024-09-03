@@ -1,6 +1,7 @@
-mysql -u root -p
+mysql -u root -pGobronxbombers2
 export PATH=${PATH}:/usr/local/mysql/bin
 mysql --verbose --help | grep my.cnf
+/opt/homebrew/bin/mysql.server
 https://apple.stackexchange.com/questions/176786/how-to-add-mysql-to-path-variable-to-resolve-mysql-command-not-found
 
 
@@ -109,6 +110,8 @@ password: Gobronxbombers2
 
 
 sysbench_tune
+
+    /opt/homebrew/bin/mysql.server
 
     /usr/local/mysql/bin/mysql -u root -pGobronxbombers2
 
