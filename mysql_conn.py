@@ -31,7 +31,7 @@ class MySQL:
         'buffer_pool_pages_dirty', 'buffer_pool_bytes_dirty', 'buffer_pool_pages_free',
         'trx_rseg_history_len', 'file_num_open_files', 'innodb_page_size'
     ]
-    KNOBS = {
+    ALL_KNOBS = {
         ###'skip_name_resolve': ['enum', ['OFF', 'ON']],
         'table_open_cache': ['integer', [1, 10240, 512]],
         #'max_connections': ['integer', [1100, 100000, 80000]],
@@ -131,6 +131,14 @@ class MySQL:
         #'join_buffer_size': ['integer', [128, 'memory_lower_bound', 262144]],
         #'innodb_flushing_avg_loops': ['integer', [1, 1000, 30]],
 
+    }
+    KNOBS = {
+        'table_open_cache': ['integer', [1, 10240, 512]],
+        'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 'memory_size']],
+        'innodb_buffer_pool_instances': ['integer', [1, 64, 8]],
+        'innodb_purge_threads': ['integer', [1, 32, 1]],
+        'innodb_read_io_threads': ['integer', [1, 64, 12]],
+        'innodb_write_io_threads': ['integer', [1, 64, 12]],
     }
     KNOB_DEFAULTS = {
         "table_open_cache": 4000,

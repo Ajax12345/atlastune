@@ -1394,3 +1394,167 @@
     Outputs:
         outputs/knob_tuning_data/rl_ddpg24.json
         outputs/knob_tuning_data/rl_ddpg25.json
+
+    Does the annealing coeficient become too small? (Done)
+
+    Penalize if throughput falls below running average
+
+    Decrease the learning rate (Done)
+
+    Priority experience replay
+
+    Lower tau value
+
+    Re-read CDBTune paper
+
+    Need consistent, stationary reward signal. Go back to rewarding basic points?
+
+    https://openreview.net/pdf?id=64vORA8HUNv
+
+
+    Switch to ReLU from Tanh
+
+
+09/03/2024 @ 1:37 PM (Experiment 71)
+    Database: sysbench_tune
+
+    Iterations: 600
+
+    Batch size: 50
+
+    Reward function: compute_sysbench_reward_throughput_delta
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg26.json
+
+    {
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 1.5,
+        'noise_decay': 0.05,
+        'batch_size': 50,
+        'min_noise_scale': 1*10**-4,
+        'alr': 1*10**-5,
+        'clr': 1*10**-5
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'reward_func': 'compute_sysbench_reward_throughput_delta',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True
+    }
+
+    - clipped noise scale, smaller learning rates, and delta reward function
+
+    Eliminate all noise after a certain number of iterations?
+
+    Increase "workload_exec_time"
+
+    Clip rewards? That way they all within a particular range
+
+    Catastrophic forgetting?
+        - Possible environment issue
+
+    Remove normalization of rewards in main body of code?
+
+
+09/03/2024 @ 4:34 PM (Experiment 72)
+    Database: sysbench_tune
+
+    Iterations: 600
+
+    Batch size: 50
+
+    {
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 40,
+        'noise_scale': 1.5,
+        'noise_decay': 0.05,
+        'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 20,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True
+    }
+
+    Use a larger random sample size?
+
+    Run multiple update rounds per iteration?
+
+    Perhaps it needs to be trained for many hours?
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg27.json
+
+
+    Increase random batch size?
+
+    Replace knob generation with scheme from here: https://openreview.net/pdf?id=64vORA8HUNv
+
+    Reduce the number of knobs being tuned
+
+    Next steps:
+        - reduce number of knobs
+        - decrease learning rate further
+        - reduce noise to 0 after certain period of time
+
+    Possible reward function: 
+        reward more if better than average
+        else penalize
+
+09/04/2024 @ 10:46 AM (Experiment 73)
+    Database: sysbench_tune
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 1.5,
+        'noise_decay': 0.05,
+        'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 20,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True
+    })
+
+    Trying on fewer knobs (only six)
+
+    To do next:
+        - decrease learning rate further
+        - try on larger random batch sample size
+        - reduce noise to 0 after certain period of time
+        - instead of actor_loss = pqv.mean(), try:
+                actor_loss = pqv.sum()
+
+        - use epsilon greedy to either return the raw action from the model or add noise to it
+
+        - learning rate annealing
+
+        - may just need to train for longer on larger table sizes
+
+
+        - after x number of iterations (or after noise scale decreases to a specific amount),
+            do not add new action to memory buffer. This way, it will not become overrepresented with the same values.
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg28.json
+
+
+

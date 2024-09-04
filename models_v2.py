@@ -330,6 +330,9 @@ class Atlas_Rewards:
     def compute_sysbench_reward_throughput(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
 
+    def compute_sysbench_reward_throughput_delta(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        return (w2['throughput'] - experience_replay[-1][-1]['throughput'])/experience_replay[-1][-1]['throughput']
+
     def compute_sysbench_reward_throughput_raw(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return w2['throughput']
 
@@ -422,6 +425,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
         self.critic = Atlas_Knob_Critic(state_num, action_num, 1)
         self.critic_target = Atlas_Knob_Critic(state_num, action_num, 1)
         self.loss_criterion = nn.MSELoss()
+        print('actor lr:', self.config['alr'])
+        print('critic lr:', self.config['clr'])
         self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
         self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
         self.actor_target.load_state_dict(self.actor.state_dict())
@@ -446,6 +451,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
         if reset_knobs or is_epoch:
             print('Resetting knobs')
             self.conn.reset_knob_configuration()
+
+        print('update number specified', self.config['updates'])
 
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
@@ -472,8 +479,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
         for i in range(iterations + self.config['replay_size']):
-            print('iteration', i+1)
-            self.log_message(f'Iteration {i+1}')
+            print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
+            #self.log_message(f'Iteration {i+1}')
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
@@ -483,7 +490,9 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
                 'memory_size':(mem_size:=self.conn.memory_size('b')[self.database]*4),
                 'memory_lower_bound':min(4294967168, mem_size)
             }
-            [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), noise_scale)
+
+            clipped_noise_scale = max(noise_scale, noise_scale if (mns:=self.config.get('min_noise_scale')) is None else mns)
+            [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
             self.conn.apply_knob_configuration(knob_dict)
@@ -507,45 +516,50 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
 
                 print('experience replay saved to:', e_f_file)
                 '''
-                inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_size'])
-                _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-                s = torch.tensor([Normalize.normalize(i) for i in _s])
-                a = torch.tensor([[float(j) for j in i] for i in _a])
-                s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
-                r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
+                for _ in range(self.config['updates']):
 
-                target_action = self.actor_target(s_prime)
+                    self.actor.eval()
+                    self.actor_target.eval()
+                    self.critic.eval()
+                    self.critic_target.eval()
 
-                target_q_value = self.critic_target(s_prime, target_action)
-                next_value = r + self.config['gamma']*target_q_value
+                    inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_size'])
+                    _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+                    s = torch.tensor([Normalize.normalize(i) for i in _s])
+                    a = torch.tensor([[float(j) for j in i] for i in _a])
+                    s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
+                    r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
 
-                current_value = self.critic(s, a)
-                
-                u = self.actor(s)
-                predicted_q_value = self.critic(s, u)
+                    target_action = self.actor_target(s_prime)
 
-                self.actor.train()
-                self.actor_target.train()
-                self.critic.train()
-                self.critic_target.train()
+                    target_q_value = self.critic_target(s_prime, target_action)
+                    next_value = r + self.config['gamma']*target_q_value
 
-                loss = self.loss_criterion(current_value, next_value)
-                print(loss)
-            
-                
-                self.critic_optimizer.zero_grad()
-                loss.backward()
+                    current_value = self.critic(s, a)
+                    
+                    u = self.actor(s)
+                    predicted_q_value = self.critic(s, u)
 
-                pqv = -1*predicted_q_value
-                actor_loss = pqv.mean()
-                self.actor_optimizer.zero_grad()
-                actor_loss.backward()
+                    self.actor.train()
+                    self.actor_target.train()
+                    self.critic.train()
+                    self.critic_target.train()
 
-                self.critic_optimizer.step()
-                self.actor_optimizer.step()
+                    loss = self.loss_criterion(current_value, next_value)                
+                    
+                    self.critic_optimizer.zero_grad()
+                    loss.backward()
 
-                self.update_target_weights(self.critic_target, self.critic)
-                self.update_target_weights(self.actor_target, self.actor)
+                    pqv = -1*predicted_q_value
+                    actor_loss = pqv.mean()
+                    self.actor_optimizer.zero_grad()
+                    actor_loss.backward()
+
+                    self.critic_optimizer.step()
+                    self.actor_optimizer.step()
+
+                    self.update_target_weights(self.critic_target, self.critic)
+                    self.update_target_weights(self.actor_target, self.actor)
 
             if i and not i%self.config['marl_step']:
                 yield {
@@ -1178,6 +1192,11 @@ def atlas_knob_tune(config:dict) -> None:
     reward_func = config['reward_func']
     reward_signal = config['reward_signal']
     is_marl = config['is_marl']
+    alr = config['alr']
+    clr = config['clr']
+    tau = config['tau']
+    min_noise_scale = config['min_noise_scale']
+    updates = config.get('updates', 1)
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1187,7 +1206,12 @@ def atlas_knob_tune(config:dict) -> None:
                     'noise_decay':noise_decay, 
                     'batch_size':batch_size, 
                     'workload_exec_time': workload_exec_time, 
-                    'marl_step':marl_step})
+                    'marl_step':marl_step,
+                    'min_noise_scale': min_noise_scale,
+                    'updates': updates,
+                    'tau': tau,
+                    'alr': alr,
+                    'clr': clr})
 
             a_knob_prog = a_knob.tune(iterations, 
                 reward_func = reward_func, 
@@ -1206,7 +1230,7 @@ def atlas_knob_tune(config:dict) -> None:
         
         print('knob tuning complete!')
         print('knob tuning results saved to', f_name)
-        display_tuning_results(f_name, whittaker_smoother)
+        display_tuning_results(f_name, smoother = whittaker_smoother)
 
 def display_marl_results(f_name:str) -> None:
     with open(f_name) as f:
@@ -1461,7 +1485,7 @@ if __name__ == '__main__':
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1469,15 +1493,21 @@ if __name__ == '__main__':
         'noise_scale': 1.5,
         'noise_decay': 0.05,
         'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
-        'reward_func': 'compute_sysbench_reward_throughput_raw',
+        'updates': 20,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True
     })
-    '''
-    display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
+    
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
