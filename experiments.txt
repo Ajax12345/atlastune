@@ -1451,7 +1451,7 @@
 
     Increase "workload_exec_time"
 
-    Clip rewards? That way they all within a particular range
+    Clip rewards? That way they are all within a particular range
 
     Catastrophic forgetting?
         - Possible environment issue
@@ -1553,8 +1553,77 @@
         - after x number of iterations (or after noise scale decreases to a specific amount),
             do not add new action to memory buffer. This way, it will not become overrepresented with the same values.
 
+            noise_scale cutoff: 5.534631512972999e-05
+
+        - need to significantly decrease noise scale at the start?
+
+        - perhaps do not anneal noise factor?
+
     Outputs:
         outputs/knob_tuning_data/rl_ddpg28.json
 
 
+09/04/2024 @ 10:46 AM (Experiment 75)
+    Database: sysbench_tune
 
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.05,
+        'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 20,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True
+    })
+
+    Making it more likely to explore for longer
+
+    Ideas:
+        after every 100 iterations, clean up sysbench test suite
+
+    Should it simply terminate after best solution found?
+
+09/04/2024 @ 6:02 PM (Experiment 76)
+    Database: sysbench_tune
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.008,
+        'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True
+    })
+
+    Decrease Tau further?
+    Allow for more exploration?
+
+    To do:
+        - reset benchmark every "n" iterations
+        - only sample within "m" iterations
+        - perhaps just detect early convergence and terminate
+
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg30.json

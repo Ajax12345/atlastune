@@ -151,17 +151,17 @@ sysbench_tune
         --forced-shutdown=1 \
         --auto_inc=off \
         --create_secondary=off \
-        --delete_inserts=2 \
+        --delete_inserts=5 \
         --distinct_ranges=2 \
-        --index_updates=2 \
-        --non_index_updates=2 \
+        --index_updates=5 \
+        --non_index_updates=4 \
         --order_ranges=2 \
         --point_selects=2 \
         --simple_ranges=1 \
         --sum_ranges=2 \
         --range_selects=on \
         --secondary=off \
-        --table_size=500000 \
+        --table_size=1000000 \
         --tables=10 \
         --rand-type=uniform \
         run
@@ -187,7 +187,7 @@ sysbench_tune
         --sum_ranges=2 \
         --range_selects=on \
         --secondary=off \
-        --table_size=500000 \
+        --table_size=1000000 \
         --tables=10 \
         --rand-type=uniform \
         cleanup
@@ -251,3 +251,5 @@ To run TPC-H: remove all default primary keys and add a conventional primary_atl
 
 https://www.tpc.org/TPC_Documents_Current_Versions/pdf/TPC-H_v3.0.1.pdf
 https://github.com/mir-pucrs/smartix-rl/commit/5108d821ea2e6ac4d07d23a0af32c93bd9f1ea73
+
+Docker and sysbench: https://www.cyberdemon.org/2023/03/06/lab.html

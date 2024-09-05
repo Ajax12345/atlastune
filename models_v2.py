@@ -327,6 +327,16 @@ class Atlas_Rewards:
             (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
         ])
 
+    def scale_num(self, n:int) -> int:
+        n_b = int((s:=str(n)[0])+'0'*(L:=len(str(n))-1))
+        if n >= n_b + 5*10**(L-1):
+            return n_b + 10**L
+        return n_b
+
+    def compute_sysbench_reward_throughput_scaled(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        t = self.scale_num(experience_replay[0][-1]['throughput'])
+        return (self.scale_num(w2['throughput']) - t)/t
+
     def compute_sysbench_reward_throughput(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
 
@@ -1485,13 +1495,13 @@ if __name__ == '__main__':
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
-        'noise_scale': 1.5,
-        'noise_decay': 0.05,
+        'noise_scale': 0.5,
+        'noise_decay': 0.008,
         'batch_size': 50,
         'min_noise_scale': None,
         'alr': 1*10**-4,
@@ -1499,13 +1509,15 @@ if __name__ == '__main__':
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
-        'updates': 20,
+        'updates': 10,
         'tau': 0.9,
-        'reward_func': 'compute_sysbench_reward_throughput',
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True
     })
-    
+    '''
+    print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg30.json', smoother=whittaker_smoother))
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
