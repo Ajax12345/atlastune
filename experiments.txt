@@ -1563,7 +1563,7 @@
         outputs/knob_tuning_data/rl_ddpg28.json
 
 
-09/04/2024 @ 10:46 AM (Experiment 75)
+09/04/2024 @ 10:46 AM (Experiment 74)
     Database: sysbench_tune
 
     atlas_knob_tune({
@@ -1593,7 +1593,7 @@
 
     Should it simply terminate after best solution found?
 
-09/04/2024 @ 6:02 PM (Experiment 76)
+09/04/2024 @ 6:02 PM (Experiment 75)
     Database: sysbench_tune
 
     atlas_knob_tune({
@@ -1627,3 +1627,45 @@
 
     Outputs:
         outputs/knob_tuning_data/rl_ddpg30.json
+
+
+09/05/2024 @ 12:30 PM (Experiment 76)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.008,
+        'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': {
+            'steps': 50,
+            'func': 'sysbench_env_reset'
+        },
+        'is_marl': True
+    })
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg31.json
+
+    To do:
+        - Investigate output buffer
+        - anneal the learning rate
+        - larger random batch sample size
+        - ignore buffer samples after x iterations
+        - just detect early convergence
+        - torch.Adam weight_decay
+        - look into momentum in SGD
+        - decrease noise scale
+        - https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.MultiplicativeLR.html#torch.optim.lr_scheduler.MultiplicativeLR
+        - https://www.kaggle.com/code/isbhargav/guide-to-pytorch-learning-rate-scheduling

@@ -381,11 +381,70 @@ class MySQL:
         throughput = float(re.findall('queries\:\s+\d+\s+\((\d+(?:\.\d+)*)\sper sec\.\)', results)[0])
         latency_max = float(re.findall('max\:\s+(\d+(?:\.\d+)*)', results)[0])
         latency_95th = float(re.findall('95th percentile\:\s+(\d+(?:\.\d+)*)', results)[0])
+        
         return {
             'throughput': throughput,
             'latency_max': latency_max,
             'latency_95th': latency_95th
         }
+
+    @DB_EXISTS()
+    def sysbench_prepare_benchmark(self) -> None:
+        assert self.database in ['sysbench_tune']
+        results = str(subprocess.run(['sysbench', 'oltp_read_write',
+            '--db-driver=mysql', 
+            '--mysql-db=sysbench_tune', 
+            '--mysql-user=root', 
+            '--mysql-password=Gobronxbombers2', 
+            '--mysql_storage_engine=innodb', 
+            '--auto_inc=off', 
+            '--create_secondary=off', 
+            '--delete_inserts=5', 
+            '--distinct_ranges=2', 
+            '--index_updates=2', 
+            '--non_index_updates=4', 
+            '--order_ranges=2', 
+            '--point_selects=2', 
+            '--simple_ranges=1', 
+            '--sum_ranges=2', 
+            '--range_selects=on', 
+            '--secondary=off', 
+            '--table_size=1000000', 
+            '--tables=10', 
+            '--rand-type=uniform',
+        'prepare'], capture_output=True).stdout.decode())
+        print(results)
+
+    @DB_EXISTS()
+    def sysbench_cleanup_benchmark(self) -> None:
+        assert self.database in ['sysbench_tune']
+        results = str(subprocess.run(['sysbench', 'oltp_read_write',
+            '--db-driver=mysql', 
+            '--mysql-db=sysbench_tune', 
+            '--mysql-user=root', 
+            '--mysql-password=Gobronxbombers2', 
+            '--mysql_storage_engine=innodb', 
+            '--threads=50', 
+            '--time=10', 
+            '--forced-shutdown=1', 
+            '--auto_inc=off', 
+            '--create_secondary=off', 
+            '--delete_inserts=5', 
+            '--distinct_ranges=2', 
+            '--index_updates=4', 
+            '--non_index_updates=2', 
+            '--order_ranges=2', 
+            '--point_selects=2', 
+            '--simple_ranges=1', 
+            '--sum_ranges=2', 
+            '--range_selects=on', 
+            '--secondary=off', 
+            '--table_size=1000000', 
+            '--tables=10', 
+            '--rand-type=uniform',
+        'cleanup'], capture_output=True).stdout.decode())
+        print(results)
+    
 
     @DB_EXISTS()
     def tpcc_sysbench_metrics(self, seconds:int = 10, scale:int = 25) -> typing.List:
@@ -637,7 +696,7 @@ class MySQL:
 
 
 if __name__ == '__main__':
-    with MySQL(database = "tpch1") as conn:
+    with MySQL(database = "sysbench_tune") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -679,7 +738,7 @@ if __name__ == '__main__':
         print(time.time() - t)
         #print(time.time() - t)
         '''
-        print(conn.memory_size('gb'))
+        #print(conn.memory_size('gb'))
         #print([(i['TABLE_NAME'], i["COLUMN_NAME"]) for i in conn.get_columns_from_database()])
         #print(conn.tpcc_metrics(2))
         #simple_refresh()
@@ -690,9 +749,9 @@ if __name__ == '__main__':
         print(conn.tpch_qphH_size())
         print(time.time() - t)
         '''
-        
-
-        
+        #conn.sysbench_cleanup_benchmark()
+        #conn.sysbench_prepare_benchmark()
+        #print(conn.sysbench_metrics())
         #print(conn.sysbench_metrics())
 
     """

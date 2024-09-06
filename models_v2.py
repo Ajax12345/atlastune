@@ -390,7 +390,13 @@ class Atlas_Reward_Signals:
             }
         }
 
-class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
+class Atlas_Environment:
+    def sysbench_env_reset(self) -> None:
+        self.conn.sysbench_cleanup_benchmark()
+        self.conn.sysbench_prepare_benchmark()
+
+class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals, 
+        Atlas_Environment):
     def __init__(self, database:str, conn = None, config = {
             'alr':0.001,
             'clr':0.001,
@@ -491,6 +497,13 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals):
         for i in range(iterations + self.config['replay_size']):
             print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
             #self.log_message(f'Iteration {i+1}')
+            
+            if (env_reset:=self.config.get('env_reset')) is not None:
+                if i and not i%env_reset['steps']:
+                    print('resetting environment')
+                    getattr(self, env_reset['func'])()
+
+
             self.actor.eval()
             self.actor_target.eval()
             self.critic.eval()
@@ -1207,6 +1220,7 @@ def atlas_knob_tune(config:dict) -> None:
     tau = config['tau']
     min_noise_scale = config['min_noise_scale']
     updates = config.get('updates', 1)
+    env_reset = config.get('env_reset')
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1219,6 +1233,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'marl_step':marl_step,
                     'min_noise_scale': min_noise_scale,
                     'updates': updates,
+                    'env_reset': env_reset,
                     'tau': tau,
                     'alr': alr,
                     'clr': clr})
@@ -1513,10 +1528,14 @@ if __name__ == '__main__':
         'tau': 0.9,
         'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': {
+            'steps': 50,
+            'func': 'sysbench_env_reset'
+        },
         'is_marl': True
     })
     '''
-    print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg30.json', smoother=whittaker_smoother))
+    print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json'))
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
