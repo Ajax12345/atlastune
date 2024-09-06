@@ -1593,6 +1593,9 @@
 
     Should it simply terminate after best solution found?
 
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg29.json
+
 09/04/2024 @ 6:02 PM (Experiment 75)
     Database: sysbench_tune
 
@@ -1671,7 +1674,7 @@
         - https://www.kaggle.com/code/isbhargav/guide-to-pytorch-learning-rate-scheduling
 
 
-09/06/2024 @ 9:42 AM (Experiment 77)
+09/06/2024 @ 1:51 AM (Experiment 77)
 
     atlas_knob_tune({
         'database': 'sysbench_tune',
@@ -1679,13 +1682,13 @@
         'replay_size': 60,
         'noise_scale': 0.5,
         'noise_decay': 0.015,
-        'batch_size': 50,
+        'batch_size': 200,
         'min_noise_scale': None,
         'alr': 1*10**-4,
         'clr': 1*10**-4,
         'workload_exec_time': 10,
         'marl_step': 50,
-        'iterations': 600,
+        'iterations': 400,
         'updates': 10,
         'tau': 0.9,
         'reward_func': 'compute_sysbench_reward_throughput_scaled',
@@ -1694,4 +1697,17 @@
         'is_marl': True
     })
 
-    Removed weight_decay in Adam
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg32.json
+
+    larger batch size
+
+    To do:
+        - increase tau
+        - remove weight_decay
+
+    Look at results from:
+        - experiment 70
+        - experiment 70_1
+        - experiment 72
+        - experiment 77

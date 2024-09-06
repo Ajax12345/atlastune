@@ -311,6 +311,7 @@ class MySQL:
     @classmethod
     def activate_knob_actor_outputs(cls, output:typing.List[float], knob_activation_payload:dict) -> typing.Tuple[typing.List[int], dict]:
         def activate_knob(val:float, knob:str) -> int:
+            val = min(max(0, val), 1)
             knob_type, val_range = cls.KNOBS[knob]
             if knob_type == 'integer':
                 min_val, max_val, _ = [knob_activation_payload.get(i, i) for i in val_range]

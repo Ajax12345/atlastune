@@ -1,5 +1,7 @@
 /usr/local/mysql/bin/mysql -u root -pGobronxbombers2
 
+to fix memory leak issues: rm -rf /opt/homebrew/var/mysql
+
 /usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server start
 
 /opt/homebrew/bin/mysql.server

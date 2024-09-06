@@ -443,8 +443,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         self.loss_criterion = nn.MSELoss()
         print('actor lr:', self.config['alr'])
         print('critic lr:', self.config['clr'])
-        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters())
-        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters())
+        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
+        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.critic_target.load_state_dict(self.critic.state_dict())
 
@@ -517,14 +517,9 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             clipped_noise_scale = max(noise_scale, noise_scale if (mns:=self.config.get('min_noise_scale')) is None else mns)
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
-            while True:
-                try:
-                    self.conn.apply_knob_configuration(knob_dict)
-                    break
-                except:
-                    print('error applying new knob configuration, restarting...')
-                    self.conn.start_mysql_server()
-                    time.sleep(5)
+            
+            self.conn.apply_knob_configuration(knob_dict)
+
 
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
@@ -553,7 +548,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     self.critic.eval()
                     self.critic_target.eval()
 
-                    inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_size'])
+                    batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
+                    inds = random.sample([*range(1,len(self.experience_replay))], batch_size)
                     _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
                     s = torch.tensor([Normalize.normalize(i) for i in _s])
                     a = torch.tensor([[float(j) for j in i] for i in _a])
@@ -1497,6 +1493,17 @@ def atlas_marl_tune(config:dict) -> None:
             #display_marl_results(output_file)
             display_marl_results_v2(output_file)
 
+
+def knob_tune_action_vis(output_file:str) -> None:
+    #'outputs/knob_tuning_data/rl_ddpg28.json'
+    with open(output_file) as f:
+        data = json.load(f)
+
+    f_name = re.findall("\w+(?=\.json)", output_file)[0]
+    with open(f'outputs/action_vis/{f_name}.txt', 'a') as f:
+        f.write('\n'.join(f'{i}: {",".join(map(str,a[1]))}' for i, a in enumerate(data[0]['experience_replay'][1:], 1)))
+
+
 if __name__ == '__main__':
     '''
     atlas_index_tune_dqn({
@@ -1522,14 +1529,14 @@ if __name__ == '__main__':
             print(scale)
             scale -= scale * decay
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
         'noise_scale': 0.5,
         'noise_decay': 0.015,
-        'batch_size': 50,
+        'batch_size': 200,
         'min_noise_scale': None,
         'alr': 1*10**-4,
         'clr': 1*10**-4,
@@ -1543,9 +1550,11 @@ if __name__ == '__main__':
         'env_reset': None,
         'is_marl': True
     })
-    
+    '''
+    knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg24.json')
     #test_annealing(0.5, 0.015, 600)
-    #print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json'))
+    #print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother))
+
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
