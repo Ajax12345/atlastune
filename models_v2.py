@@ -443,8 +443,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         self.loss_criterion = nn.MSELoss()
         print('actor lr:', self.config['alr'])
         print('critic lr:', self.config['clr'])
-        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
-        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
+        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters())
+        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters())
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.critic_target.load_state_dict(self.critic.state_dict())
 
@@ -517,8 +517,15 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             clipped_noise_scale = max(noise_scale, noise_scale if (mns:=self.config.get('min_noise_scale')) is None else mns)
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
-            
-            self.conn.apply_knob_configuration(knob_dict)
+            while True:
+                try:
+                    self.conn.apply_knob_configuration(knob_dict)
+                    break
+                except:
+                    print('error applying new knob configuration, restarting...')
+                    self.conn.start_mysql_server()
+                    time.sleep(5)
+
             #print('configuration completed', time.time()-t)
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
@@ -1510,32 +1517,35 @@ if __name__ == '__main__':
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-    '''
+    def test_annealing(scale, decay, iterations):
+        for _ in range(iterations):
+            print(scale)
+            scale -= scale * decay
+
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
         'noise_scale': 0.5,
-        'noise_decay': 0.008,
+        'noise_decay': 0.015,
         'batch_size': 50,
         'min_noise_scale': None,
         'alr': 1*10**-4,
         'clr': 1*10**-4,
         'workload_exec_time': 10,
         'marl_step': 50,
-        'iterations': 600,
+        'iterations': 400,
         'updates': 10,
         'tau': 0.9,
         'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
-        'env_reset': {
-            'steps': 50,
-            'func': 'sysbench_env_reset'
-        },
+        'env_reset': None,
         'is_marl': True
     })
-    '''
-    print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json'))
+    
+    #test_annealing(0.5, 0.015, 600)
+    #print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json'))
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)

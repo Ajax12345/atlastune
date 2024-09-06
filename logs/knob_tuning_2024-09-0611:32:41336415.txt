@@ -1,0 +1,411 @@
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+.Starting MySQL
+.Starting MySQL
+........Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+.Starting MySQL
+.Starting MySQL
+.. ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+.. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).
+ ERROR! Failed to stop running server, so refusing to try to start.
+Starting MySQL
+ SUCCESS! 

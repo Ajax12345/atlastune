@@ -1669,3 +1669,29 @@
         - decrease noise scale
         - https://pytorch.org/docs/stable/generated/torch.optim.lr_scheduler.MultiplicativeLR.html#torch.optim.lr_scheduler.MultiplicativeLR
         - https://www.kaggle.com/code/isbhargav/guide-to-pytorch-learning-rate-scheduling
+
+
+09/06/2024 @ 9:42 AM (Experiment 77)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.015,
+        'batch_size': 50,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    Removed weight_decay in Adam

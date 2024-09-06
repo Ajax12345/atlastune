@@ -1,0 +1,1236 @@
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+... SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+.. SUCCESS! 
+Shutting down MySQL
+... SUCCESS! 
+Starting MySQL
+. SUCCESS! 
+Shutting down MySQL
+.. SUCCESS! 
+Starting MySQL
+. ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).

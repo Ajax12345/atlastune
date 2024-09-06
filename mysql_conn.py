@@ -578,6 +578,13 @@ class MySQL:
         self.new_cur()
 
     @DB_EXISTS()
+    def start_mysql_server(self) -> None:
+        subprocess.run([
+            '/opt/homebrew/bin/mysql.server',
+            'start'
+        ], stdout = self.stdout_f)
+
+    @DB_EXISTS()
     def reset_knob_configuration(self) -> None:
         self.apply_knob_configuration(self.__class__.KNOB_DEFAULTS)
 
