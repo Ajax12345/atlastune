@@ -1674,7 +1674,7 @@
         - https://www.kaggle.com/code/isbhargav/guide-to-pytorch-learning-rate-scheduling
 
 
-09/06/2024 @ 1:51 AM (Experiment 77)
+09/06/2024 @ 1:51 PM (Experiment 77)
 
     atlas_knob_tune({
         'database': 'sysbench_tune',
@@ -1711,3 +1711,116 @@
         - experiment 70_1
         - experiment 72
         - experiment 77
+
+
+09/06/2024 @ 7:50 PM (Experiment 78)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.015,
+        'batch_size': 200,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    Using lr annealing
+
+    torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x:0.97 ** x)
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg33.json
+
+    Idea to try if clustering fails:
+        - increase exploration, terminate when actor output convergence is detected
+
+    Strategy:
+        - decrease the noise quickly
+        - use clustering
+
+
+09/06/2024 @ 7:50 PM (Experiment 79)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.015,
+        'batch_size': 55,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.002,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    Using cluster queue
+
+    Try without annealing noise?
+
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg34.json
+
+
+09/07/2024 @ 2:38 PM (Experiment 80)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.015,
+        'batch_size': 55,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    To do: try without annealing noise?
+
+    train on the first 200 samples in the experience replay
+
+    Save the action model and see what the results are on any state
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg35.json
+
+    Remove all noise after 150 iterations (need exponential scale)
+
+    Probably just need early stopping
+
+    Try without reward scaling function
+
+    https://www.reddit.com/r/reinforcementlearning/comments/9iyz6v/why_does_drl_performance_collapse_after/
+    https://adgefficiency.com/dqn-tuning/

@@ -395,6 +395,58 @@ class Atlas_Environment:
         self.conn.sysbench_cleanup_benchmark()
         self.conn.sysbench_prepare_benchmark()
 
+
+class ClusterQueue:
+    def __init__(self, f:str = 'cosine', dist:float = 0.002) -> None:
+        def normalize(v:typing.List[float]) -> typing.List[float]:
+            s = sum(v)
+            return [i/s for i in v]
+
+        def clip(v:typing.List[float]) -> typing.List[float]:
+            return [min(max(0, i), 1) for i in v]
+
+        def cosine(v1:typing.List[float], v2:typing.List[float]) -> float:
+            v1, v2 = normalize(clip(v1)), normalize(clip(v2))
+            return 1 - sum(a*b for a, b in zip(v1, v2))/(pow(sum(a**2 for a in v1), 0.5) * pow(sum(b**2 for b in v2), 0.5))
+
+        def euclidian(v1:typing.List[float], v2:typing.List[float]) -> float:
+            v1, v2 = normalize(clip(v1)), normalize(clip(v2))
+            return pow(sum((a - b)**2 for a, b in zip(v1, v2)), 0.5)
+
+        self.f, self.dist = f, dist
+        self.clusters = []
+        self.f_map = {'cosine': cosine, 'euclidian': euclidian}
+        self.ind_count = 1
+        self.access_cache = []
+
+    def __len__(self) -> int:
+        return len(self.clusters)
+
+    def add_action(self, action:typing.List[float]) -> None:
+        if (cluster:=[i for i in self.clusters \
+                if all(self.f_map[self.f](action, j) <= self.dist for _, j in i)]):
+            c = random.choice(cluster)
+            c.append((self.ind_count, action))
+
+        else:
+            self.clusters.append([(self.ind_count, action)])
+            self.access_cache.append(None)
+
+        self.ind_count += 1
+
+    def sample(self, num:int) -> typing.List[int]:
+        assert num <= len(self.clusters)
+
+        results = []
+        for i in random.sample([*range(len(self.clusters))], num):
+            if self.access_cache[i] is None:
+                self.access_cache[i] = random.choice(self.clusters[i])[0]
+
+            results.append(self.access_cache[i])
+
+        return results
+
+
 class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals, 
         Atlas_Environment):
     def __init__(self, database:str, conn = None, config = {
@@ -417,6 +469,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         self.critic_target = None
         self.actor_optimizer = None
         self.critic_optimizer = None
+        self.actor_lr_scheduler = None
+        self.critic_lr_scheduler = None
         self.loss_criterion = None
         self.tuning_log = None
         self.experience_replay = []
@@ -445,6 +499,10 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         print('critic lr:', self.config['clr'])
         self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
         self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
+        
+        #self.actor_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.actor_optimizer, lr_lambda=lambda x:0.97 ** x)
+        #self.critic_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.critic_optimizer, lr_lambda=lambda x:0.97 ** x)
+
         self.actor_target.load_state_dict(self.actor.state_dict())
         self.critic_target.load_state_dict(self.critic.state_dict())
 
@@ -491,6 +549,9 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         if not self.experience_replay:
             self.experience_replay = [[state, None, None, None, getattr(self, reward_signal)(self.config['workload_exec_time'])]]
         
+
+        cq = ClusterQueue(dist = self.config['cluster_dist'])
+
         rewards = []
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
@@ -521,20 +582,23 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             self.conn.apply_knob_configuration(knob_dict)
 
 
-            #print('configuration completed', time.time()-t)
+            cq.add_action(selected_action)
+
+            print([[j for j, _ in i] for i in cq.clusters])
+
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
                 [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
-            #print('new stats computed')
+
             rewards.append(reward)
             state = [*(indices if is_marl else []), *metrics]
             print('noise scale:', noise_scale)
             noise_scale -= noise_scale*self.config['noise_decay']
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
 
-            if len(self.experience_replay) >= self.config['replay_size']:
+            if len(cq) >= self.config['replay_size']:
                 '''
                 with open(e_f_file:=f"experience_replay/ddpg_knob_tune/{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
                     json.dump(self.experience_replay, f)
@@ -548,8 +612,13 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     self.critic.eval()
                     self.critic_target.eval()
 
+                    '''
                     batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
                     inds = random.sample([*range(1,len(self.experience_replay))], batch_size)
+                    '''
+                    batch_size = min(self.config['batch_size'], len(self.experience_replay))
+                    inds = cq.sample(batch_size)
+
                     _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
                     s = torch.tensor([Normalize.normalize(i) for i in _s])
                     a = torch.tensor([[float(j) for j in i] for i in _a])
@@ -587,6 +656,10 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     self.update_target_weights(self.critic_target, self.critic)
                     self.update_target_weights(self.actor_target, self.actor)
 
+                #self.actor_lr_scheduler.step()
+                #self.critic_lr_scheduler.step()
+            
+            
             if i and not i%self.config['marl_step']:
                 yield {
                 'experience_replay':self.experience_replay,
@@ -1224,6 +1297,7 @@ def atlas_knob_tune(config:dict) -> None:
     min_noise_scale = config['min_noise_scale']
     updates = config.get('updates', 1)
     env_reset = config.get('env_reset')
+    cluster_dist = config['cluster_dist']
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1238,6 +1312,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'updates': updates,
                     'env_reset': env_reset,
                     'tau': tau,
+                    'cluster_dist': cluster_dist,
                     'alr': alr,
                     'clr': clr})
 
@@ -1504,6 +1579,84 @@ def knob_tune_action_vis(output_file:str) -> None:
         f.write('\n'.join(f'{i}: {",".join(map(str,a[1]))}' for i, a in enumerate(data[0]['experience_replay'][1:], 1)))
 
 
+def cluster(output_file:str, dist = 'cosine') -> None:
+    def normalize(v:typing.List[float]) -> typing.List[float]:
+        s = sum(v)
+        return [i/s for i in v]
+
+    def clip(v:typing.List[float]) -> typing.List[float]:
+        return [min(max(0, i), 1) for i in v]
+
+    def cosine(v1:typing.List[float], v2:typing.List[float]) -> float:
+        v1, v2 = normalize(clip(v1)), normalize(clip(v2))
+        return 1 - sum(a*b for a, b in zip(v1, v2))/(pow(sum(a**2 for a in v1), 0.5) * pow(sum(b**2 for b in v2), 0.5))
+
+    def euclidian(v1:typing.List[float], v2:typing.List[float]) -> float:
+        v1, v2 = normalize(clip(v1)), normalize(clip(v2))
+        return pow(sum((a - b)**2 for a, b in zip(v1, v2)), 0.5)
+
+    with open(output_file) as f:
+        data = json.load(f)
+
+    actions = [i[1] for i in data[0]['experience_replay'][1:]]
+
+    #print(cosine(actions[375], actions[373]))
+    #print(euclidian(actions[375], actions[373]))
+    '''
+    actions[369], actions[368] #similar
+    6.451746813018744e-06
+    0.0018070811865447459
+
+    actions[364], actions[373] #similar
+    0.0008159711495020483
+    0.02030111487558261
+
+    actions[375], actions[373] #disimilar
+    0.0022559732954188227
+    0.03337650973108767
+    '''
+    actions = actions
+    cq = ClusterQueue(dist = 0.001)
+    for i in actions:
+        cq.add_action(i)
+
+    m = dict(enumerate(actions))
+    clusters = []
+    while m:
+        v1 = m.pop(i:=random.choice([*m]))
+        c1 = [(i, v1)]
+        for j in [*m]:
+            if all(cosine(b, m[j]) <= 0.001 for _, b in c1):
+                c1.append((j, m.pop(j)))
+
+        clusters.append(c1)
+    
+    print([[j for j, _ in i] for i in clusters])
+    print('-'*40)
+    print([[j for j, _ in i] for i in cq.clusters])
+    #print(len(clusters), len(cq.clusters))
+    for _ in range(5):
+        print(cq.sample(50))
+
+
+def test_lr_annealing() -> None:
+        model = torch.nn.Linear(2, 1)
+        optimizer = torch.optim.Adam(model.parameters(), lr=100)
+        #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x:0.97 ** x)
+        #scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda = lambda x: 0.999 ** x)
+        #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.2)
+        lrs = []
+
+        for i in range(600):
+            optimizer.step()
+            lrs.append(optimizer.param_groups[0]["lr"])
+            scheduler.step()
+
+        plt.plot(lrs)
+        plt.show()
+
+
 if __name__ == '__main__':
     '''
     atlas_index_tune_dqn({
@@ -1526,7 +1679,7 @@ if __name__ == '__main__':
     '''
     def test_annealing(scale, decay, iterations):
         for _ in range(iterations):
-            print(scale)
+            print(f'{_}: ',scale)
             scale -= scale * decay
 
     '''
@@ -1536,13 +1689,14 @@ if __name__ == '__main__':
         'replay_size': 60,
         'noise_scale': 0.5,
         'noise_decay': 0.015,
-        'batch_size': 200,
+        'batch_size': 55,
         'min_noise_scale': None,
         'alr': 1*10**-4,
         'clr': 1*10**-4,
         'workload_exec_time': 10,
         'marl_step': 50,
-        'iterations': 400,
+        'iterations': 600,
+        'cluster_dist': 0.001,
         'updates': 10,
         'tau': 0.9,
         'reward_func': 'compute_sysbench_reward_throughput_scaled',
@@ -1551,9 +1705,9 @@ if __name__ == '__main__':
         'is_marl': True
     })
     '''
-    knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg24.json')
+    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg35.json')
     #test_annealing(0.5, 0.015, 600)
-    #print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother))
+    print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg35.json'))
 
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
@@ -1561,22 +1715,4 @@ if __name__ == '__main__':
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
-    '''
-    with open('outputs/knob_tuning_data/rl_ddpg20.json') as f:
-        data = json.load(f)
-        d = data[0]['experience_replay']
-        rewards = []
-        for i, a in enumerate(d):
-            if i:
-                w2_t = a[-1]['throughput']
-                m = max([j[-1]['throughput'] for j in d[:i]])
-                if (w2_t - m)/m >= -0.3:
-                    rewards.append(w2_t)
-                else:
-                    rewards.append(w2_t - m)
-
-
-        plt.plot([*range(1, len(rewards)+1)], rewards)
-        plt.show()
-        #print(max([j/d[0][-1]['throughput'] for i in d if (j:=i[-1]['throughput'] - d[0][-1]['throughput']) > 0]))
-        '''
+    #cluster('outputs/knob_tuning_data/rl_ddpg35.json')
