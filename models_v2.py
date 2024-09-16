@@ -1729,7 +1729,7 @@ if __name__ == '__main__':
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True
-    })
+    }) #test
     
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg36.json')
     #test_annealing(0.5, 0.015, 600)
