@@ -170,3 +170,25 @@ Sysbench:
 Dockerizing:
     - https://mothishdeenadayalan.medium.com/containerizing-a-python-app-mysql-python-docker-1ce64e444ed9
     - https://stackoverflow.com/questions/9766014/connect-to-mysql-on-amazon-ec2-from-a-remote-server
+
+
+Connecting to AWS:
+    - https://www.alibabacloud.com/help/en/rds/apsaradb-rds-for-mysql/change-the-size-of-the-innodb-buffer-pool-for-an-apsaradb-rds-for-mysql-instance
+    - https://repost.aws/knowledge-center/low-freeable-memory-rds-mysql-mariadb
+    - https://zenliu.medium.com/sysbench-1-1-installation-for-aws-ec2-instance-running-amazon-linux-a330b1cce7a7
+    - https://medium.com/@amanlonare/performance-testing-of-rds-mysql-database-using-sysbench-d95eca450fa7
+    - https://medium.com/@sidshnkar/different-ways-to-ssh-into-your-aws-ec2-instance-2f34b2c3cba9
+    - https://stackoverflow.com/questions/76461475/trying-to-install-mysql-server-on-aws-ec2-amazon-linux-but-getting-problem-con
+
+    Simply host MySQL on AWS EC2:
+        - https://docs.aws.amazon.com/whitepapers/latest/optimizing-mysql-on-ec2-using-amazon-ebs/mysql-on-aws-deployment-options.html
+        - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.MySQL.html
+        - https://medium.com/@waya.ai/quick-start-pyt-rch-on-an-aws-ec2-gpu-enabled-compute-instance-5eed12fbd168
+
+
+Next Steps:
+    - Email Chris about Dr. Olga's compute cluster
+    - Look into AWS vs Google Cloud
+    - Investigate TPC-H workload
+    - Test index tuner on sysbench
+    - refactor MARL integration code

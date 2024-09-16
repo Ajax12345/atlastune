@@ -220,13 +220,17 @@ class MySQL:
     @DB_EXISTS(requires_db = False)
     def metrics(self, total_time:int, interval:int = 5) -> list:
         total_metrics = collections.defaultdict(list)
+        p = []
         while total_time > 0:
-            for a, b in self._metrics().items():
+            m = self._metrics()
+            p.append(m)
+            for a, b in m.items():
                 total_metrics[a].append(b)
 
             time.sleep(interval)
             total_time -= interval
 
+        print(sum(p[0]!= i for i in p))
         return {a:sum(b)/len(b) if a in self.__class__.VALUE_METRICS else float(b[-1] - b[0])
             for a, b in total_metrics.items()}        
 
@@ -761,6 +765,24 @@ if __name__ == '__main__':
         #conn.sysbench_prepare_benchmark()
         #print(conn.sysbench_metrics())
         #print(conn.sysbench_metrics())
+        import asyncio
+        
+        def get_metrics():
+            return conn._metrics()
+
+        async def get_metrics_a(pool):
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(pool, get_metrics)
+
+        async def main():
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                r = await asyncio.gather(*[get_metrics_a(pool) for _ in range(10)])
+                return r
+        
+
+        
+
+        #print(conn.metrics(10, 2))
 
     """
     select t.table_name, t.column_name, s.index_name

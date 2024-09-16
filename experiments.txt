@@ -1824,3 +1824,62 @@
 
     https://www.reddit.com/r/reinforcementlearning/comments/9iyz6v/why_does_drl_performance_collapse_after/
     https://adgefficiency.com/dqn-tuning/
+
+
+09/07/2024 @ 7:59 PM (Experiment 81)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.015,
+        'batch_size': 55,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 200,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    eliminating noise after 200 iterations
+
+    Outputs:
+        - outputs/knob_tuning_data/rl_ddpg36.json
+
+    To do: larger batch size
+
+09/16/2024 @ 1:07 PM (Experiment 82)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.015,
+        'batch_size': 55,
+        'min_noise_scale': None,
+        'alr': 1*10**-4,
+        'clr': 1*10**-4,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 200,
+        'updates': 10,
+        'tau': 0.9,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    running conn.metrics(30, 3)
