@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import statistics, os, re
 import whittaker_eilers
 from scipy.signal import savgol_filter
+import math
 
 class Normalize:
     @classmethod
@@ -334,8 +335,14 @@ class Atlas_Rewards:
         return n_b
 
     def compute_sysbench_reward_throughput_scaled(self, experience_replay:typing.List[dict], w2:dict) -> float:
-        t = self.scale_num(experience_replay[0][-1]['throughput'])
-        return (self.scale_num(w2['throughput']) - t)/t
+        t = self.scale_num(int(experience_replay[0][-1]['throughput']))
+        return (self.scale_num(int(w2['throughput'])) - t)/t
+
+    def compute_sysbench_reward_throughput_discrete(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        d1 = self.scale_num(int(experience_replay[0][-1]['throughput']))
+        d2 = self.scale_num(int(w2['throughput']))
+        dt = max(d1, d2)/min(d1, d2)
+        return math.ceil(dt)*[-1, 1][d2 > d1]
 
     def compute_sysbench_reward_throughput(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
@@ -528,7 +535,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         print('update number specified', self.config['updates'])
 
-        metrics = db.MySQL.metrics_to_list(self.conn.metrics(10, 2))
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         state = [*(indices if is_marl else []), *metrics]
@@ -588,7 +595,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
-                [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn.metrics(10, 2)))],
+                [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                 w2
             ])
 
@@ -619,12 +626,12 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     self.critic.eval()
                     self.critic_target.eval()
 
-                    '''
+                    
                     batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
                     inds = random.sample([*range(1,len(self.experience_replay))], batch_size)
-                    '''
-                    batch_size = min(self.config['batch_size'], len(self.experience_replay))
-                    inds = cq.sample(batch_size)
+                    
+                    #batch_size = min(self.config['batch_size'], len(self.experience_replay))
+                    #inds = cq.sample(batch_size)
 
                     _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
                     s = torch.tensor([Normalize.normalize(i) for i in _s])
@@ -799,7 +806,7 @@ class Atlas_Index_Tune(Atlas_Rewards):
     def tune(self, iterations:int, with_epoch:bool = False) -> typing.List[float]:
         torch.autograd.set_detect_anomaly(True)
         self.conn.drop_all_indices()
-        metrics = db.MySQL.metrics_to_list(self.conn.metrics(10, 2))
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
         #self.generate_experience_replay(indices, metrics, 100)
         if not with_epoch or not self.experience_replay:
@@ -1018,7 +1025,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
         print('tuning reward function:', reward_func)
         print('tuning reward signal:', reward_signal)
         self.conn.drop_all_indices()
-        metrics = db.MySQL.metrics_to_list(self.conn.metrics(10, 2))
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         if not self.experience_replay:
@@ -1707,33 +1714,32 @@ if __name__ == '__main__':
         plt.show()
 
 
-    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
         'noise_scale': 0.5,
-        'noise_decay': 0.015,
-        'batch_size': 55,
+        'noise_decay': 0.01,
+        'batch_size': 400,
         'min_noise_scale': None,
-        'alr': 1*10**-4,
-        'clr': 1*10**-4,
+        'alr': 0.001,
+        'clr': 0.001,
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.001,
         'noise_eliminate': 200,
         'updates': 10,
-        'tau': 0.9,
-        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_discrete',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True
-    }) #test
+    })
     
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg36.json')
-    #test_annealing(0.5, 0.015, 600)
-    #print(display_tuning_results('outputs/knob_tuning_data/rl_ddpg35.json'))
+    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
+    #test_annealing(0.5, 0.01, 600)
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg37.json')
 
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
