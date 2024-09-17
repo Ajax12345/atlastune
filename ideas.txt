@@ -184,7 +184,8 @@ Connecting to AWS:
         - https://docs.aws.amazon.com/whitepapers/latest/optimizing-mysql-on-ec2-using-amazon-ebs/mysql-on-aws-deployment-options.html
         - https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_GettingStarted.CreatingConnecting.MySQL.html
         - https://medium.com/@waya.ai/quick-start-pyt-rch-on-an-aws-ec2-gpu-enabled-compute-instance-5eed12fbd168
-
+        - https://www.geeksforgeeks.org/how-to-install-mysql-on-aws-ec2/
+        - https://dev.to/rikinptl/setting-up-mysql-on-amazon-ec2-using-homebrew-3nmc
 
 Next Steps:
     - Email Chris about Dr. Olga's compute cluster
@@ -192,3 +193,12 @@ Next Steps:
     - Investigate TPC-H workload
     - Test index tuner on sysbench
     - refactor MARL integration code
+
+
+So far:
+    best Knob tuner and Index Selector in models_v3.py
+
+    Knob tuning with memory reply size truncated seems to work the best
+
+    To do:
+        - add a "do nothing" option in Index Selector

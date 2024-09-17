@@ -531,15 +531,17 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         if reset_knobs or is_epoch:
             print('Resetting knobs')
-            self.conn.reset_knob_configuration()
+            knob_values = self.conn.reset_knob_configuration()
 
         print('update number specified', self.config['updates'])
 
-        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        #metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        metrics = knob_values
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         state = [*(indices if is_marl else []), *metrics]
         print('length of state', len(state))
+        print('state here', state)
         start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
         state_num, action_num = len(state), db.MySQL.knob_num
 
@@ -586,21 +588,22 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
-            self.conn.apply_knob_configuration(knob_dict)
-
+            knob_values = self.conn.apply_knob_configuration(knob_dict)
+            metrics = knob_values
 
             cq.add_action(selected_action)
 
-            print([[j for j, _ in i] for i in cq.clusters])
+            #print([[j for j, _ in i] for i in cq.clusters])
 
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
-                [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
+                [*(indices if is_marl else []), *metrics],
                 w2
             ])
 
             rewards.append(reward)
             state = [*(indices if is_marl else []), *metrics]
+            print('state here', state)
 
             if (noise_eliminate:=self.config.get('noise_eliminate')) is None or i < noise_eliminate:
                 noise_scale -= noise_scale*self.config['noise_decay']
@@ -627,8 +630,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     self.critic_target.eval()
 
                     
-                    batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
-                    inds = random.sample([*range(1,len(self.experience_replay))], batch_size)
+                    batch_size = min(self.config['batch_size'], min(198, len(self.experience_replay)-1))
+                    inds = random.sample([*range(1,min(200, len(self.experience_replay)))], batch_size)
                     
                     #batch_size = min(self.config['batch_size'], len(self.experience_replay))
                     #inds = cq.sample(batch_size)
@@ -1713,7 +1716,7 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1731,15 +1734,16 @@ if __name__ == '__main__':
         'noise_eliminate': 200,
         'updates': 10,
         'tau': 0.999,
-        'reward_func': 'compute_sysbench_reward_throughput_discrete',
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True
     })
     
+    
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg37.json')
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg40.json')
 
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')

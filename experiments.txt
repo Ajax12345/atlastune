@@ -1917,4 +1917,74 @@
     })
 
     Outputs:
+        outputs/knob_tuning_data/rl_ddpg38.json
+
+
+09/16/2024 @ 11:00 AM (Experiment 83)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 400,
+        'min_noise_scale': None,
+        'alr': 0.001,
+        'clr': 0.001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 200,
+        'updates': 10,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_discrete',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    Input state is now the knob state
+
+    Ideas:
+        - increase noise_eliminate
+        - set is_marl to False for now
+        - go back to the cluster queue
+        - only sample from replay up to 200 iterations
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg39.json
+
+
+09/16/2024 @ 1:06 PM (Experiment 84)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 400,
+        'min_noise_scale': None,
+        'alr': 0.001,
+        'clr': 0.001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 200,
+        'updates': 10,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    Only sampling from first 200 replay samples
+
+    Exploration failure?
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg40.json
+        outputs/knob_tuning_data/rl_ddpg41.json
 

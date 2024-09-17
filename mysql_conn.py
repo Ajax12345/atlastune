@@ -581,6 +581,7 @@ class MySQL:
             database = self.database
         )
         self.new_cur()
+        return [knobs[i] for i in sorted(self.__class__.KNOBS)]
 
     @DB_EXISTS()
     def start_mysql_server(self) -> None:
@@ -590,8 +591,8 @@ class MySQL:
         ], stdout = self.stdout_f)
 
     @DB_EXISTS()
-    def reset_knob_configuration(self) -> None:
-        self.apply_knob_configuration(self.__class__.KNOB_DEFAULTS)
+    def reset_knob_configuration(self) -> typing.List[float]:
+        return self.apply_knob_configuration(self.__class__.KNOB_DEFAULTS)
 
     @DB_EXISTS()
     def get_knob_value(self, knob:str) -> dict:
