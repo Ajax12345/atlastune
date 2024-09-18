@@ -363,7 +363,7 @@ class Atlas_Rewards:
         return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
 
     def compute_sysbench_reward_throughput_delta(self, experience_replay:typing.List[dict], w2:dict) -> float:
-        return (w2['throughput'] - experience_replay[-1][-1]['throughput'])/experience_replay[-1][-1]['throughput']
+        return (self.scale_num(w2['throughput']) - self.scale_num(experience_replay[-1][-1]['throughput']))/self.scale_num(experience_replay[-1][-1]['throughput'])
 
     def compute_sysbench_reward_throughput_raw(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return w2['throughput']
@@ -1194,8 +1194,9 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
         self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
         
     def apply_action_choice(self, ind:int, action_options:typing.List[tuple], knobs:dict, knob_activation_payload:dict) -> tuple:
+        chosen = None
         if action_options[ind] is not None:
-            knob_name, scale = action_options[ind]
+            knob_name, scale, _ = action_options[ind]
             knobs = copy.deepcopy(knobs)
             knobs[knob_name] += scale
             _, [min_val, max_val, *_] = self.conn.__class__.KNOBS[knob_name]
@@ -1204,10 +1205,12 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
                 min(knob_activation_payload.get(max_val, max_val), 
                     knobs[knob_name]))
 
-        return ind, knobs, (knob_name, knobs[knob_name], scale)
+            chosen = (knob_name, knobs[knob_name], scale)
+
+        return ind, knobs, chosen
     
     def random_action(self, action_options:typing.List[tuple], knobs:dict, knob_activation_payload:dict) -> tuple:
-        [ind] = random.choices([*range(len(action_options))], weights = [b for *_, b in action_options]+[3], k = 1)
+        [ind] = random.choices([*range(len(action_options))], weights = [b for *_, b in action_options[:-1]]+[3], k = 1)
         for _ in range(10):
             ind, knobs, chosen = self.apply_action_choice(ind, action_options, knobs, knob_activation_payload)
             if knobs not in self.knobs_explored:
@@ -2003,7 +2006,7 @@ if __name__ == '__main__':
     
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg40.json')
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg42.json', smoother = whittaker_smoother)
     
     atlas_knob_tune_dqn({
         'database': 'sysbench_tune',
@@ -2013,7 +2016,7 @@ if __name__ == '__main__':
         'replay_size': 60,
         'marl_step': 50,
         'iterations': 600,
-        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_func': 'compute_sysbench_reward_throughput_delta',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True,
         'weight_copy_interval': 10,
@@ -2021,4 +2024,5 @@ if __name__ == '__main__':
         'workload_exec_time': 10,
         'updates': 1
     })
+    
     
