@@ -1988,3 +1988,20 @@
         outputs/knob_tuning_data/rl_ddpg40.json
         outputs/knob_tuning_data/rl_ddpg41.json
 
+09/18/2024 @ 2:08 PM (Experiment 85)
+     atlas_knob_tune_dqn({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'epsilon': 1,
+        'epsilon_decay': 0.0055,
+        'replay_size': 60,
+        'marl_step': 50,
+        'iterations': 600,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True,
+        'weight_copy_interval': 10,
+        'batch_sample_size': 200
+    })
+
+    prevent duplicates from emerging during exploration

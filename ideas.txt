@@ -200,5 +200,7 @@ So far:
 
     Knob tuning with memory reply size truncated seems to work the best
 
-    To do:
-        - add a "do nothing" option in Index Selector
+    Probably need to set workload_exec_time to 60 seconds on cloud tuning for greater stability
+
+    Store model snapshots in DDPG and retrieve snapshot from highest performer
+

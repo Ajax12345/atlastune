@@ -134,11 +134,11 @@ class MySQL:
     }
     KNOBS = {
         'table_open_cache': ['integer', [1, 10240, 512]],
-        'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 'memory_size']],
-        'innodb_buffer_pool_instances': ['integer', [1, 64, 8]],
+        'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 30000000]],
+        'innodb_buffer_pool_instances': ['integer', [1, 64, 5]],
         'innodb_purge_threads': ['integer', [1, 32, 1]],
-        'innodb_read_io_threads': ['integer', [1, 64, 12]],
-        'innodb_write_io_threads': ['integer', [1, 64, 12]],
+        'innodb_read_io_threads': ['integer', [1, 64, 5]],
+        'innodb_write_io_threads': ['integer', [1, 64, 5]],
     }
     KNOB_DEFAULTS = {
         "table_open_cache": 4000,
@@ -296,7 +296,7 @@ class MySQL:
     @DB_EXISTS(requires_db = False)
     def get_knobs(self) -> dict:
         self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
-        return {i['Variable_name']:i['Value'] for i in self.cur}
+        return {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
 
     @classmethod
     def metrics_to_list(cls, metrics:dict) -> typing.List[int]:
@@ -318,7 +318,7 @@ class MySQL:
             val = min(max(0, val), 1)
             knob_type, val_range = cls.KNOBS[knob]
             if knob_type == 'integer':
-                min_val, max_val, _ = [knob_activation_payload.get(i, i) for i in val_range]
+                min_val, max_val, *_ = [knob_activation_payload.get(i, i) for i in val_range]
                 return max(min_val, int(max_val*val))
 
             
@@ -599,6 +599,12 @@ class MySQL:
         self.cur.execute(f'select @@global.{knob} knob')
         return self.cur.fetchone()['knob']
 
+    @DB_EXISTS()
+    def dqn_knob_actions(self) -> typing.List[list]:
+        return [j for i in sorted(self.__class__.KNOBS) \
+            for j in [(i, self.__class__.KNOBS[i][-1][-1], 3), 
+                (i, -1*self.__class__.KNOBS[i][-1][-1], 1)]]
+
     @classmethod
     def queries(cls) -> typing.List:
         with open('tpc/tpch/queries.sql') as f:
@@ -762,46 +768,9 @@ if __name__ == '__main__':
         print(conn.tpch_qphH_size())
         print(time.time() - t)
         '''
-        #conn.sysbench_cleanup_benchmark()
-        #conn.sysbench_prepare_benchmark()
-        #print(conn.sysbench_metrics())
-        #print(conn.sysbench_metrics())
-        import asyncio
+        #5242880
+        #9005301760
+        #print(conn.memory_size('b')['sysbench_tune']*4)
+        print(conn.dqn_knob_actions())
         
-        def get_metrics():
-            return conn._metrics()
-
-        async def get_metrics_a(pool):
-            loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(pool, get_metrics)
-
-        async def main():
-            with concurrent.futures.ThreadPoolExecutor() as pool:
-                r = await asyncio.gather(*[get_metrics_a(pool) for _ in range(10)])
-                return r
-        
-
-        
-
-        #print(conn.metrics(10, 2))
-
-    """
-    select t.table_name, t.column_name, s.index_name
-        from information_schema.columns t
-        left join information_schema.statistics s on t.table_name = s.table_name
-            and t.table_schema = s.table_schema 
-            and lower(s.column_name) = lower(t.column_name)
-        where t.table_schema = 'tpcc100'
-        order by t.table_schema, t.table_name, t.column_name, t.ordinal_position
-        """
-
-    """
-    select t.table_schema, t.table_name, t.column_name, t.data_type, t.character_maximum_length, t.ordinal_position,
-            s.index_schema, s.index_name, s.seq_in_index, s.index_type 
-        from information_schema.columns t
-        left join information_schema.statistics s on t.table_name = s.table_name
-            and t.table_schema = s.table_schema 
-            and lower(s.column_name) = lower(t.column_name)
-        where t.table_schema = 'tpcc100'
-        order by t.table_schema, t.table_name, t.column_name, t.ordinal_position
-        """
+    

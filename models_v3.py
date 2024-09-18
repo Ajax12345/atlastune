@@ -191,6 +191,21 @@ class Atlas_Index_QNet(nn.Module):
     def forward(self, x) -> torch.tensor:
         return self.layers(x)
 
+class Atlas_Knob_QNet(nn.Module):
+    def __init__(self, state_num:int, action_num:int) -> None:
+        super().__init__()
+        self.state_num = state_num 
+        self.action_num = action_num
+        #TODO: perhaps try 128 instead of 64?
+        self.layers = nn.Sequential(
+            nn.Linear(self.state_num, 64),
+            nn.ReLU(),
+            nn.Linear(64, self.action_num)
+        )
+
+    def forward(self, x) -> torch.tensor:
+        return self.layers(x)
+
 
 class Atlas_Rewards:
     def compute_delta_min_reward(self, experience_replay:typing.List[tuple], w2:dict) -> float:
@@ -1125,6 +1140,198 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(database="{self.database}")'
 
+
+class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals, 
+        Atlas_Environment):
+    def __init__(self, database:str, conn = None, config = {
+            'lr':0.0001,
+            'gamma':0.9,
+            'weight_copy_interval':10,
+            'tau':0.9999,
+            'epsilon':1,
+            'epsilon_decay':0.001,
+            'batch_sample_size':50
+        }) -> None:
+
+        self.database = database
+        self.conn = conn
+        self.config = config
+        self.q_net = None
+        self.q_net_target = None
+        self.loss_func = None
+        self.optimizer = None
+        self.experience_replay = []
+        self.knobs_explored = []
+
+    def mount_entities(self) -> None:
+        if self.conn is None:
+            self.conn = db.MySQL(database = self.database)
+
+    def __enter__(self) -> 'Atlas_Knob_Tune':
+        self.mount_entities()
+        self.tuning_log = open(f"logs/knob_tuning_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.txt", 'a')
+        self.conn.set_log_file(self.tuning_log)
+        return self
+
+    def __exit__(self, *_) -> None:
+        if self.conn is not None:
+            self.conn.__exit__()
+        
+        if self.tuning_log is not None:
+            self.tuning_log.close()
+
+    def update_config(self, **kwargs) -> None:
+        self.config.update(kwargs)
+
+    def reset_target_weights(self) -> None:
+        self.q_net_target.load_state_dict(self.q_net.state_dict())
+
+    def init_models(self, state_num:int, action_num:int) -> None:
+        self.q_net = Atlas_Knob_QNet(state_num, action_num)
+        self.q_net_target = Atlas_Knob_QNet(state_num, action_num)
+        self.reset_target_weights()
+        self.loss_func = nn.MSELoss()
+        self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
+        
+    def apply_action_choice(self, ind:int, action_options:typing.List[tuple], knobs:dict, knob_activation_payload:dict) -> tuple:
+        if action_options[ind] is not None:
+            knob_name, scale = action_options[ind]
+            knobs = copy.deepcopy(knobs)
+            knobs[knob_name] += scale
+            _, [min_val, max_val, *_] = self.conn.__class__.KNOBS[knob_name]
+
+            knobs[knob_name] = max(knob_activation_payload.get(min_val, min_val), 
+                min(knob_activation_payload.get(max_val, max_val), 
+                    knobs[knob_name]))
+
+        return ind, knobs, (knob_name, knobs[knob_name], scale)
+    
+    def random_action(self, action_options:typing.List[tuple], knobs:dict, knob_activation_payload:dict) -> tuple:
+        [ind] = random.choices([*range(len(action_options))], weights = [b for *_, b in action_options]+[3], k = 1)
+        for _ in range(10):
+            ind, knobs, chosen = self.apply_action_choice(ind, action_options, knobs, knob_activation_payload)
+            if knobs not in self.knobs_explored:
+                self.knobs_explored.append(knobs)
+                break
+
+        print('action choice', chosen)
+        return ind, knobs
+
+    def tune(self, iterations:int, 
+            reward_func:str = None,
+            reward_signal:str = None, 
+            reset_knobs:bool = True, 
+            is_marl:bool = False, 
+            is_epoch:bool = False) -> dict:
+
+        experience_replay_f_name = f'experience_replay/dqn_knob_tune/er_{str(time.time()).replace(".", "")}.json'
+
+
+        if reset_knobs or is_epoch:
+            print('Resetting knobs')
+            knob_values = self.conn.reset_knob_configuration()
+
+        #metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        metrics = knob_values
+        indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+
+        state = [*(indices if is_marl else []), *metrics]
+        print('length of state', len(state))
+        print('state here', state)
+        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+        
+        action_options = self.conn.dqn_knob_actions() + [None]
+        knobs = self.conn.get_knobs()
+        
+        state_num, action_num = len(state), len(action_options)
+
+        if not is_epoch or self.q_net is None:
+            self.init_models(state_num, action_num)
+
+
+        if not self.experience_replay:
+            self.experience_replay = [[state, None, None, None, getattr(self, reward_signal)(self.config['workload_exec_time'])]]
+
+        knob_activation_payload = {
+            'memory_size':(mem_size:=self.conn.memory_size('b')[self.database]*4),
+            'memory_lower_bound':min(4294967168, mem_size)
+        }
+
+
+        rewards = []
+        epsilon = self.config['epsilon']
+
+        for i in range(iterations + self.config['replay_size']):
+            print('-'*60)
+            print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
+            print(f'epsilon: {epsilon}')
+            print('knobs', knobs)
+
+            with open(experience_replay_f_name, 'w') as f:
+                json.dump([{'experience_replay':self.experience_replay, 
+                    'rewards':rewards}], f)
+
+            if i <= self.config['replay_size'] or random.random() < epsilon:
+                print('random')
+                selected_action, knobs = self.random_action(action_options, knobs, knob_activation_payload)
+                
+            else:
+                print('q net')
+                with torch.no_grad():
+                    ind = self.q_net(start_state).max(1)[1].item()
+                    selected_action, knobs, chosen = self.apply_action_choice(ind, action_options, knobs, knob_activation_payload)
+                    print('action choice', chosen)
+
+            if i > self.config['replay_size']:
+                epsilon -= epsilon*self.config['epsilon_decay']
+
+            print('knobs here', knobs)
+
+            metrics = self.conn.apply_knob_configuration(knobs)
+
+            self.experience_replay.append([state, selected_action, 
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
+                [*(indices if is_marl else []), *metrics],
+                w2
+            ])
+
+            rewards.append(reward)
+            state = [*(indices if is_marl else []), *metrics]
+            print('state here', state)
+
+            start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+            for _ in range(self.config['updates']):
+                inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay) - 1))
+                _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+                s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
+                a = torch.tensor([[i] for i in _a])
+                s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
+                r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)], requires_grad = True)
+
+                with torch.no_grad():
+                    q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+                    q_value = self.q_net(s).gather(1, a)
+                
+                target_q_value = r + self.config['gamma']*q_prime
+
+                loss = self.loss_func(q_value, target_q_value)
+                #print(loss)
+
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
+
+            if i and not i%self.config['weight_copy_interval']:
+                self.reset_target_weights()
+
+            if i and not i%self.config['marl_step']:
+                yield {'experience_replay':self.experience_replay, 
+                    'rewards':rewards}, False
+
+        yield {'experience_replay':self.experience_replay, 
+                    'rewards':rewards}, True
+
+
 def atlas_index_tune_ddpg() -> None:
     with Atlas_Index_Tune('tpcc100') as a:
         #a.tune_random(300)
@@ -1248,6 +1455,59 @@ def generate_index_tune_output_file() -> str:
 def generate_knob_tune_output_file() -> str:
     ind = max(int(re.findall('\d+(?=\.json)', i)[0]) for i in os.listdir('outputs/knob_tuning_data') if i.endswith('.json')) + 1
     return f'outputs/knob_tuning_data/rl_ddpg{ind}.json'
+
+def atlas_knob_tune_dqn(config:dict) -> None:
+    database = config['database']
+    episodes = config['episodes']
+    epsilon = config['epsilon']
+    epsilon_decay = config['epsilon_decay']
+    replay_size = config['replay_size']
+    marl_step = config['marl_step']
+    iterations = config['iterations']
+    reward_func = config['reward_func']
+    reward_signal = config['reward_signal']
+    is_marl = config['is_marl']
+    weight_copy_interval = config['weight_copy_interval']
+    batch_sample_size = config['batch_sample_size']
+    updates = config['updates']
+    workload_exec_time = config['workload_exec_time']
+
+    with Atlas_Knob_Tune_DQN(database) as a_knob:
+        tuning_data = []
+        for _ in range(episodes):
+            a_knob.update_config(**{
+                'replay_size':replay_size,
+                'marl_step': marl_step,
+                'reward_func': reward_func,
+                'reward_signal': reward_signal,
+                'is_marl': is_marl,
+                'epsilon': epsilon,
+                'epsilon_decay': epsilon_decay,
+                'weight_copy_interval': weight_copy_interval,
+                'batch_sample_size': batch_sample_size,
+                'workload_exec_time': workload_exec_time,
+                'updates': updates
+            })
+
+            a_knob_prog = a_knob.tune(iterations, 
+                reward_func = reward_func, 
+                reward_signal = reward_signal,
+                is_marl = is_marl,
+                is_epoch = episodes > 1)
+
+            while True:
+                results, flag = next(a_knob_prog)
+                if flag:
+                    tuning_data.append(results)
+                    break
+
+        with open(f_name:=generate_knob_tune_output_file(), 'a') as f:
+            json.dump(tuning_data, f)
+        
+        print('knob tuning complete!')
+        print('knob tuning results saved to', f_name)
+        display_tuning_results(f_name, smoother = whittaker_smoother)
+
 
 def atlas_index_tune_dqn(config:dict) -> None:
     database = config['database']
@@ -1716,7 +1976,7 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1739,16 +1999,26 @@ if __name__ == '__main__':
         'env_reset': None,
         'is_marl': True
     })
-    
+    '''
     
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg40.json')
-
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
-    #cluster('outputs/knob_tuning_data/rl_ddpg35.json')
+    
+    atlas_knob_tune_dqn({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'epsilon': 1,
+        'epsilon_decay': 0.0055,
+        'replay_size': 60,
+        'marl_step': 50,
+        'iterations': 600,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True,
+        'weight_copy_interval': 10,
+        'batch_sample_size': 200,
+        'workload_exec_time': 10,
+        'updates': 1
+    })
+    
