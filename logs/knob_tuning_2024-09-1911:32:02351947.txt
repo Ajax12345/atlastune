@@ -1,0 +1,3 @@
+ ERROR! MySQL server PID file could not be found!
+Starting MySQL
+.... ERROR! The server quit without updating PID file (/opt/homebrew/var/mysql/localhost.pid).

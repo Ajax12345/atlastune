@@ -39,7 +39,6 @@ class Atlas_Knob_Critic(nn.Module):
         self.state_input = nn.Linear(self.state_num, 128)
         self.action_input = nn.Linear(self.action_num, 128)
         self.act = nn.Tanh()
-        '''
         self.layers = nn.Sequential(
             nn.Linear(256, 256),
             nn.LeakyReLU(negative_slope=0.2),
@@ -50,13 +49,15 @@ class Atlas_Knob_Critic(nn.Module):
             nn.BatchNorm1d(64),
             nn.Linear(64, 1),
         )
+        
         '''
         self.layers = nn.Sequential(
             nn.Linear(256, 64),
             nn.Tanh(),
             nn.Linear(64, 1),
         )
-        #self._init_weights()
+        '''
+        self._init_weights()
 
     def _init_weights(self):
         self.state_input.weight.data.normal_(0.0, 1e-2)
@@ -80,7 +81,6 @@ class Atlas_Knob_Actor(nn.Module):
         super().__init__()
         self.state_num = state_num
         self.action_num = action_num
-        '''
         self.layers = nn.Sequential(
             nn.Linear(self.state_num, 128),
             nn.LeakyReLU(negative_slope=0.2),
@@ -99,9 +99,10 @@ class Atlas_Knob_Actor(nn.Module):
             nn.Linear(128, 64),
             nn.Tanh()
         )
+        '''
         self.out_layer = nn.Linear(64, self.action_num)
         self.act = nn.Sigmoid()
-        #self._init_weights()
+        self._init_weights()
 
     def _init_weights(self):
 
@@ -344,6 +345,16 @@ class Atlas_Rewards:
         dt = max(d1, d2)/min(d1, d2)
         return math.ceil(dt)*[-1, 1][d2 > d1]
 
+    def compute_sysbench_reward_throughput_qtune(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        mt, m0 = w2['throughput'], experience_replay[0][-1]['throughput']
+        mt1 = experience_replay[-1][-1]['throughput']
+        dt0, dt1 = (mt - m0)/m0, (mt - mt1)/mt1
+        if dt0 > 0:
+            return ((1 + dt1)**2 - 1)*abs(1 + dt0)
+        
+        return -1*((1 - dt1)**2 - 1)*abs(1 - dt0)
+
+
     def compute_sysbench_reward_throughput(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
 
@@ -533,6 +544,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             print('Resetting knobs')
             self.conn.reset_knob_configuration()
 
+        experience_replay_f_name = f'experience_replay/ddpg_knob_tune/er_{str(time.time()).replace(".", "")}.json'
+
         print('update number specified', self.config['updates'])
 
         metrics = db.MySQL.metrics_to_list(self.conn._metrics())
@@ -565,7 +578,10 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         for i in range(iterations + self.config['replay_size']):
             print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
             #self.log_message(f'Iteration {i+1}')
-            
+            with open(experience_replay_f_name, 'w') as f:
+                json.dump([{'experience_replay':self.experience_replay, 
+                    'rewards':rewards}], f)
+
             if (env_reset:=self.config.get('env_reset')) is not None:
                 if i and not i%env_reset['steps']:
                     print('resetting environment')
@@ -591,7 +607,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             cq.add_action(selected_action)
 
-            print([[j for j, _ in i] for i in cq.clusters])
+            #print([[j for j, _ in i] for i in cq.clusters])
 
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
@@ -628,16 +644,19 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
                     
                     batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
-                    inds = random.sample([*range(1,len(self.experience_replay))], batch_size)
+                    inds = random.sample([*range(1, len(self.experience_replay))], batch_size)
                     
                     #batch_size = min(self.config['batch_size'], len(self.experience_replay))
                     #inds = cq.sample(batch_size)
 
                     _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-                    s = torch.tensor([Normalize.normalize(i) for i in _s])
+                    #s = torch.tensor([Normalize.normalize(i) for i in _s])
+                    s = F.normalize(torch.tensor([[*map(float, i)] for i in _s]))
                     a = torch.tensor([[float(j) for j in i] for i in _a])
-                    s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
-                    r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
+                    #s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
+                    s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime]))
+                    #r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
+                    r = torch.tensor([[float(i)] for i in _r])
 
                     target_action = self.actor_target(s_prime)
 
@@ -1713,14 +1732,14 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
         'noise_scale': 0.5,
-        'noise_decay': 0.01,
-        'batch_size': 400,
+        'noise_decay': 0.005,
+        'batch_size': 200,
         'min_noise_scale': None,
         'alr': 0.001,
         'clr': 0.001,
@@ -1728,20 +1747,20 @@ if __name__ == '__main__':
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.001,
-        'noise_eliminate': 200,
+        'noise_eliminate': 300,
         'updates': 10,
         'tau': 0.999,
-        'reward_func': 'compute_sysbench_reward_throughput_discrete',
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True
     })
-    
+    '''
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg37.json')
+    display_tuning_results('outputs/knob_tuning_data/rl_ddpg43.json')
 
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg28.json')
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg41.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)

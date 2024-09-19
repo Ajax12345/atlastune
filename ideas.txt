@@ -204,3 +204,7 @@ So far:
 
     Store model snapshots in DDPG and retrieve snapshot from highest performer
 
+
+    Convergence:
+        explore until noise_eliminate, then run for 50 iterations. Stop after that, saving model checkpoints.
+            chose the best model from the checkpoint options.
