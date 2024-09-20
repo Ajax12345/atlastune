@@ -2037,3 +2037,33 @@
 
     Outputs:
         outputs/knob_tuning_data/rl_ddpg43.json
+
+09/19/2024 @ 2:28 PM (Experiment 87)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 200,
+        'min_noise_scale': None,
+        'alr': 0.001,
+        'clr': 0.001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 200,
+        'terminate_after': 5,
+        'updates': 10,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True
+    })
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg45.json
+        

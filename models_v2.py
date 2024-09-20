@@ -576,6 +576,10 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
         for i in range(iterations + self.config['replay_size']):
+
+            if self.config['noise_eliminate'] + self.config['replay_size'] + self.config['terminate_after'] <= i:
+                break
+
             print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
             #self.log_message(f'Iteration {i+1}')
             with open(experience_replay_f_name, 'w') as f:
@@ -1332,6 +1336,7 @@ def atlas_knob_tune(config:dict) -> None:
     env_reset = config.get('env_reset')
     cluster_dist = config['cluster_dist']
     noise_eliminate = config.get('noise_eliminate')
+    terminate_after = config.get('terminate_after', 10)
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1349,7 +1354,8 @@ def atlas_knob_tune(config:dict) -> None:
                     'noise_eliminate': noise_eliminate,
                     'cluster_dist': cluster_dist,
                     'alr': alr,
-                    'clr': clr})
+                    'clr': clr,
+                    'terminate_after': terminate_after})
 
             a_knob_prog = a_knob.tune(iterations, 
                 reward_func = reward_func, 
@@ -1732,13 +1738,13 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
         'noise_scale': 0.5,
-        'noise_decay': 0.005,
+        'noise_decay': 0.01,
         'batch_size': 200,
         'min_noise_scale': None,
         'alr': 0.001,
@@ -1747,7 +1753,8 @@ if __name__ == '__main__':
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.001,
-        'noise_eliminate': 300,
+        'noise_eliminate': 200,
+        'terminate_after': 5,
         'updates': 10,
         'tau': 0.999,
         'reward_func': 'compute_sysbench_reward_throughput_qtune',
@@ -1755,10 +1762,10 @@ if __name__ == '__main__':
         'env_reset': None,
         'is_marl': True
     })
-    '''
+    
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
-    display_tuning_results('outputs/knob_tuning_data/rl_ddpg43.json')
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg45.json', smoother = whittaker_smoother)
 
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg41.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')

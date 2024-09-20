@@ -208,3 +208,5 @@ So far:
     Convergence:
         explore until noise_eliminate, then run for 50 iterations. Stop after that, saving model checkpoints.
             chose the best model from the checkpoint options.
+
+    Ask people who know more about PyTorch for feedback
