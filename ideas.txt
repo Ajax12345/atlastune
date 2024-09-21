@@ -210,3 +210,9 @@ So far:
             chose the best model from the checkpoint options.
 
     Ask people who know more about PyTorch for feedback
+
+        - Am I using eval/train correctly?
+
+    Use CDBTune and SmartIx models, build wrapper around their training process
+
+    https://stackoverflow.com/questions/11091414/how-to-stop-mysqld

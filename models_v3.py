@@ -387,6 +387,15 @@ class Atlas_Rewards:
         th = (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
         return 0.001*lt + th
 
+    def compute_sysbench_reward_throughput_qtune(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        mt, m0 = w2['throughput'], experience_replay[0][-1]['throughput']
+        mt1 = experience_replay[-1][-1]['throughput']
+        dt0, dt1 = (mt - m0)/m0, (mt - mt1)/mt1
+        if dt0 > 0:
+            return ((1 + dt1)**2 - 1)*abs(1 + dt0)
+        
+        return -1*((1 - dt1)**2 - 1)*abs(1 - dt0)
+
 class Atlas_Reward_Signals:
     def basic_query_workload_cost(self, *args, **kwargs) -> dict:
         full_query_cost = self.conn.workload_cost()
@@ -1306,10 +1315,10 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
             for _ in range(self.config['updates']):
                 inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay) - 1))
                 _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-                s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
+                s = F.normalize(torch.tensor([[*map(float, i)] for i in _s]))
                 a = torch.tensor([[i] for i in _a])
-                s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
-                r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)], requires_grad = True)
+                s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime]))
+                r = torch.tensor([[float(i)] for i in _r])
 
                 with torch.no_grad():
                     q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
@@ -1474,6 +1483,7 @@ def atlas_knob_tune_dqn(config:dict) -> None:
     batch_sample_size = config['batch_sample_size']
     updates = config['updates']
     workload_exec_time = config['workload_exec_time']
+    lr = config['lr']
 
     with Atlas_Knob_Tune_DQN(database) as a_knob:
         tuning_data = []
@@ -1489,6 +1499,7 @@ def atlas_knob_tune_dqn(config:dict) -> None:
                 'weight_copy_interval': weight_copy_interval,
                 'batch_sample_size': batch_sample_size,
                 'workload_exec_time': workload_exec_time,
+                'lr': lr,
                 'updates': updates
             })
 
@@ -2012,16 +2023,17 @@ if __name__ == '__main__':
         'database': 'sysbench_tune',
         'episodes': 1,
         'epsilon': 1,
-        'epsilon_decay': 0.0055,
+        'epsilon_decay': 0.003,
         'replay_size': 60,
         'marl_step': 50,
         'iterations': 600,
-        'reward_func': 'compute_sysbench_reward_throughput_delta',
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True,
         'weight_copy_interval': 10,
         'batch_sample_size': 200,
         'workload_exec_time': 10,
+        'lr': 0.00001
         'updates': 1
     })
     

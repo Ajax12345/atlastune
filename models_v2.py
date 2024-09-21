@@ -592,18 +592,15 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     getattr(self, env_reset['func'])()
 
 
-            self.actor.eval()
-            self.actor_target.eval()
-            self.critic.eval()
-            self.critic_target.eval()
-
             knob_activation_payload = {
                 'memory_size':(mem_size:=self.conn.memory_size('b')[self.database]*4),
                 'memory_lower_bound':min(4294967168, mem_size)
             }
 
             clipped_noise_scale = max(noise_scale, noise_scale if (mns:=self.config.get('min_noise_scale')) is None else mns)
+            self.actor.eval()
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
+            self.actor.train()
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
             self.conn.apply_knob_configuration(knob_dict)
@@ -640,13 +637,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                 print('experience replay saved to:', e_f_file)
                 '''
                 for _ in range(self.config['updates']):
-
-                    self.actor.eval()
-                    self.actor_target.eval()
-                    self.critic.eval()
-                    self.critic_target.eval()
-
-                    
+                 
                     batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
                     inds = random.sample([*range(1, len(self.experience_replay))], batch_size)
                     
@@ -662,33 +653,30 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                     #r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
                     r = torch.tensor([[float(i)] for i in _r])
 
-                    target_action = self.actor_target(s_prime)
+                    target_action = self.actor_target(s_prime).detach()
 
-                    target_q_value = self.critic_target(s_prime, target_action)
+                    target_q_value = self.critic_target(s_prime, target_action).detach()
+                    
+                    current_value = self.critic(s, a)
                     next_value = r + self.config['gamma']*target_q_value
 
-                    current_value = self.critic(s, a)
-                    
-                    u = self.actor(s)
-                    predicted_q_value = self.critic(s, u)
-
-                    self.actor.train()
-                    self.actor_target.train()
-                    self.critic.train()
-                    self.critic_target.train()
-
-                    loss = self.loss_criterion(current_value, next_value)                
-                    
+                    loss = self.loss_criterion(current_value, next_value)
                     self.critic_optimizer.zero_grad()
                     loss.backward()
+                    self.critic_optimizer.step()
+
+                    self.critic.eval()
+                    u = self.actor(s)
+                    predicted_q_value = self.critic(s, u)
 
                     pqv = -1*predicted_q_value
                     actor_loss = pqv.mean()
                     self.actor_optimizer.zero_grad()
                     actor_loss.backward()
 
-                    self.critic_optimizer.step()
                     self.actor_optimizer.step()
+                    
+                    self.critic.train()
 
                     self.update_target_weights(self.critic_target, self.critic)
                     self.update_target_weights(self.actor_target, self.actor)
@@ -1738,7 +1726,7 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1747,13 +1735,13 @@ if __name__ == '__main__':
         'noise_decay': 0.01,
         'batch_size': 200,
         'min_noise_scale': None,
-        'alr': 0.001,
-        'clr': 0.001,
+        'alr': 0.0001,
+        'clr': 0.0001,
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.001,
-        'noise_eliminate': 200,
+        'noise_eliminate': 300,
         'terminate_after': 5,
         'updates': 10,
         'tau': 0.999,
@@ -1762,10 +1750,10 @@ if __name__ == '__main__':
         'env_reset': None,
         'is_marl': True
     })
-    
+    '''
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg45.json', smoother = whittaker_smoother)
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')
 
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg41.json')
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
