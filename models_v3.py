@@ -1315,14 +1315,13 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
             for _ in range(self.config['updates']):
                 inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay) - 1))
                 _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-                s = F.normalize(torch.tensor([[*map(float, i)] for i in _s]))
+                s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
                 a = torch.tensor([[i] for i in _a])
-                s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime]))
-                r = torch.tensor([[float(i)] for i in _r])
+                s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
+                r = torch.tensor([[float(i)] for i in _r], requires_grad = True)
 
-                with torch.no_grad():
-                    q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
-                    q_value = self.q_net(s).gather(1, a)
+                q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+                q_value = self.q_net(s).gather(1, a)
                 
                 target_q_value = r + self.config['gamma']*q_prime
 
@@ -2018,7 +2017,7 @@ if __name__ == '__main__':
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg42.json', smoother = whittaker_smoother)
-    
+    '''
     atlas_knob_tune_dqn({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -2033,8 +2032,10 @@ if __name__ == '__main__':
         'weight_copy_interval': 10,
         'batch_sample_size': 200,
         'workload_exec_time': 10,
-        'lr': 0.00001
+        'lr': 0.00001,
         'updates': 1
     })
+    '''
     
+    display_tuning_results('experience_replay/dqn_knob_tune/er_17266998481518972.json', smoother = whittaker_smoother)
     
