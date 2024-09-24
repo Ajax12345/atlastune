@@ -2120,3 +2120,73 @@
 
     Outputs:
         outputs/knob_tuning_data/rl_ddpg47.json
+
+09/23/2024 @ 5:12 PM (Experiment 90)
+    atlas_knob_tune_dqn({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'epsilon': 1,
+        'epsilon_decay': 0.003,
+        'replay_size': 100,
+        'marl_step': 50,
+        'iterations': 300,
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'is_marl': True,
+        'weight_copy_interval': 50,
+        'batch_sample_size': 200,
+        'workload_exec_time': 10,
+        'lr': 0.0001,
+        'updates': 1,
+        'weight_decay': 0.001
+    })
+
+    Changes:
+        - Using weight decay
+        - increased exploration
+        - model only starts updating after buffer reaches replay_size
+        - target weights updated every 50 iterations
+
+    To do:
+        explore gradient clipping (https://saturncloud.io/blog/how-to-do-gradient-clipping-in-pytorch/)
+        revert to compute_sysbench_reward_throughput_scaled
+        switch back to `metrics = db.MySQL.metrics_to_list(self.conn._metrics())`
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg48.json
+        
+
+    Some steady growth!
+
+09/23/2024 @ 8:22 PM (Experiment 91)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 200,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 300,
+        'terminate_after': 100,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'weight_decay': 0.001
+    })
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg49.json
+        outputs/knob_tuning_data/rl_ddpg50.json
+        
+
+    Also some interesting results!

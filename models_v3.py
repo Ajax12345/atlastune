@@ -1200,7 +1200,7 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
         self.q_net_target = Atlas_Knob_QNet(state_num, action_num)
         self.reset_target_weights()
         self.loss_func = nn.MSELoss()
-        self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
+        self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'], weight_decay=self.config['weight_decay'])
         
     def apply_action_choice(self, ind:int, action_options:typing.List[tuple], knobs:dict, knob_activation_payload:dict) -> tuple:
         chosen = None
@@ -1312,25 +1312,28 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
             print('state here', state)
 
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
-            for _ in range(self.config['updates']):
-                inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay) - 1))
-                _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-                s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
-                a = torch.tensor([[i] for i in _a])
-                s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
-                r = torch.tensor([[float(i)] for i in _r], requires_grad = True)
+            if i > self.config['replay_size']:
+                for _ in range(self.config['updates']):
+                    inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay) - 1))
+                    _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
+                    s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
+                    a = torch.tensor([[i] for i in _a])
+                    s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
+                    r = torch.tensor([[float(i)] for i in _r], requires_grad = True)
 
-                q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
-                q_value = self.q_net(s).gather(1, a)
-                
-                target_q_value = r + self.config['gamma']*q_prime
+                    q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+                    q_value = self.q_net(s).gather(1, a)
+                    
+                    target_q_value = r + self.config['gamma']*q_prime
 
-                loss = self.loss_func(q_value, target_q_value)
-                #print(loss)
+                    loss = self.loss_func(q_value, target_q_value)
+                    #print(loss)
 
-                self.optimizer.zero_grad()
-                loss.backward()
-                self.optimizer.step()
+                    self.optimizer.zero_grad()
+                    loss.backward()
+                    self.optimizer.step()
+
+                print(self.q_net.parameters())
 
             if i and not i%self.config['weight_copy_interval']:
                 self.reset_target_weights()
@@ -1483,6 +1486,7 @@ def atlas_knob_tune_dqn(config:dict) -> None:
     updates = config['updates']
     workload_exec_time = config['workload_exec_time']
     lr = config['lr']
+    weight_decay = config['weight_decay']
 
     with Atlas_Knob_Tune_DQN(database) as a_knob:
         tuning_data = []
@@ -1499,7 +1503,8 @@ def atlas_knob_tune_dqn(config:dict) -> None:
                 'batch_sample_size': batch_sample_size,
                 'workload_exec_time': workload_exec_time,
                 'lr': lr,
-                'updates': updates
+                'updates': updates,
+                'weight_decay': weight_decay
             })
 
             a_knob_prog = a_knob.tune(iterations, 
@@ -2023,19 +2028,19 @@ if __name__ == '__main__':
         'episodes': 1,
         'epsilon': 1,
         'epsilon_decay': 0.003,
-        'replay_size': 60,
+        'replay_size': 100,
         'marl_step': 50,
-        'iterations': 600,
+        'iterations': 300,
         'reward_func': 'compute_sysbench_reward_throughput_qtune',
         'reward_signal': 'sysbench_latency_throughput',
         'is_marl': True,
-        'weight_copy_interval': 10,
+        'weight_copy_interval': 50,
         'batch_sample_size': 200,
         'workload_exec_time': 10,
-        'lr': 0.00001,
-        'updates': 1
+        'lr': 0.0001,
+        'updates': 1,
+        'weight_decay': 0.001
     })
     '''
     
-    display_tuning_results('experience_replay/dqn_knob_tune/er_17266998481518972.json', smoother = whittaker_smoother)
-    
+    display_tuning_results('outputs/knob_tuning_data/rl_ddpg49.json')

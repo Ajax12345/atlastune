@@ -515,8 +515,9 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         self.loss_criterion = nn.MSELoss()
         print('actor lr:', self.config['alr'])
         print('critic lr:', self.config['clr'])
-        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=1e-5)
-        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=1e-5)
+        print('weight decay', self.config['weight_decay'])
+        self.actor_optimizer = optimizer.Adam(lr=self.config['alr'], params=self.actor.parameters(), weight_decay=self.config['weight_decay'])
+        self.critic_optimizer = optimizer.Adam(lr=self.config['clr'], params=self.critic.parameters(), weight_decay=self.config['weight_decay'])
         
         #self.actor_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.actor_optimizer, lr_lambda=lambda x:0.97 ** x)
         #self.critic_lr_scheduler = torch.optim.lr_scheduler.LambdaLR(self.critic_optimizer, lr_lambda=lambda x:0.97 ** x)
@@ -577,7 +578,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         noise_scale = self.config['noise_scale']
         for i in range(iterations + self.config['replay_size']):
 
-            if self.config['noise_eliminate'] + self.config['replay_size'] + self.config['terminate_after'] <= i:
+            if self.config.get('terminate_after') is not None and self.config['noise_eliminate'] + self.config['replay_size'] + self.config['terminate_after'] <= i:
+                print('terimate_after reached, training halted')
                 break
 
             print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
@@ -629,7 +631,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
 
-            if len(cq) >= self.config['replay_size']:
+            if len(self.experience_replay) >= self.config['replay_size']:
                 '''
                 with open(e_f_file:=f"experience_replay/ddpg_knob_tune/{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
                     json.dump(self.experience_replay, f)
@@ -1325,6 +1327,7 @@ def atlas_knob_tune(config:dict) -> None:
     cluster_dist = config['cluster_dist']
     noise_eliminate = config.get('noise_eliminate')
     terminate_after = config.get('terminate_after', 10)
+    weight_decay = config['weight_decay']
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1343,6 +1346,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'cluster_dist': cluster_dist,
                     'alr': alr,
                     'clr': clr,
+                    'weight_decay': weight_decay,
                     'terminate_after': terminate_after})
 
             a_knob_prog = a_knob.tune(iterations, 
@@ -1726,14 +1730,14 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
         'noise_scale': 0.5,
         'noise_decay': 0.01,
-        'batch_size': 200,
+        'batch_size': 100,
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
@@ -1742,15 +1746,17 @@ if __name__ == '__main__':
         'iterations': 600,
         'cluster_dist': 0.001,
         'noise_eliminate': 300,
-        'terminate_after': 5,
-        'updates': 10,
+        'terminate_after': 100,
+        'updates': 5,
         'tau': 0.999,
         'reward_func': 'compute_sysbench_reward_throughput_qtune',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
-        'is_marl': True
+        'is_marl': True,
+        'weight_decay': 0.001
     })
-    '''
+    
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg49.json')
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')
