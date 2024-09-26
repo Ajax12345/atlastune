@@ -543,7 +543,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         if reset_knobs or is_epoch:
             print('Resetting knobs')
-            self.conn.reset_knob_configuration()
+            knob_values = self.conn.reset_knob_configuration()
 
         experience_replay_f_name = f'experience_replay/ddpg_knob_tune/er_{str(time.time()).replace(".", "")}.json'
 
@@ -605,7 +605,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             self.actor.train()
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
-            self.conn.apply_knob_configuration(knob_dict)
+            knob_values = self.conn.apply_knob_configuration(knob_dict)
 
 
             cq.add_action(selected_action)
@@ -1192,46 +1192,56 @@ def whittaker_smoother(vals):
 def sc_savgol_filter(vals):
     return savgol_filter(vals, 5, 2)
 
-def display_tuning_results(f_name:str, cutoff = None, smoother = None) -> None:
-    with open(f_name) as f:
-        tuning_data = json.load(f)
+def display_tuning_results(f_name:typing.Union[str, list], cutoff = None, smoother = None, agg_f = lambda x:sum(x)/len(x)) -> None:
+    f_names = [f_name] if isinstance(f_name, str) else f_name
+    full_rewards, full_params = [], collections.defaultdict(list)
+    for f_name in f_names:
+        with open(f_name) as f:
+            tuning_data = json.load(f)
 
-    
-    rewards = [sum(i)/len(i) for i in zip(*[i['rewards'] for i in tuning_data])]
-    if cutoff:
-        rewards = rewards[:cutoff]
-
-    if smoother is not None:
-        rewards = smoother(rewards)
-
-    params = [[j[-1]['params'] for j in i['experience_replay']] for i in tuning_data]
-    param_avgs = []
-    for i in zip(*params):
-        p = collections.defaultdict(list)
-        for j in i:
-            for a, b in j.items():
-                p[a].append(b)
         
-        param_avgs.append({a:sum(b)/len(b) for a, b in p.items()})
+        rewards = [sum(i)/len(i) for i in zip(*[i['rewards'] for i in tuning_data])]
+        if cutoff:
+            rewards = rewards[:cutoff]
 
-    row_params = collections.defaultdict(list)
-    for i in param_avgs:
-        for a, b in i.items():
-            row_params[a].append(b)
+        if smoother is not None:
+            rewards = smoother(rewards)
 
+        full_rewards.append(rewards)
+
+        params = [[j[-1]['params'] for j in i['experience_replay']] for i in tuning_data]
+        param_avgs = []
+        for i in zip(*params):
+            p = collections.defaultdict(list)
+            for j in i:
+                for a, b in j.items():
+                    p[a].append(b)
+            
+            param_avgs.append({a:sum(b)/len(b) for a, b in p.items()})
+
+        row_params = collections.defaultdict(list)
+        for i in param_avgs:
+            for a, b in i.items():
+                row_params[a].append(b)
+
+        for a, b in row_params.items():
+            full_params[a].append(smoother(b) if smoother is not None else b)
+      
+   
    
     fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)
+    
+    fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)
+    
+    fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(full_params) + 1)
 
+    rewards = [agg_f(i) for i in zip(*full_rewards)]
 
     reward_plt.plot([*range(1,len(rewards)+1)], rewards, label = 'Earned reward')
 
-    for a, k in zip(param_plt, row_params):
-        row_param_vals = row_params[k]
-        if smoother is not None:
-            row_param_vals = smoother(row_param_vals)
-
-        if cutoff:
-            row_param_vals = row_param_vals[:cutoff]
+    for a, k in zip(param_plt, full_params):
+        row_param_vals = [agg_f(i) for i in zip(*full_params[k])]
+        
 
         a.plot([*range(1, len(row_param_vals)+1)], row_param_vals)
         a.title.set_text(k)
@@ -1741,7 +1751,7 @@ if __name__ == '__main__':
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
-        'workload_exec_time': 10,
+        'workload_exec_time': 30,
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.001,
@@ -1756,7 +1766,13 @@ if __name__ == '__main__':
         'weight_decay': 0.001
     })
     
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg49.json')
+
+    '''
+    display_tuning_results(['outputs/knob_tuning_data/rl_ddpg49.json', 
+        'outputs/knob_tuning_data/rl_ddpg50.json',
+        'outputs/knob_tuning_data/rl_ddpg51.json',
+        'outputs/knob_tuning_data/rl_ddpg54.json'], smoother = whittaker_smoother)
+    '''
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')

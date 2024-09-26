@@ -216,3 +216,22 @@ So far:
     Use CDBTune and SmartIx models, build wrapper around their training process
 
     https://stackoverflow.com/questions/11091414/how-to-stop-mysqld
+
+Stopping MySQL ID:
+
+brew services stop mysql
+sudo mysqld stop
+sudo killall mysqld
+
+
+
+Current approach:
+    - run existing methodology on AWS with larger workloads over a longer period of time 
+        - execute benchmarks for longer
+        - stress test metrics for longer
+
+
+If that fails:
+    - look into porting CDBtune's ddpg
+    - BO-based methods
+

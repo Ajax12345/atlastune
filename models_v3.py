@@ -1333,7 +1333,7 @@ class Atlas_Knob_Tune_DQN(Atlas_Rewards, Atlas_Reward_Signals,
                     loss.backward()
                     self.optimizer.step()
 
-                print(self.q_net.parameters())
+                print([*self.q_net.parameters()])
 
             if i and not i%self.config['weight_copy_interval']:
                 self.reset_target_weights()
@@ -2022,7 +2022,7 @@ if __name__ == '__main__':
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg42.json', smoother = whittaker_smoother)
-    '''
+    
     atlas_knob_tune_dqn({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -2041,6 +2041,6 @@ if __name__ == '__main__':
         'updates': 1,
         'weight_decay': 0.001
     })
-    '''
     
-    display_tuning_results('outputs/knob_tuning_data/rl_ddpg49.json')
+    
+    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg49.json')
