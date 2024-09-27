@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import statistics, os, re
 import whittaker_eilers
 from scipy.signal import savgol_filter
-import math
+import math, ddpg
 
 class Normalize:
     @classmethod
@@ -705,6 +705,85 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             self.tuning_log.close()
 
 
+class CDB_Wrapper(Atlas_Knob_Tune):
+    def tune(self) -> None:
+
+        is_marl = self.config['is_marl']
+
+        print('reseting knobs')
+        knob_values = self.conn.reset_knob_configuration()
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+        state = np.array([*(indices if is_marl else []), *metrics])
+        state_num, action_num = len(state), db.MySQL.knob_num
+        noisy = self.config['noisy']
+        reward_signal = self.config['reward_signal']
+        reward_func = self.config['reward_func']
+
+        ddpg_opt = {
+            'tau': 0.00001,
+            'alr': 0.00001,
+            'clr': 0.00001,
+            'model':  '',
+            'gamma': 0.9,
+            'memory_size': 10000000,
+            'batch_size': self.config['batch_size'],
+        }
+
+        model = ddpg.DDPG(
+            n_states=state_num,
+            n_actions=action_num,
+            opt=ddpg_opt,
+            mean_var_path='mean_var.pkl',
+            ouprocess=not noisy
+        )
+
+        self.experience_replay = [[state.tolist(), None, None, None, getattr(self, reward_signal)(self.config['workload_exec_time'])]]
+        rewards = []
+
+        knob_activation_payload = {
+            'memory_size':(mem_size:=self.conn.memory_size('b')[self.database]*4),
+            'memory_lower_bound':min(4294967168, mem_size)
+        }
+
+        for iteration in range(self.config['iterations']):
+            print(f"iteration {iteration + 1} of {self.config['iterations']}")
+            if self.config['noisy']:
+                model.sample_noise()
+
+            action = model.choose_action(state)
+
+            print('action chosen', action)
+            chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(action.tolist(), knob_activation_payload)
+            
+            knob_values = self.conn.apply_knob_configuration(knob_dict)
+
+            self.experience_replay.append([state.tolist(), action.tolist(), 
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
+                [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
+                w2
+            ])
+
+            rewards.append(reward)
+            #reward, state_, done, score, metrics, restart_time = env.step(current_knob)
+            
+            next_state = np.array([*(indices if is_marl else []), *metrics])
+
+
+            model.add_sample(state, action, reward, next_state, 0)
+
+            state = next_state
+
+            if len(model.replay_memory) > self.config['batch_size']:
+                for _ in range(2):
+                    model.update()
+
+    
+        return {
+            'experience_replay':self.experience_replay,
+            'rewards':rewards
+        }       
+
 
 class Atlas_Index_Tune(Atlas_Rewards):
     def __init__(self, database:str, conn = None, config = {
@@ -1229,13 +1308,10 @@ def display_tuning_results(f_name:typing.Union[str, list], cutoff = None, smooth
       
    
    
-    fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)
-    
-    fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)
-    
-    fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(full_params) + 1)
+    fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)    
 
     rewards = [agg_f(i) for i in zip(*full_rewards)]
+    print('rewards here', rewards)
 
     reward_plt.plot([*range(1,len(rewards)+1)], rewards, label = 'Earned reward')
 
@@ -1377,6 +1453,20 @@ def atlas_knob_tune(config:dict) -> None:
         print('knob tuning complete!')
         print('knob tuning results saved to', f_name)
         display_tuning_results(f_name, smoother = whittaker_smoother)
+
+
+def atlas_knob_tune_cdb(config:dict) -> None:
+    database = config['database']
+    with CDB_Wrapper(database) as a_knob:
+        a_knob.update_config(**config)
+        tuning_data = [a_knob.tune()]
+
+    with open(f_name:=generate_knob_tune_output_file(), 'a') as f:
+        json.dump(tuning_data, f)
+    
+    print('knob tuning complete!')
+    print('knob tuning results saved to', f_name)
+    display_tuning_results(f_name, smoother = whittaker_smoother)
 
 def display_marl_results(f_name:str) -> None:
     with open(f_name) as f:
@@ -1740,7 +1830,7 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1765,14 +1855,21 @@ if __name__ == '__main__':
         'is_marl': True,
         'weight_decay': 0.001
     })
-    
+    '''
 
-    '''
-    display_tuning_results(['outputs/knob_tuning_data/rl_ddpg49.json', 
-        'outputs/knob_tuning_data/rl_ddpg50.json',
-        'outputs/knob_tuning_data/rl_ddpg51.json',
-        'outputs/knob_tuning_data/rl_ddpg54.json'], smoother = whittaker_smoother)
-    '''
+    
+    #display_tuning_results(['outputs/knob_tuning_data/rl_ddpg57.json'])
+    atlas_knob_tune_cdb({
+        'database': 'sysbench_tune',
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'noisy': True,
+        'batch_size': 50,
+        'workload_exec_time': 10,
+        'iterations':200,
+        'is_marl': True
+    })
+    
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')

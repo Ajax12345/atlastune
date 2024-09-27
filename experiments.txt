@@ -2319,3 +2319,21 @@
 
     Outputs:
         outputs/knob_tuning_data/rl_ddpg57.json
+
+09/26/2024 @ 10:30 AM (Experiment 96)
+    atlas_knob_tune_cdb({
+        'database': 'sysbench_tune',
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'noisy': True,
+        'batch_size': 50,
+        'workload_exec_time': 10,
+        'iterations':200,
+        'is_marl': True
+    })
+
+    Might need to do 
+        loss = self.loss_criterion(current_value.squeeze(-1), next_value)
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg60.json
