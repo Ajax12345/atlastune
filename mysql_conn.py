@@ -134,11 +134,11 @@ class MySQL:
     }
     KNOBS = {
         'table_open_cache': ['integer', [1, 10240, 512]],
-        'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 30000000]],
-        'innodb_buffer_pool_instances': ['integer', [1, 64, 5]],
-        'innodb_purge_threads': ['integer', [1, 32, 1]],
-        'innodb_read_io_threads': ['integer', [1, 64, 5]],
-        'innodb_write_io_threads': ['integer', [1, 64, 5]],
+        'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 30000000*5]],
+        'innodb_buffer_pool_instances': ['integer', [1, 64, 10]],
+        'innodb_purge_threads': ['integer', [1, 32, 3]],
+        'innodb_read_io_threads': ['integer', [1, 64, 8]],
+        'innodb_write_io_threads': ['integer', [1, 64, 8]],
     }
     KNOB_DEFAULTS = {
         "table_open_cache": 4000,
@@ -320,7 +320,23 @@ class MySQL:
             if knob_type == 'integer':
                 min_val, max_val, *_ = [knob_activation_payload.get(i, i) for i in val_range]
                 return max(min_val, int(max_val*val))
+                
+                '''
+                min_val, max_val, step = [knob_activation_payload.get(i, i) for i in val_range]
+                a_v = max(min_val, int(max_val*val))
+                start = min_val
+                while a_v > start:
+                    start += step
 
+                final_v = min(start, max_val)
+                
+                if final_v == max_val:
+                    final_v = int(final_v * 0.98)
+            
+
+                print(knob, a_v, int(final_v), max_val)
+                return int(final_v)
+                '''
             
             return val_range[min(max(0, int(len(val_range)*val)), len(val_range) - 1)]
 
@@ -357,17 +373,8 @@ class MySQL:
 
     @DB_EXISTS()
     def sysbench_metrics(self, seconds:int = 10) -> dict:
-        assert self.database in ['sysbench_tune']
-        results = str(subprocess.run(['sysbench', 'oltp_read_write',
-            '--db-driver=mysql',
-            '--mysql-db=sysbench_tune',
-            '--mysql-user=root',
-            '--mysql-password=Gobronxbombers2',
-            '--mysql_storage_engine=innodb',
-            '--threads=2',
-            f'--time={seconds}',
-            '--forced-shutdown=1',
-            '--auto_inc=off',
+        '''
+        '--auto_inc=off',
             '--create_secondary=off',
             '--delete_inserts=5',
             '--distinct_ranges=2',
@@ -379,6 +386,18 @@ class MySQL:
             '--sum_ranges=2',
             '--range_selects=on',
             '--secondary=off',
+        '''
+        assert self.database in ['sysbench_tune']
+        results = str(subprocess.run(['sysbench', 'oltp_read_write',
+            '--db-driver=mysql',
+            '--mysql-db=sysbench_tune',
+            '--mysql-user=root',
+            '--mysql-password=Gobronxbombers2',
+            '--mysql_storage_engine=innodb',
+            '--threads=2',
+            f'--time={seconds}',
+            '--forced-shutdown=1',
+            '--rand-seed=1',
             '--table_size=1000000',
             '--tables=10',
             '--rand-type=uniform', 
@@ -771,6 +790,7 @@ if __name__ == '__main__':
         #5242880
         #9005301760
         #print(conn.memory_size('b')['sysbench_tune']*4)
-        print(conn.dqn_knob_actions())
+        #print(conn.dqn_knob_actions())
+        print(conn.memory_size('b')['sysbench_tune']*4)
         
     

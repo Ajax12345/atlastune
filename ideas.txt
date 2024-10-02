@@ -8,6 +8,9 @@ to fix memory leak issues: rm -rf /opt/homebrew/var/mysql
 
 ps aux | grep mysqld
 
+/opt/homebrew/var/mysql/localhost.log
+    - see localhost.err
+
 kill -9 id
 
 TPC-H
@@ -234,4 +237,5 @@ Current approach:
 If that fails:
     - look into porting CDBtune's ddpg
     - BO-based methods
+    - train on more knobs (6+)
 

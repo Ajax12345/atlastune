@@ -1830,7 +1830,7 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1841,11 +1841,11 @@ if __name__ == '__main__':
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
-        'workload_exec_time': 30,
+        'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.001,
-        'noise_eliminate': 300,
+        'noise_eliminate': 250,
         'terminate_after': 100,
         'updates': 5,
         'tau': 0.999,
@@ -1854,11 +1854,11 @@ if __name__ == '__main__':
         'env_reset': None,
         'is_marl': True,
         'weight_decay': 0.001
-    })
-    '''
+    })    
 
     
-    #display_tuning_results(['outputs/knob_tuning_data/rl_ddpg57.json'])
+    #display_tuning_results(['outputs/knob_tuning_data/rl_ddpg60.json'])
+    '''
     atlas_knob_tune_cdb({
         'database': 'sysbench_tune',
         'reward_func': 'compute_sysbench_reward_throughput_qtune',
@@ -1869,7 +1869,7 @@ if __name__ == '__main__':
         'iterations':200,
         'is_marl': True
     })
-    
+    '''
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')
