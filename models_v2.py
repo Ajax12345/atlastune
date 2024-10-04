@@ -549,7 +549,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         print('update number specified', self.config['updates'])
 
-        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        #metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        metrics = knob_values
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         state = [*(indices if is_marl else []), *metrics]
@@ -611,10 +612,16 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             cq.add_action(selected_action)
 
             #print([[j for j, _ in i] for i in cq.clusters])
-
+            '''
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
                 [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
+                w2
+            ])
+            '''
+            self.experience_replay.append([state, selected_action, 
+                reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
+                [*(indices if is_marl else []), *(metrics:=knob_values)],
                 w2
             ])
 
@@ -1855,9 +1862,9 @@ if __name__ == '__main__':
         'is_marl': True,
         'weight_decay': 0.001
     })    
-
     
-    #display_tuning_results(['outputs/knob_tuning_data/rl_ddpg60.json'])
+    
+    #display_tuning_results(['outputs/knob_tuning_data/rl_ddpg62.json'], smoother = whittaker_smoother)
     '''
     atlas_knob_tune_cdb({
         'database': 'sysbench_tune',

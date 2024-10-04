@@ -2403,3 +2403,41 @@
 
     Outputs:
         outputs/knob_tuning_data/rl_ddpg62.json
+
+
+10/03/2024 @ 11:02 AM (Experiment 99)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.001,
+        'noise_eliminate': 250,
+        'terminate_after': 100,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'weight_decay': 0.001
+    })  
+
+    Running with random seed set to 1 on sysbench workload execution
+
+    Metrics are now the knob values
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg63.json
+        outputs/knob_tuning_data/rl_ddpg64.json
+
+        Promising
