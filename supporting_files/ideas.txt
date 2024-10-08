@@ -1,6 +1,7 @@
 /usr/local/mysql/bin/mysql -u root -pGobronxbombers2
 
 to fix memory leak issues: rm -rf /opt/homebrew/var/mysql
+rm -rf /opt/homebrew/bin/mysql
 
 /usr/local/mysql-8.0.26-macos11-arm64/support-files/mysql.server start
 
@@ -10,6 +11,12 @@ ps aux | grep mysqld
 
 /opt/homebrew/var/mysql/localhost.log
     - see localhost.err
+
+
+
+https://stackoverflow.com/questions/58466272/homebrew-mysql-8-0-18-on-macos-10-15-catalina-wont-run-as-service
+
+
 
 kill -9 id
 

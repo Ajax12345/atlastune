@@ -464,6 +464,19 @@ class ClusterQueue:
 
         return results
 
+class ClusterCache(ClusterQueue):
+    def __init__(self, f:str = 'cosine', dist:float = 0.002) -> None:
+        super().__init__(f = f, dist = dist)
+        self.storage = []
+
+    def __getitem__(self, action:typing.List[float]) -> typing.Union[None, dict]:
+        if (options:=[(a, b, score) for a, b in self.storage \
+                if (score:=self.f_map[self.f](action, a)) <= self.dist]):
+            return sorted(options, key=lambda x:x[-1])[0][1]
+
+    def add_entry(self, action:typing.List[float], data:dict) -> None:
+        self.storage.append((action, data))
+
 
 class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals, 
         Atlas_Environment):
@@ -574,6 +587,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         cq = ClusterQueue(dist = self.config['cluster_dist'])
 
+        c_cache = ClusterCache(dist = self.config['cluster_dist'])
+
         rewards = []
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
@@ -611,20 +626,28 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             cq.add_action(selected_action)
 
-            #print([[j for j, _ in i] for i in cq.clusters])
-            '''
-            self.experience_replay.append([state, selected_action, 
-                reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
-                [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
-                w2
-            ])
+            if (w2:=c_cache[selected_action]) is None:
+                self.experience_replay.append([state, selected_action, 
+                    reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
+                    [*(indices if is_marl else []), *(metrics:=knob_values)],
+                    w2
+                ])
+                c_cache.add_entry(selected_action, w2)
+
+            else:
+                self.experience_replay.append([state, selected_action, 
+                    reward:=getattr(self, reward_func)(self.experience_replay, w2),
+                    [*(indices if is_marl else []), *(metrics:=knob_values)],
+                    w2
+                ])
+            
             '''
             self.experience_replay.append([state, selected_action, 
                 reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
                 [*(indices if is_marl else []), *(metrics:=knob_values)],
                 w2
             ])
-
+            '''
             rewards.append(reward)
             state = [*(indices if is_marl else []), *metrics]
 
@@ -1715,8 +1738,8 @@ def knob_tune_action_vis(output_file:str) -> None:
         data = json.load(f)
 
     f_name = re.findall("\w+(?=\.json)", output_file)[0]
-    with open(f'outputs/action_vis/{f_name}.txt', 'a') as f:
-        f.write('\n'.join(f'{i}: {",".join(map(str,a[1]))}' for i, a in enumerate(data[0]['experience_replay'][1:], 1)))
+    with open(f'outputs/action_vis/{f_name}.txt', 'w') as f:
+        f.write('\n'.join(f'{i}: {",".join(map(str,a[1]))} | {a[-1]["throughput"]}' for i, a in enumerate(data[0]['experience_replay'][1:], 1)))
 
 
 def cluster(output_file:str, dist = 'cosine') -> None:
@@ -1837,6 +1860,19 @@ if __name__ == '__main__':
         plt.plot(k)
         plt.show()
 
+    def test_cluster_storage(output_file) -> None:
+        cq = ClusterCache(dist = 0.001)
+
+        with open(output_file) as f:
+            data = json.load(f)
+
+        for i, a in enumerate(data[0]['experience_replay'][1:], 1):
+            cq.add_entry(a[1], a[-1])
+
+
+        print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
+
+
     
     atlas_knob_tune({
         'database': 'sysbench_tune',
@@ -1851,12 +1887,12 @@ if __name__ == '__main__':
         'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
-        'cluster_dist': 0.001,
+        'cluster_dist': 0.1,
         'noise_eliminate': 250,
-        'terminate_after': 100,
+        'terminate_after': 300,
         'updates': 5,
         'tau': 0.999,
-        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True,
@@ -1864,7 +1900,19 @@ if __name__ == '__main__':
     })    
     
     
-    #display_tuning_results(['outputs/knob_tuning_data/rl_ddpg62.json'], smoother = whittaker_smoother)
+    
+
+    display_tuning_results([
+            'outputs/knob_tuning_data/rl_ddpg66.json',
+            'outputs/knob_tuning_data/rl_ddpg67.json',
+            'outputs/knob_tuning_data/rl_ddpg68.json',
+            'outputs/knob_tuning_data/rl_ddpg69.json',
+            'outputs/knob_tuning_data/rl_ddpg71.json',
+            'outputs/knob_tuning_data/rl_ddpg72.json'
+        ], 
+        smoother = whittaker_smoother)
+    
+    
     '''
     atlas_knob_tune_cdb({
         'database': 'sysbench_tune',
@@ -1877,7 +1925,8 @@ if __name__ == '__main__':
         'is_marl': True
     })
     '''
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg37.json')
+    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg49.json')
+    #test_cluster_storage('outputs/knob_tuning_data/rl_ddpg49.json')
     #test_annealing(0.5, 0.01, 600)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')
 

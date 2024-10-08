@@ -2441,3 +2441,103 @@
         outputs/knob_tuning_data/rl_ddpg64.json
 
         Promising
+
+10/03/2024 @ 9:48 (Experiment 100)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.002,
+        'noise_eliminate': 250,
+        'terminate_after': 100,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_qtune',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'weight_decay': 0.001
+    })
+
+    Using cluster cache
+
+    try using raw throughput reward
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg65.json
+
+
+10/04/2024 @ 2:00 PM (Experiment 101)
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.01,
+        'noise_eliminate': 250,
+        'terminate_after': 100,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'weight_decay': 0.001
+    })    
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg66.json
+        outputs/knob_tuning_data/rl_ddpg67.json
+        outputs/knob_tuning_data/rl_ddpg68.json
+        outputs/knob_tuning_data/rl_ddpg69.json
+        outputs/knob_tuning_data/rl_ddpg70.json (not this)
+        outputs/knob_tuning_data/rl_ddpg71.json
+        outputs/knob_tuning_data/rl_ddpg72.json (excellent)
+
+
+10/07/2024 @ 12:24 PM (Experiment 102)
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.1,
+        'noise_eliminate': 250,
+        'terminate_after': 300,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'weight_decay': 0.001
+    })
+
+    Outputs:
+        outputs/knob_tuning_data/rl_ddpg74.json

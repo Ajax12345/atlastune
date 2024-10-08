@@ -793,4 +793,3 @@ if __name__ == '__main__':
         #print(conn.dqn_knob_actions())
         print(conn.memory_size('b')['sysbench_tune']*4)
         
-    
