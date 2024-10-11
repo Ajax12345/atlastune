@@ -247,4 +247,5 @@ If that fails:
     - train on more knobs (6+)
 
 https://teaching-on-testbeds.github.io/hello-chameleon/
+https://code.visualstudio.com/docs/remote/ssh
 

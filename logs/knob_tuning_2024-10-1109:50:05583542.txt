@@ -1,0 +1,4 @@
+Shutting down MySQL
+. SUCCESS! 
+Starting MySQL
+... SUCCESS! 

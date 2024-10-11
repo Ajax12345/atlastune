@@ -568,7 +568,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         state = [*(indices if is_marl else []), *metrics]
         print('length of state', len(state))
-        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+        start_state = F.normalize(torch.tensor([[*map(float, state)]], requires_grad = True))
         state_num, action_num = len(state), db.MySQL.knob_num
 
         if not is_epoch or self.actor is None:
@@ -659,7 +659,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             print('noise scale:', noise_scale)
 
-            start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+            start_state = F.normalize(torch.tensor([[*map(float, state)]], requires_grad = True))
 
             if len(self.experience_replay) >= self.config['replay_size']:
                 '''
@@ -1873,7 +1873,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1899,9 +1899,9 @@ if __name__ == '__main__':
         'weight_decay': 0.001
     })    
     
+    '''
     
-    
-
+    '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg66.json',
             'outputs/knob_tuning_data/rl_ddpg67.json',
@@ -1911,6 +1911,7 @@ if __name__ == '__main__':
             'outputs/knob_tuning_data/rl_ddpg72.json'
         ], 
         smoother = whittaker_smoother)
+    '''
     
     
     '''
