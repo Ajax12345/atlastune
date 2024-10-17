@@ -11,6 +11,10 @@ import whittaker_eilers
 from scipy.signal import savgol_filter
 import math, ddpg
 
+if os.environ.get('ATLASTUNE_ENVIRONMENT') == 'CC':
+    #on ubunut: export ATLASTUNE_ENVIRONMENT=CC
+    db.MySQL = db.MySQL_CC
+
 class Normalize:
     @classmethod
     def normalize(cls, arr:typing.List[float]) -> typing.List[float]:
@@ -561,6 +565,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         experience_replay_f_name = f'experience_replay/ddpg_knob_tune/er_{str(time.time()).replace(".", "")}.json'
 
         print('update number specified', self.config['updates'])
+        print('cache workload', self.config['cache_workload'])
 
         #metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         metrics = knob_values
@@ -626,7 +631,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             cq.add_action(selected_action)
 
-            if (w2:=c_cache[selected_action]) is None:
+            if (w2:=c_cache[selected_action]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
                     [*(indices if is_marl else []), *(metrics:=knob_values)],
@@ -1444,6 +1449,7 @@ def atlas_knob_tune(config:dict) -> None:
     noise_eliminate = config.get('noise_eliminate')
     terminate_after = config.get('terminate_after', 10)
     weight_decay = config['weight_decay']
+    cache_workload = config['cache_workload']
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1463,6 +1469,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'alr': alr,
                     'clr': clr,
                     'weight_decay': weight_decay,
+                    'cache_workload': cache_workload,
                     'terminate_after': terminate_after})
 
             a_knob_prog = a_knob.tune(iterations, 
@@ -1896,6 +1903,7 @@ if __name__ == '__main__':
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True,
+        'cache_workload': True,
         'weight_decay': 0.001
     })    
     
@@ -1912,7 +1920,7 @@ if __name__ == '__main__':
         ], 
         smoother = whittaker_smoother)
     '''
-    
+    knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg74.json')
     
     '''
     atlas_knob_tune_cdb({
@@ -1938,3 +1946,4 @@ if __name__ == '__main__':
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
     #cluster('outputs/knob_tuning_data/rl_ddpg35.json')
+    

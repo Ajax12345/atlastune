@@ -2544,3 +2544,10 @@
         outputs/knob_tuning_data/rl_ddpg75.json
 
     It works!!!!
+
+    Idea:
+        cluster queue stores vector of all values that will affect workload results 
+            - index selections
+            - knob values
+            be able to store both index and knob values for a given state, but when finding similarities
+                first do direct filter on index and then cosine nearest neighbors on knobs

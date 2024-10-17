@@ -248,4 +248,43 @@ If that fails:
 
 https://teaching-on-testbeds.github.io/hello-chameleon/
 https://code.visualstudio.com/docs/remote/ssh
+https://dev.to/khairunnaharnowrin/generating-a-new-ssh-key-and-adding-it-to-the-ssh-agent-4c6b
 
+
+Install github on instance, pull project repo, etc etc.
+
+Chameleon Cloud SSH:
+    name: Knob Tuning
+    Knob Tuning.pem
+    Public Key: 
+    ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCjYYXqPHCQNWbUCTTQ4kdnmSN7qQ2lOb50Z4wr9fuEdhoA+FH9vtIwaM75dAYi+/LBcu7e19F36/OrX5r5z7Q+xE1F57C3R+mZfPBDpSUB9CtTOu/apMT/ThHsV6fhKEACz6u5bfBTvCxOIv2xq9ameUBH63+wIHJyNGefvC693O5mHcFOo9nHb1ZEt1Z6vMZVyABIKsEfLsbfJv05/aua+lYxYj7Nj0VyAl1ucrwTfFdPyA0XZANGQw6LxLhZqILKVxGKFxKn6/qfjMKOfYpsxecQwYjdv3ojMQIghInQQhtQO8L9TU3aWuJOXjickeh3OlgHibTqAJT2o3cxeHLF Generated-by-Nova
+    chmod 400 /Users/jamespetullo/Downloads/Knob\ Tuning.pem
+    ssh -i ~/.ssh/id_rsa_chameleon cc@129.114.109.248
+
+    ssh -l jamespetullo@brandeis.edu -i .ssh/yourkey.pem public-ec2-host
+
+    ssh-add ~/.ssh/id_rsa_chameleon
+
+    ssh-keygen -t rsa -f ~/.ssh/id_rsa_chameleon
+    passphrase: zorro16
+
+
+    Your identification has been saved in /Users/jamespetullo/.ssh/id_rsa_chameleon
+    Your public key has been saved in /Users/jamespetullo/.ssh/id_rsa_chameleon.pub
+    The key fingerprint is:
+    SHA256:zZCxL3UXyuBC+5Qzf79ALwTUuvKINAvp1cqnl+ziPfw jamespetullo@localhost
+    The key's randomart image is:
+    +---[RSA 3072]----+
+    |        o ... .  |
+    |       . *.+ o . |
+    |        * B.= .  |
+    |         X *..   |
+    |      . S = oo.  |
+    |     o + + .o... |
+    |    . = B =  o ..|
+    |     . *.O .  o .|
+    |      .o*ooE   . |
+    +----[SHA256]-----+
+
+
+    USE THIS: ssh -i ~/.ssh/id_rsa_chameleon cc@129.114.109.248

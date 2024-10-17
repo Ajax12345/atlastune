@@ -730,7 +730,8 @@ class MySQL:
 
         self.conn.close()
 
-
+class MySQL_CC(MySQL):
+    pass
 
 
 if __name__ == '__main__':
