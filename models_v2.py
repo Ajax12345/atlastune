@@ -12,7 +12,7 @@ from scipy.signal import savgol_filter
 import math, ddpg
 
 if os.environ.get('ATLASTUNE_ENVIRONMENT') == 'CC':
-    #on ubunut: export ATLASTUNE_ENVIRONMENT=CC
+    #on ubunut: sudo export ATLASTUNE_ENVIRONMENT=CC
     db.MySQL = db.MySQL_CC
 
 class Normalize:
@@ -1450,6 +1450,7 @@ def atlas_knob_tune(config:dict) -> None:
     terminate_after = config.get('terminate_after', 10)
     weight_decay = config['weight_decay']
     cache_workload = config['cache_workload']
+    is_cc = config['is_cc']
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1489,7 +1490,8 @@ def atlas_knob_tune(config:dict) -> None:
         
         print('knob tuning complete!')
         print('knob tuning results saved to', f_name)
-        display_tuning_results(f_name, smoother = whittaker_smoother)
+        if not is_cc:
+            display_tuning_results(f_name, smoother = whittaker_smoother)
 
 
 def atlas_knob_tune_cdb(config:dict) -> None:
@@ -1880,7 +1882,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1904,10 +1906,10 @@ if __name__ == '__main__':
         'env_reset': None,
         'is_marl': True,
         'cache_workload': True,
+        'is_cc': True,
         'weight_decay': 0.001
     })    
     
-    '''
     
     '''
     display_tuning_results([
@@ -1920,7 +1922,7 @@ if __name__ == '__main__':
         ], 
         smoother = whittaker_smoother)
     '''
-    knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg74.json')
+    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg74.json')
     
     '''
     atlas_knob_tune_cdb({

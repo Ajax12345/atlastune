@@ -135,7 +135,7 @@ class MySQL:
     KNOBS = {
         'table_open_cache': ['integer', [1, 10240, 512]],
         'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 30000000*5]],
-        'innodb_buffer_pool_instances': ['integer', [1, 64, 10]],
+        #'innodb_buffer_pool_instances': ['integer', [1, 64, 10]],
         'innodb_purge_threads': ['integer', [1, 32, 3]],
         'innodb_read_io_threads': ['integer', [1, 64, 8]],
         'innodb_write_io_threads': ['integer', [1, 64, 8]],
@@ -169,6 +169,8 @@ class MySQL:
         #"join_buffer_size": 262144,
         #"innodb_flushing_avg_loops": 30,
     }
+    knob_num = len(KNOBS)
+
     def __init__(self, host:str = "localhost", user:str = "root", 
                 passwd:str = "Gobronxbombers2", database:typing.Union[str, None] = None,
                 create_cursor:bool = True, buffered:bool = False) -> None:
@@ -344,10 +346,12 @@ class MySQL:
         result = [activate_knob(val, knob) for val, knob in zip(output, cls.KNOBS)]
         return result, {a:b for a, b in zip(cls.KNOBS, result)} 
 
+    '''
     @classmethod
     @property
     def knob_num(cls) -> int:
         return len(cls.KNOBS)
+    '''
 
     @DB_EXISTS()
     def tpcc_metrics(self, l:int = 30) -> dict:
@@ -731,12 +735,30 @@ class MySQL:
         self.conn.close()
 
 class MySQL_CC(MySQL):
-    #this is an update
-    pass
+    @DB_EXISTS()
+    def apply_knob_configuration(self, knobs:dict) -> None:
+        with open('/etc/mysql/my.cnf') as f:
+            config = f.read()
+            config = re.sub('(\w+)\=(\w+)', lambda x:f'{x.group(1)}={knobs[x.group(1)] if x.group(1) in knobs else x.group(2)}', config)
+
+        with open('/etc/mysql/my.cnf', 'w') as f:
+            f.write(config)
+            
+        self.__exit__()
+        subprocess.run(['sudo', 'service', 
+        'mysql', 'restart'], stdout = self.stdout_f)
+        self.conn = mysql.connector.connect(
+            host = self.host,
+            user = self.user,
+            passwd = self.passwd,
+            database = self.database
+        )
+        self.new_cur()
+        return [knobs[i] for i in sorted(self.__class__.KNOBS)]
 
 
 if __name__ == '__main__':
-    with MySQL(database = "sysbench_tune") as conn:
+    with MySQL_CC(database = "sysbench_tune") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -793,5 +815,16 @@ if __name__ == '__main__':
         #9005301760
         #print(conn.memory_size('b')['sysbench_tune']*4)
         #print(conn.dqn_knob_actions())
-        print(conn.memory_size('b')['sysbench_tune']*4)
+        
+        print(conn.apply_knob_configuration({
+            'innodb_buffer_pool_size': 5900000, 
+            'innodb_purge_threads': 3, 
+            'innodb_read_io_threads': 5, 
+            'innodb_write_io_threads': 7, 
+            'table_open_cache': 1000
+        }))
+        
+        #print(conn.reset_knob_configuration())
+        print(conn.get_knobs())
+
         
