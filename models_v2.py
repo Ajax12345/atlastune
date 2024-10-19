@@ -567,8 +567,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         print('update number specified', self.config['updates'])
         print('cache workload', self.config['cache_workload'])
 
-        #metrics = db.MySQL.metrics_to_list(self.conn._metrics())
-        metrics = knob_values
+        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
+        #metrics = knob_values
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         state = [*(indices if is_marl else []), *metrics]
@@ -634,7 +634,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             if (w2:=c_cache[selected_action]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
-                    [*(indices if is_marl else []), *(metrics:=knob_values)],
+                    [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                     w2
                 ])
                 c_cache.add_entry(selected_action, w2)
@@ -642,7 +642,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             else:
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2),
-                    [*(indices if is_marl else []), *(metrics:=knob_values)],
+                    [*(indices if is_marl else []), *(metrics:=db.MySQL.metrics_to_list(self.conn._metrics()))],
                     w2
                 ])
             
@@ -1882,7 +1882,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1909,12 +1909,13 @@ if __name__ == '__main__':
         'is_cc': True,
         'weight_decay': 0.001
     })    
-    '''
     
+    '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg78.json'
         ], 
         smoother = whittaker_smoother)
+    '''
     '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg66.json',
