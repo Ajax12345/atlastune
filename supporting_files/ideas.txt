@@ -299,3 +299,10 @@ Chameleon Cloud SSH:
     ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY 'Gobronxbombers2';
 
     sudo chmod -R 777 /etc/mysql
+
+
+    To run detached process:
+    export ATLASTUNE_ENVIRONMENT=CC
+    sudo -E nohup python3 models_v2.py &
+
+    to monitor status: ps -ef | grep python

@@ -1893,7 +1893,7 @@ if __name__ == '__main__':
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
-        'workload_exec_time': 10,
+        'workload_exec_time': 60,
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.1,
@@ -1905,7 +1905,7 @@ if __name__ == '__main__':
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True,
-        'cache_workload': True,
+        'cache_workload': False,
         'is_cc': True,
         'weight_decay': 0.001
     })    
