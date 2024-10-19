@@ -1905,7 +1905,7 @@ if __name__ == '__main__':
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True,
-        'cache_workload': False,
+        'cache_workload': True,
         'is_cc': True,
         'weight_decay': 0.001
     })    
