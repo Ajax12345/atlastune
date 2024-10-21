@@ -1306,7 +1306,14 @@ def whittaker_smoother(vals):
 def sc_savgol_filter(vals):
     return savgol_filter(vals, 5, 2)
 
-def display_tuning_results(f_name:typing.Union[str, list], cutoff = None, smoother = None, agg_f = lambda x:sum(x)/len(x)) -> None:
+def display_tuning_results(f_name:typing.Union[str, list], 
+    cutoff = None, 
+    smoother = None, 
+    agg_f = lambda x:sum(x)/len(x),
+    y_axis_lim:dict = {},
+    plot_titles:dict = {},
+    title:typing.Union[str, None] = None) -> None:
+
     f_names = [f_name] if isinstance(f_name, str) else f_name
     full_rewards, full_params = [], collections.defaultdict(list)
     for f_name in f_names:
@@ -1349,25 +1356,32 @@ def display_tuning_results(f_name:typing.Union[str, list], cutoff = None, smooth
     print('rewards here', rewards)
 
     reward_plt.plot([*range(1,len(rewards)+1)], rewards, label = 'Earned reward')
+    if 'reward' in y_axis_lim:
+        reward_plt.set_ylim(y_axis_lim['reward'])
 
     for a, k in zip(param_plt, full_params):
         row_param_vals = [agg_f(i) for i in zip(*full_params[k])]
         
 
         a.plot([*range(1, len(row_param_vals)+1)], row_param_vals)
-        a.title.set_text(k)
+        if k in y_axis_lim:
+            a.set_ylim(y_axis_lim[k])
+
+        a.title.set_text(plot_titles.get(k, k))
         #a.legend(loc="upper right")
 
         a.set_xlabel("Iteration")
         a.set_ylabel(k)
     
 
-    reward_plt.title.set_text("Reward at each iteration")
+    reward_plt.title.set_text(plot_titles.get('reward', "Reward at each iteration"))
     reward_plt.legend(loc="lower right")
 
     reward_plt.set_xlabel("Iteration")
     reward_plt.set_ylabel("Reward")
 
+    if title:
+        plt.suptitle(title, size = 16)
 
     plt.show()
 
@@ -1882,7 +1896,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1909,13 +1923,40 @@ if __name__ == '__main__':
         'is_cc': True,
         'weight_decay': 0.001
     })    
-    
     '''
+    
+    display_tuning_results([
+            'outputs/knob_tuning_data/rl_ddpg77.json'
+        ], 
+        smoother = whittaker_smoother,
+        y_axis_lim = {
+            'reward': [0, 1],
+            'latency': [0, 800],
+            'throughput': [0, 500]
+        }, 
+        plot_titles = {
+            'reward': 'Reward (No caching)',
+            'latency': 'Latency (No caching)',
+            'throughput': 'Throughput (No caching)'
+        },
+        title = 'No Caching')
+    
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg78.json'
         ], 
-        smoother = whittaker_smoother)
-    '''
+        smoother = whittaker_smoother,
+        y_axis_lim = {
+            'reward': [0, 1],
+            'latency': [0, 800],
+            'throughput': [0, 500]
+        }, 
+        plot_titles = {
+            'reward': 'Reward (Caching)',
+            'latency': 'Latency (Caching)',
+            'throughput': 'Throughput (Caching)'
+        },
+        title = 'Caching')
+    
     '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg66.json',
@@ -1927,7 +1968,7 @@ if __name__ == '__main__':
         ], 
         smoother = whittaker_smoother)
     '''
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg74.json')
+    knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
     
     '''
     atlas_knob_tune_cdb({

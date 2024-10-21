@@ -815,7 +815,7 @@ if __name__ == '__main__':
         #9005301760
         #print(conn.memory_size('b')['sysbench_tune']*4)
         #print(conn.dqn_knob_actions())
-        
+        '''
         print(conn.apply_knob_configuration({
             'innodb_buffer_pool_size': 5900000, 
             'innodb_purge_threads': 3, 
@@ -823,8 +823,8 @@ if __name__ == '__main__':
             'innodb_write_io_threads': 7, 
             'table_open_cache': 1000
         }))
-        
+        '''
         #print(conn.reset_knob_configuration())
-        print(conn.get_knobs())
+        print(conn.reset_knob_configuration())
 
         
