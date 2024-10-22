@@ -30,5 +30,5 @@ def run_default_baseline(database:str, iterations:int, seconds:int, name:str) ->
             json.dump(results, f)
 
 if __name__ == '__main__':
-    run_default_baseline('sysbench_tune', 10, 10, 'default_b_10')
+    run_default_baseline('sysbench_tune', 600, 60, 'default_b_600')
         
