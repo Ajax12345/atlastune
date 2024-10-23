@@ -417,6 +417,54 @@ class Atlas_Environment:
         self.conn.sysbench_cleanup_benchmark()
         self.conn.sysbench_prepare_benchmark()
 
+class Atlas_States:
+    def __init__(self, is_marl:bool = True) -> None:
+        self.is_marl = is_marl
+
+    def state_indices_metrics_KNOB(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
+        if is_marl:
+            if 'indices' not in payload:
+                payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
+            
+            if 'metrics' not in payload:
+                payload['metrics'] = db.MySQL.metrics_to_list(self.conn._metrics())
+        else:
+            payload['indices'] = []
+
+        return payload['indices'] + payload['metrics']
+
+    def state_indices_knobs_KNOB(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
+        if is_marl:
+            if 'indices' not in payload:
+                payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
+            
+            if 'knobs' not in payload:
+                payload['metrics'] = conn.get_knobs_scaled()
+        else:
+            payload['indices'] = []
+
+        return payload['indices'] + payload['knobs']
+    
+    def state_indices_metrics_INDEX(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
+        if is_marl:
+            if 'indices' not in payload:
+                payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
+            
+            if 'metrics' not in payload:
+                payload['metrics'] = db.MySQL.metrics_to_list(self.conn._metrics())
+        else:
+            payload['metrics'] = []
+
+        return payload['indices'] + payload['metrics']
+
+    
+
+    def state_indices_metrics(self, payload:dict, agent:str, conn:db.MySQL) -> typing.List[float]:
+        return getattr(self, f'state_indices_metrics_{agent}')(payload, conn)
+    
+    def state_indices_knobs(self, payload:dict, agent:str, conn:db.MySQL) -> typing.List[float]:
+        return getattr(self, f'state_indices_knobs_{agent}')(payload, conn)
+
 
 class ClusterQueue:
     def __init__(self, f:str = 'cosine', dist:float = 0.002) -> None:

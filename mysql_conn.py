@@ -296,9 +296,16 @@ class MySQL:
         return [*self.cur]
 
     @DB_EXISTS(requires_db = False)
-    def get_knobs(self) -> dict:
+    def get_knobs(self) -> list:
         self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
-        return {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
+        knobs = {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
+        return [knobs[i] for i in sorted(self.__class__.KNOBS)]
+
+    @DB_EXISTS(requires_db = False)
+    def get_knobs_scaled(self) -> list:
+        self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
+        knobs = {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
+        return [knobs[i]/self.__class__.KNOBS[i][1][1] for i in sorted(self.__class__.KNOBS)]
 
     @classmethod
     def metrics_to_list(cls, metrics:dict) -> typing.List[int]:
@@ -758,7 +765,7 @@ class MySQL_CC(MySQL):
 
 
 if __name__ == '__main__':
-    with MySQL_CC(database = "sysbench_tune") as conn:
+    with MySQL(database = "sysbench_tune") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -825,6 +832,6 @@ if __name__ == '__main__':
         }))
         '''
         #print(conn.reset_knob_configuration())
-        print(conn.reset_knob_configuration())
+        print(conn.get_knobs_scaled())
 
         
