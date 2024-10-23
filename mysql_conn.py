@@ -302,10 +302,12 @@ class MySQL:
         return [knobs[i] for i in sorted(self.__class__.KNOBS)]
 
     @DB_EXISTS(requires_db = False)
-    def get_knobs_scaled(self) -> list:
+    def get_knobs_scaled(self, knob_activation_payload:dict) -> list:
         self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
         knobs = {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
-        return [knobs[i]/self.__class__.KNOBS[i][1][1] for i in sorted(self.__class__.KNOBS)]
+        return [knobs[i]/knob_activation_payload.get(
+                v:=self.__class__.KNOBS[i][1][1], v) 
+            for i in sorted(self.__class__.KNOBS)]
 
     @classmethod
     def metrics_to_list(cls, metrics:dict) -> typing.List[int]:
@@ -832,6 +834,10 @@ if __name__ == '__main__':
         }))
         '''
         #print(conn.reset_knob_configuration())
-        print(conn.get_knobs_scaled())
+        knob_activation_payload = {
+            'memory_size':(mem_size:=conn.memory_size('b')[conn.database]*4),
+            'memory_lower_bound':min(4294967168, mem_size)
+        }
+        print(conn.get_knobs_scaled(knob_activation_payload))
 
         

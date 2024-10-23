@@ -11,6 +11,8 @@ import whittaker_eilers
 from scipy.signal import savgol_filter
 import math
 
+raise Exception('Depreciated')
+
 class Normalize:
     @classmethod
     def normalize(cls, arr:typing.List[float]) -> typing.List[float]:

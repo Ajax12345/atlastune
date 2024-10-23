@@ -422,42 +422,56 @@ class Atlas_States:
         self.is_marl = is_marl
 
     def state_indices_metrics_KNOB(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
-        if is_marl:
+        if 'metrics' not in payload:
+            payload['metrics'] = db.MySQL.metrics_to_list(conn._metrics())
+
+        if self.is_marl:
             if 'indices' not in payload:
                 payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
             
-            if 'metrics' not in payload:
-                payload['metrics'] = db.MySQL.metrics_to_list(self.conn._metrics())
         else:
             payload['indices'] = []
 
         return payload['indices'] + payload['metrics']
 
     def state_indices_knobs_KNOB(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
-        if is_marl:
+        if 'knobs' not in payload:
+            payload['knobs'] = conn.get_knobs()
+
+        if self.is_marl:
             if 'indices' not in payload:
                 payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
             
-            if 'knobs' not in payload:
-                payload['metrics'] = conn.get_knobs_scaled()
         else:
             payload['indices'] = []
 
         return payload['indices'] + payload['knobs']
     
     def state_indices_metrics_INDEX(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
-        if is_marl:
-            if 'indices' not in payload:
-                payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
-            
+        if 'indices' not in payload:
+            payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
+
+        if self.is_marl:
             if 'metrics' not in payload:
-                payload['metrics'] = db.MySQL.metrics_to_list(self.conn._metrics())
+                payload['metrics'] = db.MySQL.metrics_to_list(conn._metrics())
+
         else:
             payload['metrics'] = []
 
         return payload['indices'] + payload['metrics']
 
-    
+    def state_indices_knobs_INDEX(self, payload:dict, conn:db.MySQL) -> typing.List[float]:
+        if 'indices' not in payload:
+            payload['indices'] = db.MySQL.col_indices_to_list(conn.get_columns_from_database())
+            
+        if self.is_marl:
+            if 'knobs' not in payload:
+                payload['knobs'] = conn.get_knobs()
+
+        else:
+            payload['knobs'] = []
+
+        return payload['indices'] + payload['knobs']
 
     def state_indices_metrics(self, payload:dict, agent:str, conn:db.MySQL) -> typing.List[float]:
         return getattr(self, f'state_indices_metrics_{agent}')(payload, conn)
@@ -614,12 +628,14 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         print('update number specified', self.config['updates'])
         print('cache workload', self.config['cache_workload'])
+        print('atlas state', self.config['atlas_state'])
+        atlas_states = Atlas_States(is_marl)
 
-        #metrics = db.MySQL.metrics_to_list(self.conn._metrics())
-        metrics = knob_values
-        indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+        state = getattr(atlas_states, self.config['atlas_state'])({
+                'knobs': knob_values
+            }, 'KNOB', self.conn)
 
-        state = [*(indices if is_marl else []), *metrics]
+        print('starting state', state)
         print('length of state', len(state))
         start_state = F.normalize(torch.tensor([[*map(float, state)]], requires_grad = True))
         state_num, action_num = len(state), db.MySQL.knob_num
@@ -676,34 +692,27 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             
             knob_values = self.conn.apply_knob_configuration(knob_dict)
 
-
             cq.add_action(selected_action)
+
+            new_state = getattr(atlas_states, self.config['atlas_state'])({
+                    'knobs': knob_values
+                }, 'KNOB', self.conn)
 
             if (w2:=c_cache[selected_action]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
-                    [*(indices if is_marl else []), *(metrics:=knob_values)],
-                    w2
+                    new_state, w2
                 ])
                 c_cache.add_entry(selected_action, w2)
 
             else:
-                #db.MySQL.metrics_to_list(self.conn._metrics())
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2),
-                    [*(indices if is_marl else []), *(metrics:=knob_values)],
-                    w2
+                    new_state, w2
                 ])
             
-            '''
-            self.experience_replay.append([state, selected_action, 
-                reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
-                [*(indices if is_marl else []), *(metrics:=knob_values)],
-                w2
-            ])
-            '''
             rewards.append(reward)
-            state = [*(indices if is_marl else []), *metrics]
+            state = new_state
 
             if (noise_eliminate:=self.config.get('noise_eliminate')) is None or i < noise_eliminate:
                 noise_scale -= noise_scale*self.config['noise_decay']
@@ -1537,6 +1546,7 @@ def atlas_knob_tune(config:dict) -> None:
     weight_decay = config['weight_decay']
     cache_workload = config['cache_workload']
     is_cc = config['is_cc']
+    atlas_state = config['atlas_state']
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1557,6 +1567,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'clr': clr,
                     'weight_decay': weight_decay,
                     'cache_workload': cache_workload,
+                    'atlas_state': atlas_state,
                     'terminate_after': terminate_after})
 
             a_knob_prog = a_knob.tune(iterations, 
@@ -1898,21 +1909,21 @@ def cluster(output_file:str, dist = 'cosine') -> None:
 
 
 def test_lr_annealing() -> None:
-        model = torch.nn.Linear(2, 1)
-        optimizer = torch.optim.Adam(model.parameters(), lr=100)
-        #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
-        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x:0.97 ** x)
-        #scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda = lambda x: 0.999 ** x)
-        #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.2)
-        lrs = []
+    model = torch.nn.Linear(2, 1)
+    optimizer = torch.optim.Adam(model.parameters(), lr=100)
+    #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
+    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x:0.97 ** x)
+    #scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda = lambda x: 0.999 ** x)
+    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.2)
+    lrs = []
 
-        for i in range(600):
-            optimizer.step()
-            lrs.append(optimizer.param_groups[0]["lr"])
-            scheduler.step()
+    for i in range(600):
+        optimizer.step()
+        lrs.append(optimizer.param_groups[0]["lr"])
+        scheduler.step()
 
-        plt.plot(lrs)
-        plt.show()
+    plt.plot(lrs)
+    plt.show()
 
 
 if __name__ == '__main__':
@@ -1935,55 +1946,23 @@ if __name__ == '__main__':
     
     #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-    def test_annealing(scale, decay, iterations):
-        for _ in range(iterations):
-            print(f'{_}: ',scale)
-            scale -= scale * decay
 
-
-    def noise_scale_anneal() -> None:
-        k = []
-        s = 0.5
-        for i in range(600):
-            if i < 200:
-                s -= s*0.015
-            else:
-                s = 0
-
-            k.append(s)
     
-        plt.plot(k)
-        plt.show()
-
-    def test_cluster_storage(output_file) -> None:
-        cq = ClusterCache(dist = 0.001)
-
-        with open(output_file) as f:
-            data = json.load(f)
-
-        for i, a in enumerate(data[0]['experience_replay'][1:], 1):
-            cq.add_entry(a[1], a[-1])
-
-
-        print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
-
-
-    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
-        'noise_scale': 0.5,
-        'noise_decay': 0.01,
+        'noise_scale': 0.7,
+        'noise_decay': 0.06,
         'batch_size': 100,
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
-        'workload_exec_time': 60,
+        'workload_exec_time': 10,
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.1,
-        'noise_eliminate': 250,
+        'noise_eliminate': 300,
         'terminate_after': 300,
         'updates': 5,
         'tau': 0.999,
@@ -1993,10 +1972,11 @@ if __name__ == '__main__':
         'is_marl': True,
         'cache_workload': True,
         'is_cc': True,
+        'atlas_state': 'state_indices_knobs',
         'weight_decay': 0.001
     })    
-    '''
     
+    '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg80.json'
         ], 
@@ -2028,19 +2008,14 @@ if __name__ == '__main__':
             'throughput': 'Throughput (Caching)'
         },
         title = 'Caching')
-    
+    '''
     '''
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg66.json',
-            'outputs/knob_tuning_data/rl_ddpg67.json',
-            'outputs/knob_tuning_data/rl_ddpg68.json',
-            'outputs/knob_tuning_data/rl_ddpg69.json',
-            'outputs/knob_tuning_data/rl_ddpg71.json',
-            'outputs/knob_tuning_data/rl_ddpg72.json'
+            'outputs/knob_tuning_data/rl_ddpg82.json'
         ], 
         smoother = whittaker_smoother)
     '''
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
+    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg82.json')
     
     '''
     atlas_knob_tune_cdb({
@@ -2066,4 +2041,11 @@ if __name__ == '__main__':
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
     #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
     #cluster('outputs/knob_tuning_data/rl_ddpg35.json')
-    
+    '''
+    with db.MySQL(database = "sysbench_tune") as conn:
+        s = Atlas_States(False)
+        print(s.state_indices_knobs({
+            'indices': db.MySQL.col_indices_to_list(conn.get_columns_from_database()),
+            'knobs': conn.get_knobs()
+        }, 'INDEX', conn))
+    '''

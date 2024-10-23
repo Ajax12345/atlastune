@@ -2704,3 +2704,94 @@
     })
 
     outputs/knob_tuning_data/rl_ddpg80.json
+
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.1,
+        'noise_eliminate': 250,
+        'terminate_after': 300,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'cache_workload': True,
+        'is_cc': True,
+        'atlas_state': 'state_indices_knobs',
+        'weight_decay': 0.001
+    })    
+
+    Testing new atlas state configuration
+
+    outputs/knob_tuning_data/rl_ddpg81.json
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.7,
+        'noise_decay': 0.06,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.1,
+        'noise_eliminate': 300,
+        'terminate_after': 300,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'cache_workload': True,
+        'is_cc': True,
+        'atlas_state': 'state_indices_knobs',
+        'weight_decay': 0.001
+    })    
+
+    outputs/knob_tuning_data/rl_ddpg82.json
+
+    atlas_knob_tune({
+        'database': 'sysbench_tune',
+        'episodes': 1,
+        'replay_size': 60,
+        'noise_scale': 0.7,
+        'noise_decay': 0.06,
+        'batch_size': 100,
+        'min_noise_scale': None,
+        'alr': 0.0001,
+        'clr': 0.0001,
+        'workload_exec_time': 10,
+        'marl_step': 50,
+        'iterations': 600,
+        'cluster_dist': 0.1,
+        'noise_eliminate': 300,
+        'terminate_after': 300,
+        'updates': 5,
+        'tau': 0.999,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'env_reset': None,
+        'is_marl': True,
+        'cache_workload': True,
+        'is_cc': True,
+        'weight_decay': 0.001
+    })  
+    outputs/knob_tuning_data/rl_ddpg83.json
