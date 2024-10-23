@@ -1461,7 +1461,7 @@ def atlas_knob_tune(config:dict) -> None:
     env_reset = config.get('env_reset')
     cluster_dist = config['cluster_dist']
     noise_eliminate = config.get('noise_eliminate')
-    terminate_after = config.get('terminate_after', 10)
+    terminate_after = config.get('terminate_after')
     weight_decay = config['weight_decay']
     cache_workload = config['cache_workload']
     is_cc = config['is_cc']
@@ -1896,7 +1896,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-    '''
+    
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1907,24 +1907,24 @@ if __name__ == '__main__':
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
-        'workload_exec_time': 60,
+        'workload_exec_time': 30,
         'marl_step': 50,
-        'iterations': 600,
+        'iterations': 1000,
         'cluster_dist': 0.1,
         'noise_eliminate': 250,
-        'terminate_after': 300,
+        #'terminate_after': 300,
         'updates': 5,
         'tau': 0.999,
         'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True,
-        'cache_workload': True,
+        'cache_workload': False,
         'is_cc': True,
         'weight_decay': 0.001
     })    
+
     '''
-    
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg77.json'
         ], 
@@ -1958,6 +1958,7 @@ if __name__ == '__main__':
         title = 'Caching')
     
     '''
+    '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg66.json',
             'outputs/knob_tuning_data/rl_ddpg67.json',
@@ -1968,8 +1969,10 @@ if __name__ == '__main__':
         ], 
         smoother = whittaker_smoother)
     '''
+    '''
     knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
     
+    '''
     '''
     atlas_knob_tune_cdb({
         'database': 'sysbench_tune',
@@ -1982,6 +1985,7 @@ if __name__ == '__main__':
         'is_marl': True
     })
     '''
+
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg49.json')
     #test_cluster_storage('outputs/knob_tuning_data/rl_ddpg49.json')
     #test_annealing(0.5, 0.01, 600)
