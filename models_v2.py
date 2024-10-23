@@ -1349,13 +1349,28 @@ def display_tuning_results(f_name:typing.Union[str, list],
             full_params[a].append(smoother(b) if smoother is not None else b)
       
    
-   
+    with open('outputs/comparison_results/default_b_600.json') as f:
+        default_benchmark = collections.defaultdict(list)
+        workload_data = json.load(f)
+        for i in workload_data:
+            for a, b in i['params'].items():
+                default_benchmark[a].append(b)
+
+    a_r, wd = Atlas_Rewards(), [[i] for i in workload_data]
+    
+    baseline_rewards = [a_r.compute_sysbench_reward_throughput_scaled(wd, i) for i in workload_data]
+    print('baseline reawrd here', baseline_rewards)
+
     fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)    
 
     rewards = [agg_f(i) for i in zip(*full_rewards)]
     print('rewards here', rewards)
 
     reward_plt.plot([*range(1,len(rewards)+1)], rewards, label = 'Earned reward')
+    
+    b_r = baseline_rewards + [random.choice(baseline_rewards) for _ in range(max(0, len(rewards) - len(baseline_rewards)))]
+    reward_plt.plot([*range(1,len(b_r)+1)], b_r if smoother is None else smoother(b_r), label = 'Baseline workload')
+
     if 'reward' in y_axis_lim:
         reward_plt.set_ylim(y_axis_lim['reward'])
 
@@ -1363,7 +1378,15 @@ def display_tuning_results(f_name:typing.Union[str, list],
         row_param_vals = [agg_f(i) for i in zip(*full_params[k])]
         
 
-        a.plot([*range(1, len(row_param_vals)+1)], row_param_vals)
+        a.plot([*range(1, len(row_param_vals)+1)], row_param_vals, label = 'Recommended configuration')
+
+
+        d_b = default_benchmark[k] + [random.choice(default_benchmark[k]) for _ in range(max(0, len(row_param_vals) - len(default_benchmark[k])))]
+
+        a.plot([*range(1, len(d_b)+1)], d_b if smoother is None else smoother(d_b), label = f'Default configuration')
+
+        a.legend(loc="lower right")
+
         if k in y_axis_lim:
             a.set_ylim(y_axis_lim[k])
 
@@ -1461,7 +1484,7 @@ def atlas_knob_tune(config:dict) -> None:
     env_reset = config.get('env_reset')
     cluster_dist = config['cluster_dist']
     noise_eliminate = config.get('noise_eliminate')
-    terminate_after = config.get('terminate_after')
+    terminate_after = config.get('terminate_after', 10)
     weight_decay = config['weight_decay']
     cache_workload = config['cache_workload']
     is_cc = config['is_cc']
@@ -1896,7 +1919,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-    
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1907,30 +1930,30 @@ if __name__ == '__main__':
         'min_noise_scale': None,
         'alr': 0.0001,
         'clr': 0.0001,
-        'workload_exec_time': 30,
+        'workload_exec_time': 60,
         'marl_step': 50,
-        'iterations': 1000,
+        'iterations': 600,
         'cluster_dist': 0.1,
         'noise_eliminate': 250,
-        #'terminate_after': 300,
+        'terminate_after': 300,
         'updates': 5,
         'tau': 0.999,
         'reward_func': 'compute_sysbench_reward_throughput_scaled',
         'reward_signal': 'sysbench_latency_throughput',
         'env_reset': None,
         'is_marl': True,
-        'cache_workload': False,
+        'cache_workload': True,
         'is_cc': True,
         'weight_decay': 0.001
     })    
-
     '''
+    
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg77.json'
+            'outputs/knob_tuning_data/rl_ddpg80.json'
         ], 
         smoother = whittaker_smoother,
         y_axis_lim = {
-            'reward': [0, 1],
+            'reward': [-1, 1],
             'latency': [0, 800],
             'throughput': [0, 500]
         }, 
@@ -1946,7 +1969,7 @@ if __name__ == '__main__':
         ], 
         smoother = whittaker_smoother,
         y_axis_lim = {
-            'reward': [0, 1],
+            'reward': [-1, 1],
             'latency': [0, 800],
             'throughput': [0, 500]
         }, 
@@ -1958,7 +1981,6 @@ if __name__ == '__main__':
         title = 'Caching')
     
     '''
-    '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg66.json',
             'outputs/knob_tuning_data/rl_ddpg67.json',
@@ -1969,10 +1991,8 @@ if __name__ == '__main__':
         ], 
         smoother = whittaker_smoother)
     '''
-    '''
-    knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
+    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
     
-    '''
     '''
     atlas_knob_tune_cdb({
         'database': 'sysbench_tune',
@@ -1985,7 +2005,6 @@ if __name__ == '__main__':
         'is_marl': True
     })
     '''
-
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg49.json')
     #test_cluster_storage('outputs/knob_tuning_data/rl_ddpg49.json')
     #test_annealing(0.5, 0.01, 600)
