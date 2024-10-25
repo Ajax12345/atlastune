@@ -479,6 +479,9 @@ class Atlas_States:
     def state_indices_knobs(self, payload:dict, agent:str, conn:db.MySQL) -> typing.List[float]:
         return getattr(self, f'state_indices_knobs_{agent}')(payload, conn)
 
+    def state(self, state:str, payload:dict, agent:str, conn:db.MySQL) -> typing.List[float]:
+        return getattr(self, state)(payload, agent, conn)
+
 
 class ClusterQueue:
     def __init__(self, f:str = 'cosine', dist:float = 0.002) -> None:
@@ -631,7 +634,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         print('atlas state', self.config['atlas_state'])
         atlas_states = Atlas_States(is_marl)
 
-        state = getattr(atlas_states, self.config['atlas_state'])({
+        state = atlas_states.state(self.config['atlas_state'], {
                 'knobs': knob_values
             }, 'KNOB', self.conn)
 
@@ -694,9 +697,9 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
             cq.add_action(selected_action)
 
-            new_state = getattr(atlas_states, self.config['atlas_state'])({
-                    'knobs': knob_values
-                }, 'KNOB', self.conn)
+            new_state = atlas_states.state(self.config['atlas_state'], {
+                'knobs': knob_values
+            }, 'KNOB', self.conn)
 
             if (w2:=c_cache[selected_action]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, selected_action, 
@@ -725,27 +728,15 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             start_state = F.normalize(torch.tensor([[*map(float, state)]], requires_grad = True))
 
             if len(self.experience_replay) >= self.config['replay_size']:
-                '''
-                with open(e_f_file:=f"experience_replay/ddpg_knob_tune/{self.conn.database}_{str(datetime.datetime.now()).replace(' ', '').replace('.', '')}.json", 'a') as f:
-                    json.dump(self.experience_replay, f)
-
-                print('experience replay saved to:', e_f_file)
-                '''
                 for _ in range(self.config['updates']):
                  
                     batch_size = min(self.config['batch_size'], len(self.experience_replay)-1)
                     inds = random.sample([*range(1, len(self.experience_replay))], batch_size)
-                    
-                    #batch_size = min(self.config['batch_size'], len(self.experience_replay))
-                    #inds = cq.sample(batch_size)
-
+                
                     _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-                    #s = torch.tensor([Normalize.normalize(i) for i in _s])
                     s = F.normalize(torch.tensor([[*map(float, i)] for i in _s]))
                     a = torch.tensor([[float(j) for j in i] for i in _a])
-                    #s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime])
                     s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime]))
-                    #r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)])
                     r = torch.tensor([[float(i)] for i in _r])
 
                     target_action = self.actor_target(s_prime).detach()
@@ -1119,7 +1110,9 @@ class Atlas_Index_Tune(Atlas_Rewards):
         return f'{self.__class__.__name__}(database="{self.database}")'
 
 
-class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals):
+class Atlas_Index_Tune_DQN(Atlas_Index_Tune, 
+        Atlas_Rewards, 
+        Atlas_Reward_Signals):
     def __init__(self, database:str, conn = None, config = {
             'lr':0.0001,
             'gamma':0.9,
@@ -1161,7 +1154,6 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
         return ind, _indices
 
     def generate_experience_replay(self, indices:typing.List[int], 
-            metrics:typing.List[int], 
             iterations:int, 
             reward_func:str, 
             reward_signal:str, 
@@ -1176,17 +1168,27 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
             
             return
 
-        self.experience_replay = [[[*indices, *(metrics if is_marl else [])], 
-                None, None, None, w2_o:=getattr(self, reward_signal)()]]
+        atlas_states = Atlas_States(is_marl)
+
+        state = atlas_states.state(self.config['atlas_state'], {
+                'indices': indices
+            }, 'INDEX', self.conn)
+
+        self.experience_replay = [[state, None, None, None, w2_o:=getattr(self, reward_signal)()]]
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
-
             self.conn.apply_index_configuration(_indices)
-            self.experience_replay.append([[*indices, *(metrics if is_marl else [])], ind, 
+
+            new_state = atlas_states.state(self.config['atlas_state'], {
+                    'indices': _indices
+                }, 'INDEX', self.conn)
+
+            self.experience_replay.append([state, ind, 
                 getattr(self, reward_func)(self.experience_replay,
-                        w2:=getattr(self, reward_signal)()), 
-                [*_indices, *(metrics if is_marl else [])], w2])
+                        w2:=getattr(self, reward_signal)()), new_state, w2])
+            
             indices = _indices
+            state = new_state
 
         print('experience replay saved to:')
         print(self.save_experience_replay())
@@ -1210,16 +1212,20 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
         print('tuning reward function:', reward_func)
         print('tuning reward signal:', reward_signal)
         self.conn.drop_all_indices()
-        metrics = db.MySQL.metrics_to_list(self.conn._metrics())
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
         if not self.experience_replay:
-            self.generate_experience_replay(indices, metrics, reward_buffer_size, 
+            self.generate_experience_replay(indices, reward_buffer_size, 
                 reward_func, reward_signal, is_marl, from_buffer = from_buffer)
         
-        state = [*indices, *(metrics if is_marl else [])]
+        atlas_states = Atlas_States(is_marl)
+
+        state = atlas_states.state(self.config['atlas_state'], {
+                'indices': indices
+            }, 'INDEX', self.conn)
+
         print('length of state in index tune', len(state), state)
-        start_state = torch.tensor([Normalize.normalize(state)], requires_grad = True)
+        start_state = F.normalize(torch.tensor([[*map(float, state)]], requires_grad = True))
         
         action_num, state_num = len(indices)+1, len(state)
 
@@ -1249,23 +1255,29 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
                 
             
             self.conn.apply_index_configuration(_indices)
+
+            new_state = atlas_states.state(self.config['atlas_state'], {
+                    'indices': _indices
+                }, 'INDEX', self.conn)
+
             self.experience_replay.append([state, ind, 
                 reward:=getattr(self, reward_func)(self.experience_replay,
                         w2:=getattr(self, reward_signal)()), 
-                [*_indices, *(metrics if is_marl else [])], w2])
+                new_state, w2])
 
             rewards.append(reward)
             indices = _indices
-            state = [*indices, *(metrics if is_marl else [])]
-            start_state = torch.tensor([Normalize.normalize(state)])
+            state = new_state
+            
+            start_state = F.normalize(torch.tensor([[*map(float, state)]]))
             epsilon -= epsilon*self.config['epsilon_decay']
 
             inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_sample_size'])
             _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
-            s = torch.tensor([Normalize.normalize(i) for i in _s], requires_grad = True)
+            s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
             a = torch.tensor([[i] for i in _a])
-            s_prime = torch.tensor([Normalize.normalize(i) for i in _s_prime], requires_grad = True)
-            r = torch.tensor([[float(i)] for i in Normalize.normalize(_r)], requires_grad = True)
+            s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
+            r = F.normalize(torch.tensor([[float(i)] for i in _r], requires_grad = True))
 
             with torch.no_grad():
                 q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
@@ -1274,7 +1286,6 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune, Atlas_Rewards, Atlas_Reward_Signals
             target_q_value = r + self.config['gamma']*q_prime
 
             loss = self.loss_func(q_value, target_q_value)
-            #print(loss)
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -1489,6 +1500,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
     reward_buffer = config['reward_buffer']
     reward_buffer_size = config['reward_buffer_size']
     batch_sample_size = config['batch_sample_size']
+    atlas_state = config['atlas_state']
 
     with Atlas_Index_Tune_DQN(database) as a_index:
         a_index.conn.reset_knob_configuration()
@@ -1498,7 +1510,8 @@ def atlas_index_tune_dqn(config:dict) -> None:
                 'epsilon':epsilon, 
                 'epsilon_decay':epsilon_decay, 
                 'marl_step':marl_step,
-                'batch_sample_size': batch_sample_size
+                'batch_sample_size': batch_sample_size,
+                'atlas_state': atlas_state
             })
             a_index_prog = a_index.tune(iterations, 
                 reward_func = reward_func, 
@@ -1929,25 +1942,26 @@ def test_lr_annealing() -> None:
 if __name__ == '__main__':
     '''
     atlas_index_tune_dqn({
-        'database': 'tpch1',
+        'database': 'sysbench_tune',
         'weight_copy_interval': 10,
         'epsilon': 1,
         'epsilon_decay': 0.0055,
         'marl_step': 50,
-        'iterations': 200,
-        'reward_func': 'compute_tpch_qph_reward',
-        'reward_signal': 'tpch_queries_per_hour',
+        'iterations': 600,
+        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_signal': 'sysbench_latency_throughput',
+        'atlas_state': 'state_indices_knobs',
         'is_marl': True,
         'epochs': 1,
-        'reward_buffer': None,
+        'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-2414:00:45373888.json',
         'reward_buffer_size':60,
         'batch_sample_size':50
     })
-    
-    #display_tuning_results('outputs/tuning_data/rl_dqn26.json')
     '''
-
+    display_tuning_results('outputs/tuning_data/rl_dqn28.json', smoother = whittaker_smoother)
     
+
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1975,7 +1989,7 @@ if __name__ == '__main__':
         'atlas_state': 'state_indices_knobs',
         'weight_decay': 0.001
     })    
-    
+    '''
     '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg80.json'

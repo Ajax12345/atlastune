@@ -1922,7 +1922,7 @@ if __name__ == '__main__':
         print(cq[[1.1522041145438326,0.3880128933971036,0.35030574826270866,0.5800164983550372,0.6529931816384045,0.8166568707578936]])
 
 
-
+    '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
         'episodes': 1,
@@ -1949,6 +1949,7 @@ if __name__ == '__main__':
         'is_cc': True,
         'weight_decay': 0.001
     })  
+    '''
     '''
     
     display_tuning_results([
@@ -1983,12 +1984,11 @@ if __name__ == '__main__':
         },
         title = 'Caching')
     '''
-    '''
+    
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg83.json'
-        ], 
-        smoother = whittaker_smoother)
-    '''
+            'outputs/knob_tuning_data/rl_ddpg78.json'
+        ], smoother = whittaker_smoother)
+    
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
     
     '''
