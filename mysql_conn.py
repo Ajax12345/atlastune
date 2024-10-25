@@ -588,14 +588,18 @@ class MySQL:
     @DB_EXISTS()
     def drop_all_indices(self) -> None:
         for col_data in self.get_columns_from_database():
+            '''
             if col_data['INDEX_NAME'] and col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
                 continue
+            '''
             
-            if col_data['INDEX_NAME'] is not None and not col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
-                try:
+            if col_data['INDEX_NAME'] is not None:
+                if col_data['INDEX_NAME'].lower().startswith('PRIMARY'.lower()):
+                    self.cur.execute(f'alter table {col_data["TABLE_NAME"]} drop primary key')
+
+                else:
                     self.cur.execute(f'drop index {col_data["INDEX_NAME"]} on {col_data["TABLE_NAME"]}')
-                except:
-                    pass
+
 
         self.commit()
 
@@ -838,6 +842,7 @@ if __name__ == '__main__':
             'memory_size':(mem_size:=conn.memory_size('b')[conn.database]*4),
             'memory_lower_bound':min(4294967168, mem_size)
         }
-        print(conn.get_knobs_scaled(knob_activation_payload))
+        conn.drop_all_indices()
+        print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
 
         

@@ -334,14 +334,21 @@ class Atlas_Rewards:
         ])
 
     def scale_num(self, n:int) -> int:
+        _n = n
+        n = abs(n)
         n_b = int((s:=str(n)[0])+'0'*(L:=len(str(n))-1))
         if n >= n_b + 5*10**(L-1):
-            return n_b + 10**L
-        return n_b
+            return [-1, 1][_n > 0]*(n_b + 10**L)
+
+        return [-1, 1][_n > 0]*n_b
 
     def compute_sysbench_reward_throughput_scaled(self, experience_replay:typing.List[dict], w2:dict) -> float:
         t = self.scale_num(int(experience_replay[0][-1]['throughput']))
         return (self.scale_num(int(w2['throughput'])) - t)/t
+
+    def compute_sysbench_reward_latency_scaled(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        t = self.scale_num(int(experience_replay[0][-1]['latency']))
+        return (t - self.scale_num(int(w2['latency'])))/t
 
     def compute_sysbench_reward_throughput_discrete(self, experience_replay:typing.List[dict], w2:dict) -> float:
         d1 = self.scale_num(int(experience_replay[0][-1]['throughput']))
@@ -493,16 +500,16 @@ class ClusterQueue:
             return [min(max(0, i), 1) for i in v]
 
         def cosine(v1:typing.List[float], v2:typing.List[float]) -> float:
-            v1, v2 = normalize(clip(v1)), normalize(clip(v2))
+            #v1, v2 = normalize(clip(v1)), normalize(clip(v2))
             return 1 - sum(a*b for a, b in zip(v1, v2))/(pow(sum(a**2 for a in v1), 0.5) * pow(sum(b**2 for b in v2), 0.5))
 
-        def euclidian(v1:typing.List[float], v2:typing.List[float]) -> float:
-            v1, v2 = normalize(clip(v1)), normalize(clip(v2))
+        def euclidean(v1:typing.List[float], v2:typing.List[float]) -> float:
+            #v1, v2 = normalize(clip(v1)), normalize(clip(v2))
             return pow(sum((a - b)**2 for a, b in zip(v1, v2)), 0.5)
 
         self.f, self.dist = f, dist
         self.clusters = []
-        self.f_map = {'cosine': cosine, 'euclidian': euclidian}
+        self.f_map = {'cosine': cosine, 'euclidean': euclidean}
         self.ind_count = 1
         self.access_cache = []
 
@@ -538,13 +545,24 @@ class ClusterCache(ClusterQueue):
         super().__init__(f = f, dist = dist)
         self.storage = []
 
-    def __getitem__(self, action:typing.List[float]) -> typing.Union[None, dict]:
-        if (options:=[(a, b, score) for a, b in self.storage \
-                if (score:=self.f_map[self.f](action, a)) <= self.dist]):
+    def __getitem__(self, payload:dict) -> typing.Union[None, dict]:
+        options = []
+        for a, b in self.storage:
+            if payload.get('direct', []) == a.get('direct', []):
+                v1, v2 = payload.get('indirect', []), a.get('indirect', [])
+                if not v1 and not v2:
+                    options.append((a, b, 0))
+                
+                elif v1 and v2:
+                    if (score:=self.f_map[self.f](v1, v2)) <= self.dist:
+                        options.append((a, b, score))
+
+
+        if options:
             return sorted(options, key=lambda x:x[-1])[0][1]
 
-    def add_entry(self, action:typing.List[float], data:dict) -> None:
-        self.storage.append((action, data))
+    def add_entry(self, payload:dict, data:dict) -> None:
+        self.storage.append((payload, data))
 
 
 class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals, 
@@ -659,7 +677,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
 
         cq = ClusterQueue(dist = self.config['cluster_dist'])
 
-        c_cache = ClusterCache(dist = self.config['cluster_dist'])
+        c_cache = ClusterCache(f = self.config['cluster_f'], 
+            dist = self.config['cluster_dist'])
 
         rewards = []
         skip_experience = self.config['replay_size']
@@ -701,12 +720,15 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                 'knobs': knob_values
             }, 'KNOB', self.conn)
 
-            if (w2:=c_cache[selected_action]) is None or not self.config['cache_workload']:
+            c_c_payload = {'indirect': selected_action, 
+                'direct': db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())}
+
+            if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2:=getattr(self, reward_signal)(self.config['workload_exec_time'])),
                     new_state, w2
                 ])
-                c_cache.add_entry(selected_action, w2)
+                c_cache.add_entry(c_c_payload, w2)
 
             else:
                 self.experience_replay.append([state, selected_action, 
@@ -1154,6 +1176,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         return ind, _indices
 
     def generate_experience_replay(self, indices:typing.List[int], 
+            c_cache: ClusterCache,
             iterations:int, 
             reward_func:str, 
             reward_signal:str, 
@@ -1175,6 +1198,9 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             }, 'INDEX', self.conn)
 
         self.experience_replay = [[state, None, None, None, w2_o:=getattr(self, reward_signal)()]]
+        
+        c_cache.add_entry({'direct': indices}, w2_o)
+
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
             self.conn.apply_index_configuration(_indices)
@@ -1183,10 +1209,19 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                     'indices': _indices
                 }, 'INDEX', self.conn)
 
-            self.experience_replay.append([state, ind, 
-                getattr(self, reward_func)(self.experience_replay,
-                        w2:=getattr(self, reward_signal)()), new_state, w2])
-            
+            c_c_payload = {'direct': _indices}
+
+            if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
+                self.experience_replay.append([state, ind, 
+                    getattr(self, reward_func)(self.experience_replay,
+                            w2:=getattr(self, reward_signal)()), new_state, w2])
+                
+                c_cache.add_entry(c_c_payload, w2)
+
+            else:
+                self.experience_replay.append([state, ind, 
+                    getattr(self, reward_func)(self.experience_replay, w2), new_state, w2])
+
             indices = _indices
             state = new_state
 
@@ -1214,8 +1249,11 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         self.conn.drop_all_indices()
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
+        c_cache = ClusterCache(f = self.config['cluster_f'], 
+            dist = self.config['cluster_dist'])
+
         if not self.experience_replay:
-            self.generate_experience_replay(indices, reward_buffer_size, 
+            self.generate_experience_replay(indices, c_cache, reward_buffer_size, 
                 reward_func, reward_signal, is_marl, from_buffer = from_buffer)
         
         atlas_states = Atlas_States(is_marl)
@@ -1241,6 +1279,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         rewards = []
         epsilon = self.config['epsilon']
         for iteration in range(iterations):
+            print('state here', state)
             if random.random() < epsilon:
                 print('random')
                 ind, _indices = self.random_action(indices)
@@ -1253,17 +1292,28 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                     if ind < len(_indices):
                         _indices[ind] = int(not _indices[ind])
                 
-            
+            print(ind if ind < len(_indices) else 'do nothing')
             self.conn.apply_index_configuration(_indices)
 
             new_state = atlas_states.state(self.config['atlas_state'], {
                     'indices': _indices
                 }, 'INDEX', self.conn)
 
-            self.experience_replay.append([state, ind, 
-                reward:=getattr(self, reward_func)(self.experience_replay,
-                        w2:=getattr(self, reward_signal)()), 
-                new_state, w2])
+            c_c_payload = {'direct': _indices}
+
+            if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
+                self.experience_replay.append([state, ind, 
+                    reward:=getattr(self, reward_func)(self.experience_replay,
+                            w2:=getattr(self, reward_signal)()), 
+                    new_state, w2])
+                
+                c_cache.add_entry(c_c_payload, w2)
+
+            else:
+                self.experience_replay.append([state, ind, 
+                    reward:=getattr(self, reward_func)(self.experience_replay,
+                            w2), 
+                    new_state, w2])
 
             rewards.append(reward)
             indices = _indices
@@ -1279,9 +1329,9 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
             r = F.normalize(torch.tensor([[float(i)] for i in _r], requires_grad = True))
 
-            with torch.no_grad():
-                q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
-                q_value = self.q_net(s).gather(1, a)
+            #with torch.no_grad():
+            q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+            q_value = self.q_net(s).gather(1, a)
             
             target_q_value = r + self.config['gamma']*q_prime
 
@@ -1487,6 +1537,7 @@ def generate_knob_tune_output_file() -> str:
     return f'outputs/knob_tuning_data/rl_ddpg{ind}.json'
 
 def atlas_index_tune_dqn(config:dict) -> None:
+    lr = config['lr']
     database = config['database']
     weight_copy_interval = config['weight_copy_interval']
     epsilon = config['epsilon']
@@ -1501,17 +1552,25 @@ def atlas_index_tune_dqn(config:dict) -> None:
     reward_buffer_size = config['reward_buffer_size']
     batch_sample_size = config['batch_sample_size']
     atlas_state = config['atlas_state']
+    cache_workload = config['cache_workload']
+    cluster_dist = config['cluster_dist']
+    cluster_f = config['cluster_f']
 
     with Atlas_Index_Tune_DQN(database) as a_index:
         a_index.conn.reset_knob_configuration()
         tuning_data = []
         for i in range(epochs):
-            a_index.update_config(**{'weight_copy_interval':weight_copy_interval, 
+            a_index.update_config(**{
+                'lr': lr,
+                'weight_copy_interval':weight_copy_interval, 
                 'epsilon':epsilon, 
                 'epsilon_decay':epsilon_decay, 
                 'marl_step':marl_step,
                 'batch_sample_size': batch_sample_size,
-                'atlas_state': atlas_state
+                'atlas_state': atlas_state,
+                'cache_workload': cache_workload,
+                'cluster_dist': cluster_dist,
+                'cluster_f': cluster_f
             })
             a_index_prog = a_index.tune(iterations, 
                 reward_func = reward_func, 
@@ -1554,6 +1613,7 @@ def atlas_knob_tune(config:dict) -> None:
     updates = config.get('updates', 1)
     env_reset = config.get('env_reset')
     cluster_dist = config['cluster_dist']
+    cluster_f = config['cluster_f']
     noise_eliminate = config.get('noise_eliminate')
     terminate_after = config.get('terminate_after', 10)
     weight_decay = config['weight_decay']
@@ -1576,6 +1636,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'tau': tau,
                     'noise_eliminate': noise_eliminate,
                     'cluster_dist': cluster_dist,
+                    'cluster_f': cluster_f,
                     'alr': alr,
                     'clr': clr,
                     'weight_decay': weight_decay,
@@ -1873,7 +1934,7 @@ def cluster(output_file:str, dist = 'cosine') -> None:
         v1, v2 = normalize(clip(v1)), normalize(clip(v2))
         return 1 - sum(a*b for a, b in zip(v1, v2))/(pow(sum(a**2 for a in v1), 0.5) * pow(sum(b**2 for b in v2), 0.5))
 
-    def euclidian(v1:typing.List[float], v2:typing.List[float]) -> float:
+    def euclidean(v1:typing.List[float], v2:typing.List[float]) -> float:
         v1, v2 = normalize(clip(v1)), normalize(clip(v2))
         return pow(sum((a - b)**2 for a, b in zip(v1, v2)), 0.5)
 
@@ -1883,7 +1944,7 @@ def cluster(output_file:str, dist = 'cosine') -> None:
     actions = [i[1] for i in data[0]['experience_replay'][1:]]
 
     #print(cosine(actions[375], actions[373]))
-    #print(euclidian(actions[375], actions[373]))
+    #print(euclidean(actions[375], actions[373]))
     '''
     actions[369], actions[368] #similar
     6.451746813018744e-06
@@ -1941,24 +2002,40 @@ def test_lr_annealing() -> None:
 
 if __name__ == '__main__':
     '''
+    queue = ClusterCache(f = 'euclidean', dist = 0.1)
+   
+    for a, b, c in [([0.4, 0.3, 0.2], [0, 1, 0], 10), 
+        ([0.1, 0.0, 0.1],[0, 1, 0], 9),
+        ([0.1, 0.1, 0.1],[0, 1, 0], 7), 
+        ([0.5, 0.4, 0.1],[0, 0, 0], 8)]:
+        queue.add_entry({'direct': b}, c)
+
+
+    print(queue[{'direct': [0, 0, 0]}])
+    '''
+    
     atlas_index_tune_dqn({
         'database': 'sysbench_tune',
         'weight_copy_interval': 10,
         'epsilon': 1,
-        'epsilon_decay': 0.0055,
+        'lr': 0.0001,
+        'epsilon_decay': 0.005,
         'marl_step': 50,
         'iterations': 600,
-        'reward_func': 'compute_sysbench_reward_throughput_scaled',
+        'reward_func': 'compute_sysbench_reward_latency_scaled',
         'reward_signal': 'sysbench_latency_throughput',
         'atlas_state': 'state_indices_knobs',
+        'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
+        'cache_workload': True,
         'is_marl': True,
         'epochs': 1,
-        'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-2414:00:45373888.json',
+        'reward_buffer': None,
         'reward_buffer_size':60,
         'batch_sample_size':50
     })
-    '''
-    display_tuning_results('outputs/tuning_data/rl_dqn28.json', smoother = whittaker_smoother)
+    
+    #display_tuning_results('outputs/tuning_data/rl_dqn29.json', smoother = whittaker_smoother)
     
 
     '''
@@ -1966,8 +2043,8 @@ if __name__ == '__main__':
         'database': 'sysbench_tune',
         'episodes': 1,
         'replay_size': 60,
-        'noise_scale': 0.7,
-        'noise_decay': 0.06,
+        'noise_scale': 0.5,
+        'noise_decay': 0.01,
         'batch_size': 100,
         'min_noise_scale': None,
         'alr': 0.0001,
@@ -1976,6 +2053,7 @@ if __name__ == '__main__':
         'marl_step': 50,
         'iterations': 600,
         'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
         'noise_eliminate': 300,
         'terminate_after': 300,
         'updates': 5,
@@ -2025,10 +2103,11 @@ if __name__ == '__main__':
     '''
     '''
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg82.json'
+            'outputs/knob_tuning_data/rl_ddpg85.json'
         ], 
         smoother = whittaker_smoother)
     '''
+    
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg82.json')
     
     '''
