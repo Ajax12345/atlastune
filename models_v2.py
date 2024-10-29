@@ -1986,7 +1986,7 @@ if __name__ == '__main__':
     '''
     
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg78.json'
+            'outputs/knob_tuning_data/rl_ddpg80.json'
         ], smoother = whittaker_smoother)
     
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg78.json')
@@ -2003,16 +2003,3 @@ if __name__ == '__main__':
         'is_marl': True
     })
     '''
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg49.json')
-    #test_cluster_storage('outputs/knob_tuning_data/rl_ddpg49.json')
-    #test_annealing(0.5, 0.01, 600)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')
-
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg41.json')
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
-    #cluster('outputs/knob_tuning_data/rl_ddpg35.json')
-    

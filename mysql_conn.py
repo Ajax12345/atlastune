@@ -631,6 +631,13 @@ class MySQL:
         return self.apply_knob_configuration(self.__class__.KNOB_DEFAULTS)
 
     @DB_EXISTS()
+    def default_selected_action(self, knob_activation_payload:dict) -> typing.List[float]:
+        _ = self.__class__
+        return [_.KNOB_DEFAULTS[i]/knob_activation_payload.get(_.KNOBS[i][-1][1], 
+                    _.KNOBS[i][-1][1]) 
+            for i in _.KNOBS]
+
+    @DB_EXISTS()
     def get_knob_value(self, knob:str) -> dict:
         self.cur.execute(f'select @@global.{knob} knob')
         return self.cur.fetchone()['knob']
@@ -842,7 +849,50 @@ if __name__ == '__main__':
             'memory_size':(mem_size:=conn.memory_size('b')[conn.database]*4),
             'memory_lower_bound':min(4294967168, mem_size)
         }
-        conn.drop_all_indices()
-        print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+        #conn.drop_all_indices()
+        #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+        
+
+        class MARL_State_Share:
+            def __init__(self, **kwargs:dict) -> None:
+                self.params = kwargs
+
+            def __getitem__(self, key:str) -> typing.Any:
+                return self.params[key]
+            
+            def __setitem__(self, key:str, val:typing.Any) -> None:
+                self.params[key] = val
+
+            def __repr__(self) -> str:
+                return f'{self.__class__.__name__}({self.params})'
+
+        
+        m = MARL_State_Share()
+        m['selected_action'] = conn.default_selected_action(knob_activation_payload)
+        
+        def f(t):
+            for i in range(5):
+                print('selected action in f', t['selected_action'])
+                t['selected_action'] = [f'f{i}' for _ in range(5)]
+                yield
+
+        def g(t):
+            for i in range(5):
+                print('selected action in g', t['selected_action'])
+                t['selected_action'] = [f'g{i}' for _ in range(5)]
+                yield
+        
+        F = f(m)
+        G = g(m)
+        while True:
+            try:
+                next(F)
+                next(G)
+            except StopIteration:
+                break
+        
+
+
+
 
         

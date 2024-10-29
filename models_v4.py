@@ -675,10 +675,12 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             self.experience_replay = [[state, None, None, None, getattr(self, reward_signal)(self.config['workload_exec_time'])]]
         
 
-        cq = ClusterQueue(dist = self.config['cluster_dist'])
-
-        c_cache = ClusterCache(f = self.config['cluster_f'], 
-            dist = self.config['cluster_dist'])
+        if self.config['cluster_cache'] is not None:
+            c_cache = self.config['cluster_cache']
+        
+        else:
+            c_cache = ClusterCache(f = self.config['cluster_f'], 
+                dist = self.config['cluster_dist'])
 
         rewards = []
         skip_experience = self.config['replay_size']
@@ -714,11 +716,12 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             
             knob_values = self.conn.apply_knob_configuration(knob_dict)
 
-            cq.add_action(selected_action)
-
             new_state = atlas_states.state(self.config['atlas_state'], {
                 'knobs': knob_values
             }, 'KNOB', self.conn)
+
+            if self.config['is_marl'] and (marl_state:=self.config.get('state_share')):
+                marl_state['selected_action'] = selected_action
 
             c_c_payload = {'indirect': selected_action, 
                 'direct': db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())}
@@ -1199,7 +1202,13 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
 
         self.experience_replay = [[state, None, None, None, w2_o:=getattr(self, reward_signal)()]]
         
-        c_cache.add_entry({'direct': indices}, w2_o)
+        c_c_payload = {'direct': indices}
+        if self.config['is_marl'] and (marl_state:=self.config.get('state_share')):
+            c_c_payload['indirect'] = marl_state['selected_action']
+
+        print('index tune cc payload', c_c_payload)
+
+        c_cache.add_entry(c_c_payload, w2_o)
 
         for _ in range(iterations):
             ind, _indices = self.random_action(indices)
@@ -1210,6 +1219,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                 }, 'INDEX', self.conn)
 
             c_c_payload = {'direct': _indices}
+            if self.config['is_marl'] and (marl_state:=self.config.get('state_share')):
+                c_c_payload['indirect'] = marl_state['selected_action']
+
+            print('index tune cc payload', c_c_payload)
 
             if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, ind, 
@@ -1249,8 +1262,12 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         self.conn.drop_all_indices()
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        c_cache = ClusterCache(f = self.config['cluster_f'], 
-            dist = self.config['cluster_dist'])
+        if self.config['cluster_cache'] is not None:
+            c_cache = self.config['cluster_cache']
+        
+        else:
+            c_cache = ClusterCache(f = self.config['cluster_f'], 
+                dist = self.config['cluster_dist'])
 
         if not self.experience_replay:
             self.generate_experience_replay(indices, c_cache, reward_buffer_size, 
@@ -1300,6 +1317,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                 }, 'INDEX', self.conn)
 
             c_c_payload = {'direct': _indices}
+            if self.config['is_marl'] and (marl_state:=self.config.get('state_share')):
+                c_c_payload['indirect'] = marl_state['selected_action']
+
+            print('index tune cc payload', c_c_payload)
 
             if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, ind, 
@@ -1536,6 +1557,10 @@ def generate_knob_tune_output_file() -> str:
     ind = max(int(re.findall('\d+(?=\.json)', i)[0]) for i in os.listdir('outputs/knob_tuning_data') if i.endswith('.json')) + 1
     return f'outputs/knob_tuning_data/rl_ddpg{ind}.json'
 
+def generate_marl_output_file() -> str:
+    ind = max(int(re.findall('\d+(?=\.json)', i)[0]) for i in os.listdir('outputs/marl_tuning_data') if i.endswith('.json')) + 1
+    return f'outputs/marl_tuning_data/marl{ind}.json'
+
 def atlas_index_tune_dqn(config:dict) -> None:
     lr = config['lr']
     database = config['database']
@@ -1555,6 +1580,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
     cache_workload = config['cache_workload']
     cluster_dist = config['cluster_dist']
     cluster_f = config['cluster_f']
+    cluster_queue = config.get('cluster_queue')
 
     with Atlas_Index_Tune_DQN(database) as a_index:
         a_index.conn.reset_knob_configuration()
@@ -1570,7 +1596,8 @@ def atlas_index_tune_dqn(config:dict) -> None:
                 'atlas_state': atlas_state,
                 'cache_workload': cache_workload,
                 'cluster_dist': cluster_dist,
-                'cluster_f': cluster_f
+                'cluster_f': cluster_f,
+                'cluster_queue': cluster_queue
             })
             a_index_prog = a_index.tune(iterations, 
                 reward_func = reward_func, 
@@ -1579,6 +1606,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
                 reward_buffer_size = reward_buffer_size,
                 is_epoch = epochs > 1, 
                 is_marl = is_marl)
+
             while True:
                 payload, flag = next(a_index_prog)
                 if flag:
@@ -1620,6 +1648,7 @@ def atlas_knob_tune(config:dict) -> None:
     cache_workload = config['cache_workload']
     is_cc = config['is_cc']
     atlas_state = config['atlas_state']
+    cluster_cache = config.get('cluster_cache')
 
     with Atlas_Knob_Tune(database) as a_knob:
         tuning_data = []
@@ -1642,6 +1671,7 @@ def atlas_knob_tune(config:dict) -> None:
                     'weight_decay': weight_decay,
                     'cache_workload': cache_workload,
                     'atlas_state': atlas_state,
+                    'cluster_cache': cluster_cache,
                     'terminate_after': terminate_after})
 
             a_knob_prog = a_knob.tune(iterations, 
@@ -1678,224 +1708,109 @@ def atlas_knob_tune_cdb(config:dict) -> None:
     print('knob tuning results saved to', f_name)
     display_tuning_results(f_name, smoother = whittaker_smoother)
 
-def display_marl_results(f_name:str) -> None:
+def display_marl_results(f_name:str, smoother = whittaker_smoother) -> None:
     with open(f_name) as f:
         data = json.load(f)
 
     data = data['db_stats'][0]
-    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-    a2.plot([*range(1, len(data)+1)], [i['knob']['latency'] for i in data], label = 'latency', color = 'orange')
-    a2.title.set_text("Latency")
-    a2.legend(loc="upper right")
-
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("latency")
-
-    a3.plot([*range(1, len(data)+1)], [i['knob']['throughput'] for i in data], label = 'throughput', color = 'green')
-    a3.title.set_text("Throughput")
-    a3.legend(loc="lower right")
-
-    a3.set_xlabel("iteration")
-    a3.set_ylabel("throughput")
-
-    plt.show()
-
-
-def file_agg_results(files:typing.List[str], agg_func:typing.Callable = statistics.median) -> typing.List[list]:
-    latency, throughput = [], []
-    for i in files:
-        with open(i) as f:
-            data = json.load(f)['db_stats'][0]
-            latency.append([j['knob']['latency'] for j in data])
-            throughput.append([j['knob']['throughput'] for j in data])
-
-    agg_latency = [agg_func(i) for i in zip(*latency)]
-    agg_throughput = [agg_func(i) for i in zip(*throughput)]
-
-    return agg_latency, agg_throughput 
-
-def marl_agg_stats(file_blocks:typing.List[typing.List[str]], agg_func:typing.Callable = statistics.median) -> None:
-    fig, [a2, a3] = plt.subplots(nrows=1, ncols=2)
-
-    for label, f_block in file_blocks:
-        agg_latency, agg_throughput = file_agg_results(f_block, agg_func)
-        a2.plot([*range(1, len(agg_latency)+1)], agg_latency, label = f'latency {label}')
-        
-        a3.plot([*range(1, len(agg_throughput)+1)], agg_throughput, label = f'throughput {label}')
-    
-
-    a2.title.set_text("Latency")
-    a2.legend(loc="upper right")
-
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("latency")
-
-    a3.title.set_text("Throughput")
-    a3.legend(loc="lower right")
-
-    a3.set_xlabel("iteration")
-    a3.set_ylabel("throughput")
-
-    plt.show()
-
-def marl_results_v2_file_results(f_name:str) -> tuple:
-    with open(f_name) as f:
-        data = json.load(f)
-
-    index_rewards = data['index_results'][0]['rewards']
-    knob_rewards = [(j:=sum(i)/len(i)) for i in zip(*[i['rewards'] for i in data['knob_results']][:1])]
-    knob_rewards = [max(i, -1) for i in knob_rewards]
-    costs = [[statistics.geometric_mean([j['cost'] for j in i['index'].values()])for i in k] for k in data['db_stats']]
-    costs= [sum(i)/len(i) for i in zip(*costs)]
-    return index_rewards, knob_rewards, costs
-
-def display_marl_results_v2(f_name:str) -> None:
-    index_rewards, knob_rewards, costs = marl_results_v2_file_results(f_name)
-    
-    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-
-    print(len(costs))
-    a1.plot([*range(1, len(costs)+1)], costs)
-    a1.title.set_text("Total workload cost at each iteration")
-    a1.legend(loc="lower right")
-
-    a1.set_xlabel("Time increment")
-    a1.set_ylabel("Workload cost")
-
-    a2.plot([*range(1, len(index_rewards)+1)], index_rewards)
-    a2.title.set_text("Index Tuner Rewards")
-
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("Reward")
-
-    a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards)
-    a3.title.set_text("Knob Tuner Rewards")
-
-    a3.set_xlabel("iteration")
-    a3.set_ylabel("Reward")
-
-
-    plt.show()
-
-def ___marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
-    fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-
-    for l, files in blocks:
-        _index_rewards, _knob_rewards, _costs = zip(*[marl_results_v2_file_results(f_name) for f_name in files])
-        index_rewards = [sum(i)/len(i) for i in zip(*_index_rewards)][:150]
-        knob_rewards = [sum(i)/len(i) for i in zip(*_knob_rewards)][:150]
-        costs = [sum(i)/len(i) for i in zip(*_costs)][:300]
-        a1.plot([*range(1, len(costs)+1)], costs, label = l)
-        a2.plot([*range(1, len(index_rewards)+1)], index_rewards, label = l)
-        a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards, label = l)
-    
-    a1.legend(loc="upper right")
-    a1.title.set_text("Total Workload Cost")
-    a1.set_xlabel("Iteration")
-    a1.set_ylabel("Workload cost")
-    
-    a2.title.set_text("Index Tuner Reward")
-
-    a2.set_xlabel("Iteration")
-    a2.set_ylabel("Reward")
-    a2.legend(loc="lower right")
-    
-    a3.title.set_text("Knob Tuner Reward")
-
-    a3.set_xlabel("Iteration")
-    a3.set_ylabel("Reward")
-    a3.legend(loc="lower right")
-
-    
-    plt.show()
-
-
-def marl_agg_stats_v2(blocks:typing.List[tuple]) -> None:
     fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
-
-    for l, files in blocks:
-        _index_rewards, _knob_rewards, _costs = zip(*[marl_results_v2_file_results(f_name) for f_name in files])
-        index_rewards = [sum(i)/len(i) for i in zip(*_index_rewards)]
-        knob_rewards = [sum(i)/len(i) for i in zip(*_knob_rewards)]
-        costs = [sum(i)/len(i) for i in zip(*_costs)]
-        a1.plot([*range(1, len(costs)+1)], costs, label = l)
-        a2.plot([*range(1, len(index_rewards)+1)], index_rewards, label = l)
-        #a3.plot([*range(1, len(knob_rewards)+1)], knob_rewards, label = l)
-    
+    a1.plot([*range(1, len(data)+1)], smoother([i['latency'] for i in data]), label = 'latency', color = 'orange')
+    a1.title.set_text("Latency")
     a1.legend(loc="upper right")
-    a1.title.set_text("Total Workload Cost")
-    a1.set_xlabel("Iteration")
-    a1.set_ylabel("Workload cost")
-    
-    a2.title.set_text("Index Tuner Reward")
 
-    a2.set_xlabel("Iteration")
-    a2.set_ylabel("Reward")
+    a1.set_xlabel("iteration")
+    a1.set_ylabel("latency")
+
+    a2.plot([*range(1, len(data)+1)], smoother([i['throughput'] for i in data]), label = 'throughput', color = 'green')
+    a2.title.set_text("Throughput")
     a2.legend(loc="lower right")
-    '''
-    a3.title.set_text("Knob Tuner Reward")
 
-    a3.set_xlabel("Iteration")
-    a3.set_ylabel("Reward")
-    a3.legend(loc="lower right")
-    '''
-    
+    a2.set_xlabel("iteration")
+    a2.set_ylabel("throughput")
+
     plt.show()
+
+
+
+
+class MARL_State_Share:
+    def __init__(self, **kwargs:dict) -> None:
+        self.params = kwargs
+
+    def __getitem__(self, key:str) -> typing.Any:
+        return self.params[key]
+    
+    def __setitem__(self, key:str, val:typing.Any) -> None:
+        self.params[key] = val
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.params})'
+
 
 def atlas_marl_tune(config:dict) -> None:
     database = config['database']
     marl_step = config['marl_step']
     epochs = config['epochs']
-    iterations = config['iterations']
-    is_marl = config['is_marl']
-    index_reward_func = config['index_reward_func']
-    knob_reward_func = config['knob_reward_func']
-    output_file = config['output_file']
-    from_buffer = config.get('from_buffer')
+
+    knob_tune_config = config['knob_tune_config']
+    index_tune_config = config['index_tune_config']
+
+    c_cache = ClusterCache(f = config['cluster_f'], 
+                dist = config['cluster_dist'])
+
+    knob_tune_config['cluster_cache'] = c_cache
+    index_tune_config['cluster_cache'] = c_cache
+
+    state_share = MARL_State_Share()
 
     with Atlas_Index_Tune_DQN(database) as a_index:
         with Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
-            a_index.ENABLE_MARL_REWARD = True
-            a_knob.ENABLE_MARL_REWARD = True
-            a_index.conn.reset_knob_configuration()
+            #a_index.conn.reset_knob_configuration()
+            knob_activation_payload = {
+                'memory_size':(mem_size:=a_index.conn.memory_size('b')[a_index.conn.database]*4),
+                'memory_lower_bound':min(4294967168, mem_size)
+            }
+            state_share['selected_action'] = a_index.conn.default_selected_action(knob_activation_payload)
+            
+            knob_tune_config['state_share'] = state_share
+            index_tune_config['state_share'] = state_share
+
             index_results, knob_results = [], []
             db_stats = []
             for _ in range(epochs):
-                a_index.update_config(**{'weight_copy_interval':10, 'epsilon':1, 'epsilon_decay':0.003, 'tpcc_time':4, 'marl_step':marl_step})
-                a_index_prog = a_index.tune(iterations, 
-                    reward_func = index_reward_func,
-                    from_buffer = from_buffer,
-                    is_marl = is_marl,
-                    is_epoch = True)
+                a_index.update_config(**index_tune_config)
 
-                a_knob.update_config(**{'replay_size':50, 'noise_scale':1.5, 'noise_decay':0.006, 'batch_size':40, 'tpcc_time':4, 'marl_step':marl_step})
-                a_knob_prog = a_knob.tune(iterations, 
-                    reward_func = knob_reward_func, 
-                    is_marl = is_marl,
-                    is_epoch = True)
+                a_index_prog = a_index.tune(index_tune_config['iterations'], 
+                    reward_func = index_tune_config['reward_func'], 
+                    reward_signal = index_tune_config['reward_signal'],
+                    from_buffer = index_tune_config['reward_buffer'], 
+                    reward_buffer_size = index_tune_config['reward_buffer_size'],
+                    is_epoch = index_tune_config['epochs'] > 1, 
+                    is_marl = index_tune_config['is_marl'])
+
+                a_knob.update_config(**knob_tune_config)
+
+                a_knob_prog = a_knob.tune(knob_tune_config['iterations'], 
+                    reward_func = knob_tune_config['reward_func'], 
+                    reward_signal = knob_tune_config['reward_signal'],
+                    is_marl = knob_tune_config['is_marl'],
+                    is_epoch = knob_tune_config['episodes'] > 1)
 
                 iteration_db_stats = []
+                halt_index = False
                 while True:
-                    index_payload, index_flag = next(a_index_prog)
-                    ep = index_payload['experience_replay'][-1*marl_step:]
-                    iteration_db_stats.extend([i[-1] for i in ep])
-                    best_index_config = max(ep, key=lambda x:x[2])[3][:a_index.conn.db_column_count]
-                    print('best index config')
-                    print(best_index_config)
-                    a_index.conn.apply_index_configuration(best_index_config)
+                    if not halt_index:
+                        index_payload, index_flag = next(a_index_prog)
+                        ep = index_payload['experience_replay'][-1*marl_step:]
+                        iteration_db_stats.extend([i[-1] for i in ep])
+
+                    if index_flag:
+                        halt_index = True
 
                     knob_payload, knob_flag = next(a_knob_prog)
                     ep = knob_payload['experience_replay'][-1*marl_step:]
                     iteration_db_stats.extend([i[-1] for i in ep])
-                    best_knob_config = max(ep, key=lambda x:x[2])[1]
-                    knob_activation_payload = {
-                        'memory_size':(mem_size:=a_index.conn.memory_size('b')[a_index.database]*4),
-                        'memory_lower_bound':min(4294967168, mem_size)
-                    }
-                    chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(best_knob_config, knob_activation_payload)
-                    a_index.conn.apply_knob_configuration(knob_dict)
-                    print('chosen knob config', knob_dict)
-
+                   
                     if knob_flag:
                         index_results.append(index_payload)
                         knob_results.append(knob_payload)
@@ -1904,12 +1819,12 @@ def atlas_marl_tune(config:dict) -> None:
 
                 db_stats.append(iteration_db_stats)
 
-            with open(output_file, 'a') as f:
+            with open(output_file:=generate_marl_output_file(), 'a') as f:
                 json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
 
-
+            print('marl tuning results saved to', output_file)
             #display_marl_results(output_file)
-            display_marl_results_v2(output_file)
+            #display_marl_results_v2(output_file)
 
 
 def knob_tune_action_vis(output_file:str) -> None:
@@ -2013,7 +1928,7 @@ if __name__ == '__main__':
 
     print(queue[{'direct': [0, 0, 0]}])
     '''
-    
+    '''
     atlas_index_tune_dqn({
         'database': 'sysbench_tune',
         'weight_copy_interval': 10,
@@ -2034,7 +1949,7 @@ if __name__ == '__main__':
         'reward_buffer_size':60,
         'batch_sample_size':50
     })
-    
+    '''
     #display_tuning_results('outputs/tuning_data/rl_dqn29.json', smoother = whittaker_smoother)
     
 
@@ -2070,21 +1985,22 @@ if __name__ == '__main__':
     '''
     '''
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg80.json'
+            'outputs/knob_tuning_data/rl_ddpg78.json'
         ], 
         smoother = whittaker_smoother,
         y_axis_lim = {
             'reward': [-1, 1],
             'latency': [0, 800],
-            'throughput': [0, 500]
+            'throughput': [0, 800]
         }, 
         plot_titles = {
-            'reward': 'Reward (No caching)',
-            'latency': 'Latency (No caching)',
-            'throughput': 'Throughput (No caching)'
+            'reward': 'Reward (Caching)',
+            'latency': 'Latency (Caching)',
+            'throughput': 'Throughput (Caching)'
         },
-        title = 'No Caching')
-    
+        title = 'Caching')
+    '''
+    '''
     display_tuning_results([
             'outputs/knob_tuning_data/rl_ddpg78.json'
         ], 
@@ -2103,7 +2019,7 @@ if __name__ == '__main__':
     '''
     '''
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg85.json'
+            'outputs/knob_tuning_data/rl_ddpg80.json'
         ], 
         smoother = whittaker_smoother)
     '''
@@ -2122,18 +2038,7 @@ if __name__ == '__main__':
         'is_marl': True
     })
     '''
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg49.json')
-    #test_cluster_storage('outputs/knob_tuning_data/rl_ddpg49.json')
-    #test_annealing(0.5, 0.01, 600)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg46.json')
-
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg41.json')
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg27.json')
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg25.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg19.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg24.json', smoother = whittaker_smoother)
-    #display_tuning_results('outputs/knob_tuning_data/rl_ddpg17.json')
-    #cluster('outputs/knob_tuning_data/rl_ddpg35.json')
+    
     '''
     with db.MySQL(database = "sysbench_tune") as conn:
         s = Atlas_States(False)
@@ -2142,3 +2047,62 @@ if __name__ == '__main__':
             'knobs': conn.get_knobs()
         }, 'INDEX', conn))
     '''
+
+    '''
+    atlas_marl_tune({
+        'database': 'sysbench_tune',
+        'epochs': 1,
+        'marl_step': 50,
+        'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
+        'knob_tune_config': {
+            'database': 'sysbench_tune',
+            'episodes': 1,
+            'replay_size': 60,
+            'noise_scale': 0.5,
+            'noise_decay': 0.01,
+            'batch_size': 100,
+            'min_noise_scale': None,
+            'alr': 0.0001,
+            'clr': 0.0001,
+            'workload_exec_time': 10,
+            'marl_step': 50,
+            'iterations': 600,
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'noise_eliminate': 300,
+            'terminate_after': 300,
+            'updates': 5,
+            'tau': 0.999,
+            'reward_func': 'compute_sysbench_reward_throughput_scaled',
+            'reward_signal': 'sysbench_latency_throughput',
+            'env_reset': None,
+            'is_marl': True,
+            'cache_workload': True,
+            'is_cc': True,
+            'atlas_state': 'state_indices_knobs',
+            'weight_decay': 0.001
+        },
+        'index_tune_config': {
+            'database': 'sysbench_tune',
+            'weight_copy_interval': 10,
+            'epsilon': 1,
+            'lr': 0.0001,
+            'epsilon_decay': 0.005,
+            'marl_step': 50,
+            'iterations': 600,
+            'reward_func': 'compute_sysbench_reward_latency_scaled',
+            'reward_signal': 'sysbench_latency_throughput',
+            'atlas_state': 'state_indices_knobs',
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'cache_workload': True,
+            'is_marl': True,
+            'epochs': 1,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-2913:09:18909957.json',
+            'reward_buffer_size':60,
+            'batch_sample_size':50
+        }
+    })
+    '''
+    display_marl_results('outputs/marl_tuning_data/marl33.json')
