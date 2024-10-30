@@ -675,7 +675,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             self.experience_replay = [[state, None, None, None, getattr(self, reward_signal)(self.config['workload_exec_time'])]]
         
 
-        if self.config['cluster_cache'] is not None:
+        if self.config.get('cluster_cache') is not None:
             c_cache = self.config['cluster_cache']
         
         else:
@@ -945,6 +945,7 @@ class Atlas_Index_Tune(Atlas_Rewards):
             _indices = self.generate_random_index(indices)
         
             self.conn.apply_index_configuration(_indices)
+            _indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
             self.experience_replay.append([[*indices, *metrics], _indices, 
                 self.compute_step_reward(self.experience_replay[-1][-1], 
                         w2:=self.conn.workload_cost()), 
@@ -965,6 +966,7 @@ class Atlas_Index_Tune(Atlas_Rewards):
             _indices = self.generate_random_index(indices)
         
             self.conn.apply_index_configuration(_indices)
+            _indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
             self.experience_replay.append([[*indices, *metrics], _indices, 
                 self.compute_cost_delta_per_query(self.experience_replay, 
                         w2:=self.conn.workload_cost()), 
@@ -1214,6 +1216,8 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             ind, _indices = self.random_action(indices)
             self.conn.apply_index_configuration(_indices)
 
+            _indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+
             new_state = atlas_states.state(self.config['atlas_state'], {
                     'indices': _indices
                 }, 'INDEX', self.conn)
@@ -1262,7 +1266,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         self.conn.drop_all_indices()
         indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
 
-        if self.config['cluster_cache'] is not None:
+        if self.config.get('cluster_cache') is not None:
             c_cache = self.config['cluster_cache']
         
         else:
@@ -1311,7 +1315,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                 
             print(ind if ind < len(_indices) else 'do nothing')
             self.conn.apply_index_configuration(_indices)
-
+            _indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
             new_state = atlas_states.state(self.config['atlas_state'], {
                     'indices': _indices
                 }, 'INDEX', self.conn)
@@ -1343,7 +1347,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             start_state = F.normalize(torch.tensor([[*map(float, state)]]))
             epsilon -= epsilon*self.config['epsilon_decay']
 
-            inds = random.sample([*range(1,len(self.experience_replay))], self.config['batch_sample_size'])
+            inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay)-1))
             _s, _a, _r, _s_prime, w2 = zip(*[self.experience_replay[i] for i in inds])
             s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
             a = torch.tensor([[i] for i in _a])
@@ -1452,7 +1456,8 @@ def display_tuning_results(f_name:typing.Union[str, list],
     agg_f = lambda x:sum(x)/len(x),
     y_axis_lim:dict = {},
     plot_titles:dict = {},
-    title:typing.Union[str, None] = None) -> None:
+    title:typing.Union[str, None] = None,
+    legend_loc = {}) -> None:
 
     f_names = [f_name] if isinstance(f_name, str) else f_name
     full_rewards, full_params = [], collections.defaultdict(list)
@@ -1499,12 +1504,10 @@ def display_tuning_results(f_name:typing.Union[str, list],
     a_r, wd = Atlas_Rewards(), [[i] for i in workload_data]
     
     baseline_rewards = [a_r.compute_sysbench_reward_throughput_scaled(wd, i) for i in workload_data]
-    print('baseline reawrd here', baseline_rewards)
 
     fig, [reward_plt, *param_plt] = plt.subplots(nrows=1, ncols=len(row_params) + 1)    
 
     rewards = [agg_f(i) for i in zip(*full_rewards)]
-    print('rewards here', rewards)
 
     reward_plt.plot([*range(1,len(rewards)+1)], rewards, label = 'Earned reward')
     
@@ -1525,7 +1528,7 @@ def display_tuning_results(f_name:typing.Union[str, list],
 
         a.plot([*range(1, len(d_b)+1)], d_b if smoother is None else smoother(d_b), label = f'Default configuration')
 
-        a.legend(loc="lower right")
+        a.legend(loc=legend_loc.get(k, 'lower right'))
 
         if k in y_axis_lim:
             a.set_ylim(y_axis_lim[k])
@@ -1597,6 +1600,7 @@ def atlas_index_tune_dqn(config:dict) -> None:
                 'cache_workload': cache_workload,
                 'cluster_dist': cluster_dist,
                 'cluster_f': cluster_f,
+                'is_marl': is_marl,
                 'cluster_queue': cluster_queue
             })
             a_index_prog = a_index.tune(iterations, 
@@ -1714,14 +1718,16 @@ def display_marl_results(f_name:str, smoother = whittaker_smoother) -> None:
 
     data = data['db_stats'][0]
     fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
-    a1.plot([*range(1, len(data)+1)], smoother([i['latency'] for i in data]), label = 'latency', color = 'orange')
+    lt = [i['latency'] for i in data]
+    a1.plot([*range(1, len(data)+1)], smoother(lt) if smoother is not None else lt, label = 'latency', color = 'orange')
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
 
     a1.set_xlabel("iteration")
     a1.set_ylabel("latency")
 
-    a2.plot([*range(1, len(data)+1)], smoother([i['throughput'] for i in data]), label = 'throughput', color = 'green')
+    th = [i['throughput'] for i in data]
+    a2.plot([*range(1, len(data)+1)], smoother(th) if smoother is not None else th, label = 'throughput', color = 'green')
     a2.title.set_text("Throughput")
     a2.legend(loc="lower right")
 
@@ -1729,8 +1735,6 @@ def display_marl_results(f_name:str, smoother = whittaker_smoother) -> None:
     a2.set_ylabel("throughput")
 
     plt.show()
-
-
 
 
 class MARL_State_Share:
@@ -1916,19 +1920,7 @@ def test_lr_annealing() -> None:
 
 
 if __name__ == '__main__':
-    '''
-    queue = ClusterCache(f = 'euclidean', dist = 0.1)
-   
-    for a, b, c in [([0.4, 0.3, 0.2], [0, 1, 0], 10), 
-        ([0.1, 0.0, 0.1],[0, 1, 0], 9),
-        ([0.1, 0.1, 0.1],[0, 1, 0], 7), 
-        ([0.5, 0.4, 0.1],[0, 0, 0], 8)]:
-        queue.add_entry({'direct': b}, c)
 
-
-    print(queue[{'direct': [0, 0, 0]}])
-    '''
-    '''
     atlas_index_tune_dqn({
         'database': 'sysbench_tune',
         'weight_copy_interval': 10,
@@ -1949,10 +1941,12 @@ if __name__ == '__main__':
         'reward_buffer_size':60,
         'batch_sample_size':50
     })
-    '''
-    #display_tuning_results('outputs/tuning_data/rl_dqn29.json', smoother = whittaker_smoother)
     
-
+    '''
+    display_tuning_results('outputs/tuning_data/rl_dqn32.json', 
+        smoother = whittaker_smoother, legend_loc = {'latency': 'upper left', 'throughput': 'center'})
+    
+    '''
     '''
     atlas_knob_tune({
         'database': 'sysbench_tune',
@@ -2019,11 +2013,11 @@ if __name__ == '__main__':
     '''
     '''
     display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg80.json'
+            'outputs/knob_tuning_data/rl_ddpg78.json'
         ], 
         smoother = whittaker_smoother)
-    '''
     
+    '''
     #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg82.json')
     
     '''
@@ -2060,17 +2054,17 @@ if __name__ == '__main__':
             'episodes': 1,
             'replay_size': 60,
             'noise_scale': 0.5,
-            'noise_decay': 0.01,
+            'noise_decay': 0.002,
             'batch_size': 100,
             'min_noise_scale': None,
             'alr': 0.0001,
             'clr': 0.0001,
             'workload_exec_time': 10,
             'marl_step': 50,
-            'iterations': 600,
+            'iterations': 1000,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
-            'noise_eliminate': 300,
+            'noise_eliminate': 700,
             'terminate_after': 300,
             'updates': 5,
             'tau': 0.999,
@@ -2078,7 +2072,7 @@ if __name__ == '__main__':
             'reward_signal': 'sysbench_latency_throughput',
             'env_reset': None,
             'is_marl': True,
-            'cache_workload': True,
+            'cache_workload': False,
             'is_cc': True,
             'atlas_state': 'state_indices_knobs',
             'weight_decay': 0.001
@@ -2087,22 +2081,29 @@ if __name__ == '__main__':
             'database': 'sysbench_tune',
             'weight_copy_interval': 10,
             'epsilon': 1,
-            'lr': 0.0001,
-            'epsilon_decay': 0.005,
+            'lr': 0.00001,
+            'epsilon_decay': 0.0003,
             'marl_step': 50,
-            'iterations': 600,
-            'reward_func': 'compute_sysbench_reward_latency_scaled',
+            'iterations': 1000,
+            'reward_func': 'compute_sysbench_reward_throughput_scaled',
             'reward_signal': 'sysbench_latency_throughput',
             'atlas_state': 'state_indices_knobs',
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
-            'cache_workload': True,
+            'cache_workload': False,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-2913:09:18909957.json',
+            'reward_buffer': None,
             'reward_buffer_size':60,
-            'batch_sample_size':50
+            'batch_sample_size':200
         }
     })
     '''
-    display_marl_results('outputs/marl_tuning_data/marl33.json')
+    #TODO: run for 2000 iterations per piece
+    #TODO: with sysbench, preserve original primary key indexing scheme
+    #TODO: run on throughput maximization reward instead of latency!
+    #TODO: now, have index tuner explore more
+    #NOTE: index selector does not appear to be learning in this schema. Significantly more exploration is required, I think
+    #TODO: try without caching
+    #TODO: increase batch sample sizing for index selector
+    #display_marl_results('outputs/marl_tuning_data/marl34.json')
