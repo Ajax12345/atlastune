@@ -474,6 +474,12 @@ class Atlas_States:
         if self.is_marl:
             if 'knobs' not in payload:
                 payload['knobs'] = conn.get_knobs()
+                '''
+                payload['knobs'] = [random.randint(*{134217728:[134217728//2, 
+                        134217728 + 134217728//2], 
+                    4:[1, 32], 
+                    4000:[2000, 6000]}[i]) for i in conn.get_knobs()]
+                '''
 
         else:
             payload['knobs'] = []
@@ -711,6 +717,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             clipped_noise_scale = max(noise_scale, noise_scale if (mns:=self.config.get('min_noise_scale')) is None else mns)
             self.actor.eval()
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
+            print('selected action', selected_action)
             self.actor.train()
             chosen_knobs, knob_dict = db.MySQL.activate_knob_actor_outputs(selected_action, knob_activation_payload)
             
@@ -1920,7 +1927,7 @@ def test_lr_annealing() -> None:
 
 
 if __name__ == '__main__':
-
+    '''
     atlas_index_tune_dqn({
         'database': 'sysbench_tune',
         'weight_copy_interval': 10,
@@ -1941,7 +1948,7 @@ if __name__ == '__main__':
         'reward_buffer_size':60,
         'batch_sample_size':50
     })
-    
+    '''
     '''
     display_tuning_results('outputs/tuning_data/rl_dqn32.json', 
         smoother = whittaker_smoother, legend_loc = {'latency': 'upper left', 'throughput': 'center'})
@@ -2042,7 +2049,7 @@ if __name__ == '__main__':
         }, 'INDEX', conn))
     '''
 
-    '''
+    
     atlas_marl_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
@@ -2061,10 +2068,10 @@ if __name__ == '__main__':
             'clr': 0.0001,
             'workload_exec_time': 10,
             'marl_step': 50,
-            'iterations': 1000,
+            'iterations': 600,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
-            'noise_eliminate': 700,
+            'noise_eliminate': 300,
             'terminate_after': 300,
             'updates': 5,
             'tau': 0.999,
@@ -2072,7 +2079,7 @@ if __name__ == '__main__':
             'reward_signal': 'sysbench_latency_throughput',
             'env_reset': None,
             'is_marl': True,
-            'cache_workload': False,
+            'cache_workload': True,
             'is_cc': True,
             'atlas_state': 'state_indices_knobs',
             'weight_decay': 0.001
@@ -2081,16 +2088,16 @@ if __name__ == '__main__':
             'database': 'sysbench_tune',
             'weight_copy_interval': 10,
             'epsilon': 1,
-            'lr': 0.00001,
-            'epsilon_decay': 0.0003,
+            'lr': 0.0001,
+            'epsilon_decay': 0.003,
             'marl_step': 50,
-            'iterations': 1000,
+            'iterations': 600,
             'reward_func': 'compute_sysbench_reward_throughput_scaled',
             'reward_signal': 'sysbench_latency_throughput',
             'atlas_state': 'state_indices_knobs',
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
-            'cache_workload': False,
+            'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
             'reward_buffer': None,
@@ -2098,7 +2105,7 @@ if __name__ == '__main__':
             'batch_sample_size':200
         }
     })
-    '''
+    
     #TODO: run for 2000 iterations per piece
     #TODO: with sysbench, preserve original primary key indexing scheme
     #TODO: run on throughput maximization reward instead of latency!
@@ -2106,4 +2113,17 @@ if __name__ == '__main__':
     #NOTE: index selector does not appear to be learning in this schema. Significantly more exploration is required, I think
     #TODO: try without caching
     #TODO: increase batch sample sizing for index selector
-    #display_marl_results('outputs/marl_tuning_data/marl34.json')
+    #TODO: try larger MARL steps over more iterations, so index tuner has more time to learn on a stable state
+    #TODO: try switching the order of index selection and knob tuning
+    #TODO TOMORROW: run marl on latency reward function
+    #TODO: perhaps DQN needs to explore for longer in each marl step?
+    #TODO: build MARL reward function
+    #display_marl_results('outputs/marl_tuning_data/marl35.json') #throughput
+    display_marl_results('outputs/marl_tuning_data/marl36.json') #latency
+    #experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-3018:35:15077740.json
+    '''
+    with open('outputs/marl_tuning_data/marl36.json') as f:
+        data = json.load(f)
+        print([i[2] for i in data['index_results'][0]['experience_replay']])
+        print([i[2] for i in data['knob_results'][0]['experience_replay']])
+    '''

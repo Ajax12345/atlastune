@@ -2882,6 +2882,13 @@
 
     outputs/tuning_data/rl_dqn29.json
 
-    
+
     To do:
         run on non-scaled rewards
+
+
+MARL Experiment Ideas:
+    1000+ iterations each, more exploration
+    Larger marl step
+    Swap orderings
+    Need more knobs
