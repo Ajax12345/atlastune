@@ -778,7 +778,7 @@ class MySQL_CC(MySQL):
 
 
 if __name__ == '__main__':
-    with MySQL(database = "sysbench_tune") as conn:
+    with MySQL_CC(database = "sysbench_tune") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -850,7 +850,7 @@ if __name__ == '__main__':
             'memory_lower_bound':min(4294967168, mem_size)
         }
         conn.drop_all_indices()
-        print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+        #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
         
 
         

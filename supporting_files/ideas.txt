@@ -303,6 +303,6 @@ Chameleon Cloud SSH:
 
     To run detached process:
     export ATLASTUNE_ENVIRONMENT=CC
-    sudo -E nohup python3 models_v2.py &
+    sudo -E nohup python3 models_v4.py &
 
     to monitor status: ps -ef | grep python

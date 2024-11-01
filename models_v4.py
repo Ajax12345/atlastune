@@ -350,6 +350,15 @@ class Atlas_Rewards:
         t = self.scale_num(int(experience_replay[0][-1]['latency']))
         return (t - self.scale_num(int(w2['latency'])))/t
 
+    def compute_sysbench_reward_marl_latency_discount(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        return 0.5*self.compute_sysbench_reward_latency_scaled(experience_replay, w2) + \
+            self.compute_sysbench_reward_throughput_scaled(experience_replay, w2)
+
+    def compute_sysbench_reward_marl(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        return self.compute_sysbench_reward_latency_scaled(experience_replay, w2) + \
+            self.compute_sysbench_reward_throughput_scaled(experience_replay, w2)
+
+    
     def compute_sysbench_reward_throughput_discrete(self, experience_replay:typing.List[dict], w2:dict) -> float:
         d1 = self.scale_num(int(experience_replay[0][-1]['throughput']))
         d2 = self.scale_num(int(w2['throughput']))
@@ -2067,15 +2076,15 @@ if __name__ == '__main__':
             'alr': 0.0001,
             'clr': 0.0001,
             'workload_exec_time': 10,
-            'marl_step': 50,
-            'iterations': 600,
+            'marl_step': 100,
+            'iterations': 1000,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
             'noise_eliminate': 300,
             'terminate_after': 300,
             'updates': 5,
             'tau': 0.999,
-            'reward_func': 'compute_sysbench_reward_throughput_scaled',
+            'reward_func': 'compute_sysbench_reward_marl_latency_discount',
             'reward_signal': 'sysbench_latency_throughput',
             'env_reset': None,
             'is_marl': True,
@@ -2089,10 +2098,10 @@ if __name__ == '__main__':
             'weight_copy_interval': 10,
             'epsilon': 1,
             'lr': 0.0001,
-            'epsilon_decay': 0.003,
-            'marl_step': 50,
-            'iterations': 600,
-            'reward_func': 'compute_sysbench_reward_throughput_scaled',
+            'epsilon_decay': 0.002,
+            'marl_step': 100,
+            'iterations': 1000,
+            'reward_func': 'compute_sysbench_reward_marl_latency_discount',
             'reward_signal': 'sysbench_latency_throughput',
             'atlas_state': 'state_indices_knobs',
             'cluster_dist': 0.1,
@@ -2100,7 +2109,7 @@ if __name__ == '__main__':
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': None,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-11-0109:11:22928724.json',
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
@@ -2119,11 +2128,13 @@ if __name__ == '__main__':
     #TODO: perhaps DQN needs to explore for longer in each marl step?
     #TODO: build MARL reward function
     #display_marl_results('outputs/marl_tuning_data/marl35.json') #throughput
-    display_marl_results('outputs/marl_tuning_data/marl36.json') #latency
+    #display_marl_results('outputs/marl_tuning_data/marl36.json') #latency
+    #display_marl_results('outputs/marl_tuning_data/marl38.json')
     #experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-3018:35:15077740.json
     '''
-    with open('outputs/marl_tuning_data/marl36.json') as f:
+    with open('outputs/marl_tuning_data/marl35.json') as f:
         data = json.load(f)
         print([i[2] for i in data['index_results'][0]['experience_replay']])
         print([i[2] for i in data['knob_results'][0]['experience_replay']])
+    
     '''
