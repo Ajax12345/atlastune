@@ -3132,3 +3132,6 @@ MARL Experiment Ideas:
             'batch_sample_size':200
         }
     })
+
+    outputs/marl_tuning_data/marl40.json
+    outputs/marl_tuning_data/marl41.json
