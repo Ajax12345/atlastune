@@ -1728,22 +1728,40 @@ def atlas_knob_tune_cdb(config:dict) -> None:
     print('knob tuning results saved to', f_name)
     display_tuning_results(f_name, smoother = whittaker_smoother)
 
-def display_marl_results(f_name:str, smoother = whittaker_smoother) -> None:
-    with open(f_name) as f:
-        data = json.load(f)
+def display_marl_results(f_name:str, 
+    y_axis_lim:dict = {},
+    smoother = whittaker_smoother) -> None:
 
-    data = data['db_stats'][0]
+    f_names = [f_name] if isinstance(f_name, str) else f_name
+    d = collections.defaultdict(list)
+    for f_name in f_names:
+        with open(f_name) as f:
+            data = json.load(f)['db_stats'][0]
+            d['latency'].append([j['latency'] for j in data])
+            d['throughput'].append([j['throughput'] for j in data])
+
+
     fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
-    lt = [i['latency'] for i in data]
-    a1.plot([*range(1, len(data)+1)], smoother(lt) if smoother is not None else lt, label = 'latency', color = 'orange')
+    lt = [sum(i)/len(i) for i in zip(*d['latency'])]
+
+    if 'latency' in y_axis_lim:
+        a1.set_ylim(y_axis_lim['latency'])
+
+    a1.plot([*range(1, len(data)+1)], smoother(lt) if smoother is not None else lt, label = 'latency')
+    
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
+
+    
 
     a1.set_xlabel("iteration")
     a1.set_ylabel("latency")
 
-    th = [i['throughput'] for i in data]
-    a2.plot([*range(1, len(data)+1)], smoother(th) if smoother is not None else th, label = 'throughput', color = 'green')
+    th = [sum(i)/len(i) for i in zip(*d['throughput'])]
+    if 'throughput' in y_axis_lim:
+        a2.set_ylim(y_axis_lim['throughput'])
+
+    a2.plot([*range(1, len(data)+1)], smoother(th) if smoother is not None else th, label = 'throughput')
     a2.title.set_text("Throughput")
     a2.legend(loc="lower right")
 
@@ -2058,7 +2076,7 @@ if __name__ == '__main__':
         }, 'INDEX', conn))
     '''
 
-    
+    '''
     atlas_marl_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
@@ -2114,7 +2132,7 @@ if __name__ == '__main__':
             'batch_sample_size':200
         }
     })
-    
+    '''
     #TODO: run for 2000 iterations per piece
     #TODO: with sysbench, preserve original primary key indexing scheme
     #TODO: run on throughput maximization reward instead of latency!
@@ -2138,3 +2156,9 @@ if __name__ == '__main__':
         print([i[2] for i in data['knob_results'][0]['experience_replay']])
     
     '''
+    display_marl_results([
+        'outputs/marl_tuning_data/marl37.json',
+        'outputs/marl_tuning_data/marl37.json'  
+        ], 
+        #y_axis_lim = {'throughput': [0, 600], 'latency': [0, 600]}
+    )

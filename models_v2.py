@@ -1547,20 +1547,26 @@ def atlas_knob_tune_cdb(config:dict) -> None:
     print('knob tuning results saved to', f_name)
     display_tuning_results(f_name, smoother = whittaker_smoother)
 
-def display_marl_results(f_name:str) -> None:
-    with open(f_name) as f:
-        data = json.load(f)
+def display_marl_results(f_name:typing.Union[str, list]) -> None:
+    f_names = [f_name] if isinstance(f_name, str) else f_name
+    d = collections.defaultdict(list)
+    for f_name in f_names:
+        with open(f_name) as f:
+            data = json.load(f)['db_stats'][0]
+            d['latency'].append([j['knob']['latency'] for j in data])
+            d['throughput'].append([j['knob']['throughput'] for j in json.load(f)['db_stats'][0]])
 
-    data = data['db_stats'][0]
+
+
     fig, [a1, a2, a3] = plt.subplots(nrows=1, ncols=3)
-    a2.plot([*range(1, len(data)+1)], [i['knob']['latency'] for i in data], label = 'latency', color = 'orange')
+    a2.plot([*range(1, len(data)+1)], [sum(i)/len(i) for i in zip(*d['latency'])], label = 'latency', color = 'orange')
     a2.title.set_text("Latency")
     a2.legend(loc="upper right")
 
     a2.set_xlabel("iteration")
     a2.set_ylabel("latency")
 
-    a3.plot([*range(1, len(data)+1)], [i['knob']['throughput'] for i in data], label = 'throughput', color = 'green')
+    a3.plot([*range(1, len(data)+1)], [sum(i)/len(i) for i in zip(*d['throughput'])], label = 'throughput', color = 'green')
     a3.title.set_text("Throughput")
     a3.legend(loc="lower right")
 
