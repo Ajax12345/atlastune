@@ -180,7 +180,8 @@ class MySQL:
             host = self.host,
             user = self.user,
             passwd = self.passwd,
-            database = self.database
+            database = self.database,
+            allow_local_infile=True
         )
         self.buffered = buffered
         self.stdout_f = None
@@ -778,7 +779,7 @@ class MySQL_CC(MySQL):
 
 
 if __name__ == '__main__':
-    with MySQL_CC(database = "sysbench_tune") as conn:
+    with MySQL(database = "sysbench_tune") as conn:
         '''
         conn.execute("create table test_stuff (id int, first_col int, second_col int, third_col int)")
         conn.execute("create index test_index on test_stuff (first_col)")
@@ -845,11 +846,7 @@ if __name__ == '__main__':
         }))
         '''
         #print(conn.reset_knob_configuration())
-        knob_activation_payload = {
-            'memory_size':(mem_size:=conn.memory_size('b')[conn.database]*4),
-            'memory_lower_bound':min(4294967168, mem_size)
-        }
-        conn.drop_all_indices()
+        print(conn.memory_size('gb')['tpch_tune'])
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
         
 
