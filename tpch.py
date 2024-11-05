@@ -67,3 +67,8 @@ if __name__ == '__main__':
         #print(TPC_H.update_files())
         TPC_H.remove_tbl_files()
         TPC_H.delete_update_files()
+
+        [
+            1,
+            
+        ]
