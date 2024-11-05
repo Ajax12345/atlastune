@@ -1730,24 +1730,39 @@ def atlas_knob_tune_cdb(config:dict) -> None:
 
 def display_marl_results(f_name:str, 
     y_axis_lim:dict = {},
+    marl_step:int = 100,
     smoother = whittaker_smoother) -> None:
 
     f_names = [f_name] if isinstance(f_name, str) else f_name
     d = collections.defaultdict(list)
     for f_name in f_names:
         with open(f_name) as f:
-            data = json.load(f)['db_stats'][0]
-            d['latency'].append([j['latency'] for j in data])
-            d['throughput'].append([j['throughput'] for j in data])
+            knob_tuner = (dt:=json.load(f))['knob_results'][0]['experience_replay']
+            index_tuner = dt['index_results'][0]['experience_replay']
+            
+            lt, th = [], []
+            while knob_tuner or index_tuner:
+                lt.extend([i[-1]['latency'] for i in index_tuner[:100]])
+                th.extend([i[-1]['throughput'] for i in index_tuner[:100]])
+                index_tuner = index_tuner[100:]
+
+                lt.extend([i[-1]['latency'] for i in knob_tuner[:100]])
+                th.extend([i[-1]['throughput'] for i in knob_tuner[:100]])
+                knob_tuner = knob_tuner[100:]
+
+            d['latency'].append(lt)
+            d['throughput'].append(th)
 
 
     fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
     lt = [sum(i)/len(i) for i in zip(*d['latency'])]
 
+    #print(lt)
+    
     if 'latency' in y_axis_lim:
         a1.set_ylim(y_axis_lim['latency'])
 
-    a1.plot([*range(1, len(data)+1)], smoother(lt) if smoother is not None else lt, label = 'latency')
+    a1.plot([*range(1, len(lt)+1)], smoother(lt) if smoother is not None else lt, label = 'latency')
     
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
@@ -1761,7 +1776,8 @@ def display_marl_results(f_name:str,
     if 'throughput' in y_axis_lim:
         a2.set_ylim(y_axis_lim['throughput'])
 
-    a2.plot([*range(1, len(data)+1)], smoother(th) if smoother is not None else th, label = 'throughput')
+
+    a2.plot([*range(1, len(th)+1)], smoother(th) if smoother is not None else th, label = 'throughput')
     a2.title.set_text("Throughput")
     a2.legend(loc="lower right")
 
@@ -2075,7 +2091,6 @@ if __name__ == '__main__':
             'knobs': conn.get_knobs()
         }, 'INDEX', conn))
     '''
-
     '''
     atlas_marl_tune({
         'database': 'sysbench_tune',
@@ -2095,7 +2110,7 @@ if __name__ == '__main__':
             'clr': 0.0001,
             'workload_exec_time': 10,
             'marl_step': 100,
-            'iterations': 1000,
+            'iterations': 600,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
             'noise_eliminate': 300,
@@ -2118,7 +2133,7 @@ if __name__ == '__main__':
             'lr': 0.0001,
             'epsilon_decay': 0.002,
             'marl_step': 100,
-            'iterations': 1000,
+            'iterations': 600,
             'reward_func': 'compute_sysbench_reward_marl_latency_discount',
             'reward_signal': 'sysbench_latency_throughput',
             'atlas_state': 'state_indices_knobs',
@@ -2127,12 +2142,14 @@ if __name__ == '__main__':
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-11-0109:11:22928724.json',
+            'reward_buffer': None,
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
     })
     '''
+
+
     #TODO: run for 2000 iterations per piece
     #TODO: with sysbench, preserve original primary key indexing scheme
     #TODO: run on throughput maximization reward instead of latency!
@@ -2156,9 +2173,10 @@ if __name__ == '__main__':
         print([i[2] for i in data['knob_results'][0]['experience_replay']])
     
     '''
+    
     display_marl_results([
-        'outputs/marl_tuning_data/marl37.json',
-        'outputs/marl_tuning_data/marl37.json'  
+        'outputs/marl_tuning_data/marl46.json'
         ], 
-        #y_axis_lim = {'throughput': [0, 600], 'latency': [0, 600]}
+        #y_axis_lim = {'throughput': [0, 500], 'latency': [0, 500]}
     )
+

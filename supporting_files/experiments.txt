@@ -3138,3 +3138,65 @@ MARL Experiment Ideas:
     outputs/marl_tuning_data/marl42.json
     outputs/marl_tuning_data/marl43.json
     outputs/marl_tuning_data/marl44.json
+
+10/31/2024 @ 9:02 AM (Experiment 106)
+
+    atlas_marl_tune({
+        'database': 'sysbench_tune',
+        'epochs': 1,
+        'marl_step': 50,
+        'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
+        'knob_tune_config': {
+            'database': 'sysbench_tune',
+            'episodes': 1,
+            'replay_size': 60,
+            'noise_scale': 0.5,
+            'noise_decay': 0.002,
+            'batch_size': 100,
+            'min_noise_scale': None,
+            'alr': 0.0001,
+            'clr': 0.0001,
+            'workload_exec_time': 10,
+            'marl_step': 100,
+            'iterations': 600,
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'noise_eliminate': 300,
+            'terminate_after': 300,
+            'updates': 5,
+            'tau': 0.999,
+            'reward_func': 'compute_sysbench_reward_marl_latency_discount',
+            'reward_signal': 'sysbench_latency_throughput',
+            'env_reset': None,
+            'is_marl': True,
+            'cache_workload': True,
+            'is_cc': True,
+            'atlas_state': 'state_indices_knobs',
+            'weight_decay': 0.001
+        },
+        'index_tune_config': {
+            'database': 'sysbench_tune',
+            'weight_copy_interval': 10,
+            'epsilon': 1,
+            'lr': 0.0001,
+            'epsilon_decay': 0.002,
+            'marl_step': 100,
+            'iterations': 600,
+            'reward_func': 'compute_sysbench_reward_marl_latency_discount',
+            'reward_signal': 'sysbench_latency_throughput',
+            'atlas_state': 'state_indices_knobs',
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'cache_workload': True,
+            'is_marl': True,
+            'epochs': 1,
+            'reward_buffer': None,
+            'reward_buffer_size':60,
+            'batch_sample_size':200
+        }
+    })
+
+    outputs/marl_tuning_data/marl46.json
+
+    
