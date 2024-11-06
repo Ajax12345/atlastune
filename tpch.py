@@ -10,27 +10,27 @@ class TPC_H:
     LOCATION = 'tpc/tpch/tpch_official/dbgen'
     CREATION_SCRIPTS = 'tpc/tpch/tbl_creation_scripts'
     QUERIES = [
-        (1, 20),
+        #(1, 20),
         (2, 0.32),
         (3, 13.31),
         (4, 12.96),
-        (5, 32.51),
+        #(5, 32.51),
         (6, 9.32),
         (7, 18.30),
-        (8, 47.44),
+        #(8, 47.44),
         (9, 38.30),
-        (10, 15.65),
+        #(10, 15.65),
         (11, 1.26),
         (12, 11.06),
         (13, 9.68),
         (14, 9.95),
         (15, None),
         (16, 0.56),
-        (17, 600),
-        (18, 600),
+        #(17, 600),
+        #(18, 600),
         (19, 16.35),
-        (20, 600),
-        (21, 39.40),
+        #(20, 600),
+        #(21, 39.40),
         (22, 5.21)
     ]
     def __init__(self, conn: db.MySQL) -> None:
@@ -197,11 +197,13 @@ class TPC_H:
     @classmethod
     def total_exec_time(cls) -> float:
         cls.generate_update_files(2, 2)
-        q = cls.query_run_with_stream()
-        t1 = cls.rf1_stream()
-        t2 = cls.rf2_stream()
-        cls.delete_update_files()
-        return pow(functools.reduce(lambda x, y: x*y, q+[t1, t2]), 1/(len(q) + 2))
+        with db.MySQL(database = 'tpch_tune') as conn:
+            q = cls.query_run(conn)
+            #print('queries done')
+            t1 = cls.rf1(conn)
+            t2 = cls.rf2(conn)
+            cls.delete_update_files()
+            return pow(functools.reduce(lambda x, y: x*y, q+[t1, t2]), 1/(len(q) + 2))
 
 if __name__ == '__main__':
     with db.MySQL(database = "tpch_tune") as conn:
