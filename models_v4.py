@@ -2106,13 +2106,13 @@ if __name__ == '__main__':
     '''
     
     atlas_marl_tune({
-        'database': 'sysbench_tune',
+        'database': 'tpch_tune',
         'epochs': 1,
         'marl_step': 50,
         'cluster_dist': 0.1,
         'cluster_f': 'cosine',
         'knob_tune_config': {
-            'database': 'sysbench_tune',
+            'database': 'tpch_tune',
             'episodes': 1,
             'replay_size': 60,
             'noise_scale': 0.5,
@@ -2140,7 +2140,7 @@ if __name__ == '__main__':
             'weight_decay': 0.001
         },
         'index_tune_config': {
-            'database': 'sysbench_tune',
+            'database': 'tpch_tune',
             'weight_copy_interval': 10,
             'epsilon': 1,
             'lr': 0.0001,
