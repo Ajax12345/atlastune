@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import statistics, os, re
 import whittaker_eilers
 from scipy.signal import savgol_filter
-import math, ddpg
+import math, ddpg, tpch
 
 if os.environ.get('ATLASTUNE_ENVIRONMENT') == 'CC':
     #on ubunut: sudo export ATLASTUNE_ENVIRONMENT=CC
@@ -403,6 +403,10 @@ class Atlas_Rewards:
         th = (w2['throughput'] - experience_replay[0][-1]['throughput'])/experience_replay[0][-1]['throughput']
         return 0.001*lt + th
 
+    def compute_tpch_total_exec_time_scaled(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        lt = self.scale_num(int(experience_replay[0][-1]['total_time']))
+        return (lt - self.scale_num(int(w2['total_time'])))/lt
+
 class Atlas_Reward_Signals:
     def basic_query_workload_cost(self, *args, **kwargs) -> dict:
         full_query_cost = self.conn.workload_cost()
@@ -414,6 +418,15 @@ class Atlas_Reward_Signals:
         return {'qph': qph,
             'params': {
                 'qph': qph
+            }
+        }
+
+    def tpch_total_exec_time(self, *args, **kwargs) -> dict:
+        total_time = tpch.TPC_H.total_exec_time()
+        return {
+            'total_time': total_time,
+            'params': {
+                'total_time': total_time
             }
         }
 
@@ -2091,7 +2104,7 @@ if __name__ == '__main__':
             'knobs': conn.get_knobs()
         }, 'INDEX', conn))
     '''
-    '''
+    
     atlas_marl_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
@@ -2117,8 +2130,8 @@ if __name__ == '__main__':
             'terminate_after': 300,
             'updates': 5,
             'tau': 0.999,
-            'reward_func': 'compute_sysbench_reward_marl_latency_discount',
-            'reward_signal': 'sysbench_latency_throughput',
+            'reward_func': 'compute_tpch_total_exec_time_scaled',
+            'reward_signal': 'tpch_total_exec_time',
             'env_reset': None,
             'is_marl': True,
             'cache_workload': True,
@@ -2134,8 +2147,8 @@ if __name__ == '__main__':
             'epsilon_decay': 0.002,
             'marl_step': 100,
             'iterations': 600,
-            'reward_func': 'compute_sysbench_reward_marl_latency_discount',
-            'reward_signal': 'sysbench_latency_throughput',
+            'reward_func': 'compute_tpch_total_exec_time_scaled',
+            'reward_signal': 'tpch_total_exec_time',
             'atlas_state': 'state_indices_knobs',
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
@@ -2147,7 +2160,6 @@ if __name__ == '__main__':
             'batch_sample_size':200
         }
     })
-    '''
 
 
     #TODO: run for 2000 iterations per piece
@@ -2173,10 +2185,10 @@ if __name__ == '__main__':
         print([i[2] for i in data['knob_results'][0]['experience_replay']])
     
     '''
-    
+    '''
     display_marl_results([
         'outputs/marl_tuning_data/marl46.json'
         ], 
         #y_axis_lim = {'throughput': [0, 500], 'latency': [0, 500]}
     )
-
+    '''
