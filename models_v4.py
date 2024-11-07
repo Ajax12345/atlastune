@@ -1744,27 +1744,34 @@ def atlas_knob_tune_cdb(config:dict) -> None:
 def display_marl_results(f_name:str, 
     y_axis_lim:dict = {},
     marl_step:int = 100,
+    splice_ep:bool = True,
     smoother = whittaker_smoother) -> None:
 
     f_names = [f_name] if isinstance(f_name, str) else f_name
     d = collections.defaultdict(list)
     for f_name in f_names:
         with open(f_name) as f:
-            knob_tuner = (dt:=json.load(f))['knob_results'][0]['experience_replay']
-            index_tuner = dt['index_results'][0]['experience_replay']
-            
-            lt, th = [], []
-            while knob_tuner or index_tuner:
-                lt.extend([i[-1]['latency'] for i in index_tuner[:100]])
-                th.extend([i[-1]['throughput'] for i in index_tuner[:100]])
-                index_tuner = index_tuner[100:]
+            if splice_ep:
+                knob_tuner = (dt:=json.load(f))['knob_results'][0]['experience_replay']
+                index_tuner = dt['index_results'][0]['experience_replay'][60:]
+                
+                lt, th = [], []
+                while knob_tuner or index_tuner:
+                    lt.extend([i[-1]['latency'] for i in index_tuner[:100]])
+                    th.extend([i[-1]['throughput'] for i in index_tuner[:100]])
+                    index_tuner = index_tuner[100:]
 
-                lt.extend([i[-1]['latency'] for i in knob_tuner[:100]])
-                th.extend([i[-1]['throughput'] for i in knob_tuner[:100]])
-                knob_tuner = knob_tuner[100:]
+                    lt.extend([i[-1]['latency'] for i in knob_tuner[:100]])
+                    th.extend([i[-1]['throughput'] for i in knob_tuner[:100]])
+                    knob_tuner = knob_tuner[100:]
 
-            d['latency'].append(lt)
-            d['throughput'].append(th)
+                d['latency'].append(lt)
+                d['throughput'].append(th)
+
+            else:
+                data = json.load(f)['db_stats'][0]
+                d['latency'].append([j['latency'] for j in data])
+                d['throughput'].append([j['throughput'] for j in data])
 
 
     fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
@@ -2161,7 +2168,6 @@ if __name__ == '__main__':
         }
     })
 
-
     #TODO: run for 2000 iterations per piece
     #TODO: with sysbench, preserve original primary key indexing scheme
     #TODO: run on throughput maximization reward instead of latency!
@@ -2176,7 +2182,7 @@ if __name__ == '__main__':
     #TODO: build MARL reward function
     #display_marl_results('outputs/marl_tuning_data/marl35.json') #throughput
     #display_marl_results('outputs/marl_tuning_data/marl36.json') #latency
-    #display_marl_results('outputs/marl_tuning_data/marl38.json')
+    #display_marl_results('outputs/marl_tuning_data/marl47.json')
     #experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-3018:35:15077740.json
     '''
     with open('outputs/marl_tuning_data/marl35.json') as f:
@@ -2187,8 +2193,7 @@ if __name__ == '__main__':
     '''
     '''
     display_marl_results([
-        'outputs/marl_tuning_data/marl46.json'
-        ], 
-        #y_axis_lim = {'throughput': [0, 500], 'latency': [0, 500]}
+        'outputs/marl_tuning_data/marl47.json'
+        ]
     )
     '''
