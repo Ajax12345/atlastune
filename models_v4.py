@@ -11,6 +11,7 @@ import whittaker_eilers
 from scipy.signal import savgol_filter
 import math, ddpg, tpch
 import tsmoothie.smoother
+import itertools
 
 if os.environ.get('ATLASTUNE_ENVIRONMENT') == 'CC':
     #on ubunut: sudo export ATLASTUNE_ENVIRONMENT=CC
@@ -1749,8 +1750,21 @@ def atlas_knob_tune_cdb(config:dict) -> None:
 
 def rolling_average(vals:typing.List[float], window:int = 30, f = min) -> typing.List[float]:
     #vals = whittaker_smoother(vals)
-    return whittaker_smoother([i for j in range(0, len(vals), window) for i in [f(vals[j:j+window]) for k in vals[j:j+window]]])
-
+    t = [i for j in range(0, len(vals), window) for i in [f(vals[j:j+window]) for k in vals[j:j+window]]]
+    '''
+    r, l = [], None
+    for _, b in itertools.groupby(t):
+        if l is None:
+            r.extend(l:=[*b])
+        else:
+            k = [*b]
+            r.extend([(i + min(l))/2 for i in k])
+            l = k
+    
+    return whittaker_smoother(r)
+    '''
+    return whittaker_smoother(t)
+    
 
 def marl_lt_th(files:typing.List[str], splice_ep:bool, lb:str, marl_step:int) -> tuple:
     d = collections.defaultdict(list)
@@ -2225,7 +2239,6 @@ if __name__ == '__main__':
         print([i[2] for i in data['knob_results'][0]['experience_replay']])
     
     '''
-    
     display_marl_results([([
         'outputs/marl_tuning_data/marl47.json',
         'outputs/marl_tuning_data/marl48.json',
@@ -2234,8 +2247,8 @@ if __name__ == '__main__':
         ], 'MARL', 100),
         ([
             'outputs/marl_tuning_data/marl51.json',
-            'outputs/marl_tuning_data/marl52.json'
-        ], 'Non-MARL', 1000)], smoother=rolling_average
+            'outputs/marl_tuning_data/marl52.json',
+        ], 'Non-MARL', 1000)], smoother=rolling_average, smoother_depth = 15
     )
     '''
     display_marl_results([
