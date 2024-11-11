@@ -1831,11 +1831,21 @@ def display_marl_results(file_payload:typing.List[tuple],
     if 'throughput' in y_axis_lim:
         a2.set_ylim(y_axis_lim['throughput'])
 
+    with open('outputs/comparison_results/default_b_500_marl_11112024.json') as f:
+        baseline = json.load(f)
+
+    baseline_lt = [i['latency'] for i in baseline]
+    baseline_th = [i['throughput'] for i in baseline]
+
     
     for data, lb, marl_step in file_payload:
         lt, th = marl_lt_th(data, splice_ep, lb, marl_step)
         a1.plot([*range(1, len(lt)+1)], run_smoother(lt, f = max) if smoother is not None else lt, label = f'latency ({lb})')
         a2.plot([*range(1, len(th)+1)], run_smoother(th, f = min) if smoother is not None else th, label = f'throughput ({lb})')
+
+    #a1.plot([*range(1, len(lt)+1)], run_smoother(baseline_lt+[random.choice(baseline_lt) for _ in range(len(lt) - len(baseline_lt))], f = max), label = 'baseline lt')
+
+    #a2.plot([*range(1, len(th)+1)], run_smoother(baseline_th+[random.choice(baseline_th) for _ in range(len(th) - len(baseline_th))], f = min), label = 'baseline th')
 
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
