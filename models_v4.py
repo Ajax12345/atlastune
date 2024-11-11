@@ -10,6 +10,7 @@ import statistics, os, re
 import whittaker_eilers
 from scipy.signal import savgol_filter
 import math, ddpg, tpch
+import tsmoothie.smoother
 
 if os.environ.get('ATLASTUNE_ENVIRONMENT') == 'CC':
     #on ubunut: sudo export ATLASTUNE_ENVIRONMENT=CC
@@ -1470,14 +1471,19 @@ def atlas_index_tune_ddpg() -> None:
         plt.show()
 
 
-def whittaker_smoother(vals):
+def whittaker_smoother(vals, *args, **kwargs):
     w = whittaker_eilers.WhittakerSmoother(
         lmbda=70, order=1, data_length=len(vals)
     )
     return w.smooth(vals)
 
-def sc_savgol_filter(vals):
-    return savgol_filter(vals, 5, 2)
+def sc_savgol_filter(vals, *args, **kwargs):
+    return savgol_filter(vals, 15, 5)
+
+def convolution_smoother(vals, *args, **kwargs):
+    c = tsmoothie.smoother.ConvolutionSmoother(window_len=300, window_type='ones')
+    c.smooth(vals)
+    return c.smooth_data[0]
 
 def display_tuning_results(f_name:typing.Union[str, list], 
     cutoff = None, 
@@ -1741,15 +1747,14 @@ def atlas_knob_tune_cdb(config:dict) -> None:
     print('knob tuning results saved to', f_name)
     display_tuning_results(f_name, smoother = whittaker_smoother)
 
-def display_marl_results(f_name:str, 
-    y_axis_lim:dict = {},
-    marl_step:int = 100,
-    splice_ep:bool = True,
-    smoother = whittaker_smoother) -> None:
+def rolling_average(vals:typing.List[float], window:int = 30, f = min) -> typing.List[float]:
+    #vals = whittaker_smoother(vals)
+    return whittaker_smoother([i for j in range(0, len(vals), window) for i in [f(vals[j:j+window]) for k in vals[j:j+window]]])
 
-    f_names = [f_name] if isinstance(f_name, str) else f_name
+
+def marl_lt_th(files:typing.List[str], splice_ep:bool, lb:str, marl_step:int) -> tuple:
     d = collections.defaultdict(list)
-    for f_name in f_names:
+    for f_name in files:
         with open(f_name) as f:
             if splice_ep:
                 knob_tuner = (dt:=json.load(f))['knob_results'][0]['experience_replay']
@@ -1757,13 +1762,23 @@ def display_marl_results(f_name:str,
                 
                 lt, th = [], []
                 while knob_tuner or index_tuner:
-                    lt.extend([i[-1]['latency'] for i in index_tuner[:100]])
-                    th.extend([i[-1]['throughput'] for i in index_tuner[:100]])
-                    index_tuner = index_tuner[100:]
+                    if lb != 'Non-MARL':
+                        lt.extend([i[-1]['latency'] for i in index_tuner[:marl_step]])
+                        th.extend([i[-1]['throughput'] for i in index_tuner[:marl_step]])
+                        index_tuner = index_tuner[marl_step:]
 
-                    lt.extend([i[-1]['latency'] for i in knob_tuner[:100]])
-                    th.extend([i[-1]['throughput'] for i in knob_tuner[:100]])
-                    knob_tuner = knob_tuner[100:]
+                        lt.extend([i[-1]['latency'] for i in knob_tuner[:marl_step]])
+                        th.extend([i[-1]['throughput'] for i in knob_tuner[:marl_step]])
+                        knob_tuner = knob_tuner[marl_step:]
+
+                    else:
+                        lt.extend([i[-1]['latency'] for i in knob_tuner[:marl_step]])
+                        th.extend([i[-1]['throughput'] for i in knob_tuner[:marl_step]])
+                        knob_tuner = knob_tuner[marl_step:]
+
+                        lt.extend([i[-1]['latency'] for i in index_tuner[:marl_step]])
+                        th.extend([i[-1]['throughput'] for i in index_tuner[:marl_step]])
+                        index_tuner = index_tuner[marl_step:]
 
                 d['latency'].append(lt)
                 d['throughput'].append(th)
@@ -1773,17 +1788,41 @@ def display_marl_results(f_name:str,
                 d['latency'].append([j['latency'] for j in data])
                 d['throughput'].append([j['throughput'] for j in data])
 
+    return [sum(i)/len(i) for i in zip(*d['latency'])], [sum(i)/len(i) for i in zip(*d['throughput'])]
+    
+    
+def display_marl_results(file_payload:typing.List[tuple], 
+    y_axis_lim:dict = {},
+    marl_step:int = 100,
+    splice_ep:bool = True,
+    smoother_depth:int = 1,
+    smoother = whittaker_smoother) -> None:
 
+    def run_smoother(x, *args, **kwargs) -> typing.List[float]:
+        for _ in range(smoother_depth):
+            x = smoother(x, *args, **kwargs)
+        
+        return x
+
+    
     fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
-    lt = [sum(i)/len(i) for i in zip(*d['latency'])]
+
 
     #print(lt)
     
     if 'latency' in y_axis_lim:
         a1.set_ylim(y_axis_lim['latency'])
-
-    a1.plot([*range(1, len(lt)+1)], smoother(lt) if smoother is not None else lt, label = 'latency')
     
+
+    if 'throughput' in y_axis_lim:
+        a2.set_ylim(y_axis_lim['throughput'])
+
+    
+    for data, lb, marl_step in file_payload:
+        lt, th = marl_lt_th(data, splice_ep, lb, marl_step)
+        a1.plot([*range(1, len(lt)+1)], run_smoother(lt, f = max) if smoother is not None else lt, label = f'latency ({lb})')
+        a2.plot([*range(1, len(th)+1)], run_smoother(th, f = min) if smoother is not None else th, label = f'throughput ({lb})')
+
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
 
@@ -1792,12 +1831,7 @@ def display_marl_results(f_name:str,
     a1.set_xlabel("iteration")
     a1.set_ylabel("latency")
 
-    th = [sum(i)/len(i) for i in zip(*d['throughput'])]
-    if 'throughput' in y_axis_lim:
-        a2.set_ylim(y_axis_lim['throughput'])
 
-
-    a2.plot([*range(1, len(th)+1)], smoother(th) if smoother is not None else th, label = 'throughput')
     a2.title.set_text("Throughput")
     a2.legend(loc="lower right")
 
@@ -2111,11 +2145,11 @@ if __name__ == '__main__':
             'knobs': conn.get_knobs()
         }, 'INDEX', conn))
     '''
-    
+    '''
     atlas_marl_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
-        'marl_step': 1000,
+        'marl_step': 50,
         'cluster_dist': 0.1,
         'cluster_f': 'cosine',
         'knob_tune_config': {
@@ -2129,7 +2163,7 @@ if __name__ == '__main__':
             'alr': 0.0001,
             'clr': 0.0001,
             'workload_exec_time': 10,
-            'marl_step': 1000,
+            'marl_step': 100,
             'iterations': 1000,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
@@ -2140,7 +2174,7 @@ if __name__ == '__main__':
             'reward_func': 'compute_sysbench_reward_throughput_scaled',
             'reward_signal': 'sysbench_latency_throughput',
             'env_reset': None,
-            'is_marl': False,
+            'is_marl': True,
             'cache_workload': True,
             'is_cc': True,
             'atlas_state': 'state_indices_knobs',
@@ -2152,7 +2186,7 @@ if __name__ == '__main__':
             'epsilon': 1,
             'lr': 0.0001,
             'epsilon_decay': 0.002,
-            'marl_step': 1000,
+            'marl_step': 100,
             'iterations': 1000,
             'reward_func': 'compute_sysbench_reward_throughput_scaled',
             'reward_signal': 'sysbench_latency_throughput',
@@ -2160,14 +2194,14 @@ if __name__ == '__main__':
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
             'cache_workload': True,
-            'is_marl': False,
+            'is_marl': True,
             'epochs': 1,
             'reward_buffer': None,
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
     })
-
+    '''
     #TODO: run for 2000 iterations per piece
     #TODO: with sysbench, preserve original primary key indexing scheme
     #TODO: run on throughput maximization reward instead of latency!
@@ -2191,9 +2225,21 @@ if __name__ == '__main__':
         print([i[2] for i in data['knob_results'][0]['experience_replay']])
     
     '''
+    
+    display_marl_results([([
+        'outputs/marl_tuning_data/marl47.json',
+        'outputs/marl_tuning_data/marl48.json',
+        'outputs/marl_tuning_data/marl49.json',
+        'outputs/marl_tuning_data/marl50.json'
+        ], 'MARL', 100),
+        ([
+            'outputs/marl_tuning_data/marl51.json',
+            'outputs/marl_tuning_data/marl52.json'
+        ], 'Non-MARL', 1000)], smoother=rolling_average
+    )
     '''
     display_marl_results([
-        'outputs/marl_tuning_data/marl47.json'
-        ]
+        'outputs/marl_tuning_data/marl51.json'
+        ], smoother= rolling_average
     )
     '''
