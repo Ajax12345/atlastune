@@ -846,7 +846,7 @@ if __name__ == '__main__':
         }))
         '''
         #print(conn.reset_knob_configuration())
-        print(conn.memory_size('gb')['tpch_tune'])
+        print(conn.memory_size('gb')['sysbench_tune'])
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
         
 
