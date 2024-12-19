@@ -306,3 +306,18 @@ Chameleon Cloud SSH:
     sudo -E nohup python3 models_v4.py &
 
     to monitor status: ps -ef | grep python
+
+    https://www.percona.com/blog/mysql-101-parameters-to-tune-for-mysql-performance/
+
+
+Postgres Knobs:
+    https://vladmihalcea.com/postgresql-performance-tuning-settings/
+    https://www.percona.com/blog/tuning-postgresql-database-parameters-to-optimize-performance/
+    https://postgresqlco.nf/doc/en/param/work_mem/
+    https://web.archive.org/web/20240415155810/https://ottertune.com/blog/rds-postgres-tuning-benchmark
+    https://web.archive.org/web/20240229172116/https://ottertune.com/blog/query-latency-vs-thoughput
+    https://web.archive.org/web/20240401165449/https://ottertune.com/blog/postgresql-knobs-list
+    https://web.archive.org/web/20240401045107/https://ottertune.com/blog/mysql-configuration-settings-list
+    https://web.archive.org/web/20240229172116/https://ottertune.com/blog/query-latency-vs-thoughput
+
+    Do not forget to compute default knobs for CC cloud!

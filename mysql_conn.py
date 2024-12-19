@@ -135,10 +135,17 @@ class MySQL:
     KNOBS = {
         'table_open_cache': ['integer', [1, 10240, 512]],
         'innodb_buffer_pool_size': ['integer', [5242880, 'memory_size', 30000000*5]],
-        #'innodb_buffer_pool_instances': ['integer', [1, 64, 10]],
+        'innodb_buffer_pool_instances': ['integer', [1, 64, 10]],
+        'thread_cache_size': ['integer', [0, 1000, 512]],
         'innodb_purge_threads': ['integer', [1, 32, 3]],
+        'tmp_table_size': ['integer', [1024, 'memory_size', 1073741824]],
         'innodb_read_io_threads': ['integer', [1, 64, 8]],
         'innodb_write_io_threads': ['integer', [1, 64, 8]],
+        'innodb_thread_concurrency': ['integer', [0, 100, 0]],
+        'innodb_sync_array_size': ['integer', [1, 1024, 1]],
+        'innodb_io_capacity': ['integer', [100, 2000000, 20000]],
+        'innodb_adaptive_max_sleep_delay': ['integer', [0, 1000000, 150000]],
+        'innodb_adaptive_hash_index': ['boolean', ['ON', 'OFF']],
     }
     KNOB_DEFAULTS = {
         "table_open_cache": 4000,
@@ -162,7 +169,7 @@ class MySQL:
         "innodb_adaptive_hash_index_parts": 8,
         "innodb_page_cleaners": 1,
         "innodb_flush_neighbors": 0,
-        #"innodb_adaptive_max_sleep_delay": 150000,
+        "innodb_adaptive_max_sleep_delay": 150000,
         #"eq_range_index_dive_limit": 200,
         #"innodb_change_buffer_max_size": 25,
         #"innodb_log_buffer_size": 16777216,
@@ -846,7 +853,9 @@ if __name__ == '__main__':
         }))
         '''
         #print(conn.reset_knob_configuration())
-        print(conn.memory_size('gb')['sysbench_tune'])
+        #print(conn.memory_size('gb')['sysbench_tune'])
+        d = conn._metrics()
+        print({i:d[i] for i in MySQL.VALUE_METRICS})
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
         
 
