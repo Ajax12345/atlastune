@@ -36,6 +36,18 @@ class Normalize:
         return [[X + Y for X, Y in zip(ind, np.random.randn(len(ind))*noise_scale)] 
                     for ind in inds]
 
+def ITER_GEN(iterations:typing.Union[int, None] = None) -> typing.Iterator:
+    if iterations is not None:
+        return range(iterations)
+
+    def iter_gen_wrapper() -> typing.Iterator:
+        i = 0
+        while True:
+            yield i
+            i += 1
+    
+    return iter_gen_wrapper()
+
 class Atlas_Knob_Critic(nn.Module):
     def __init__(self, state_num:int, action_num:int, val_num:int) -> None:
         super().__init__()
@@ -193,6 +205,22 @@ class Atlas_Index_QNet(nn.Module):
             nn.Linear(self.state_num, 64),
             nn.ReLU(),
             nn.Linear(64, self.action_num)
+        )
+
+    def forward(self, x) -> torch.tensor:
+        return self.layers(x)
+
+class Atlas_Scheduler_QNet(nn.Module):
+    def __init__(self, state_num:int, action_num:int, hidden_layer_size:int) -> None:
+        super().__init__()
+        self.state_num = state_num 
+        self.action_num = action_num
+        self.layers = nn.Sequential(
+            nn.Linear(self.state_num, hidden_layer_size),
+            nn.ReLU(),
+            #nn.Linear(hidden_layer_size, hidden_layer_size),
+            #nn.ReLU(),
+            nn.Linear(hidden_layer_size, self.action_num)
         )
 
     def forward(self, x) -> torch.tensor:
@@ -715,13 +743,12 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         rewards = []
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
-        for i in range(iterations + self.config['replay_size']):
-
+        for i in ITER_GEN(None if iterations is None else iterations + self.config['replay_size']):
             if self.config.get('terminate_after') is not None and self.config['noise_eliminate'] + self.config['replay_size'] + self.config['terminate_after'] <= i:
                 print('terimate_after reached, training halted')
                 break
 
-            print(f'iteration {i+1} of {iterations + self.config["replay_size"]}')
+            print(f'iteration {i+1} of {iterations + self.config["replay_size"] if iterations else "indefinite"}')
             #self.log_message(f'Iteration {i+1}')
             with open(experience_replay_f_name, 'w') as f:
                 json.dump([{'experience_replay':self.experience_replay, 
@@ -1330,7 +1357,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         
         rewards = []
         epsilon = self.config['epsilon']
-        for iteration in range(iterations):
+        for iteration in ITER_GEN(iterations):
             print('state here', state)
             if random.random() < epsilon:
                 print('random')
@@ -1423,6 +1450,107 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
 
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}(database="{self.database}")'
+
+class Atlas_Scheduler(Atlas_Rewards):
+    def __init__(self, 
+        history_window:int, 
+        agents:int,
+        config = {
+            'lr':0.0001,
+            'gamma':0.9,
+            'weight_copy_interval':10,
+            'tau':0.9999,
+            'epsilon':1,
+            'epsilon_decay':0.001,
+            'batch_sample_size':50
+        }) -> None:
+        self.history_window = history_window
+        self.agents = agents
+        self.history = []
+        self.start_state = None 
+        self.iteration = 0
+        self.config = config
+        self.q_net = None
+        self.q_net_target = None
+        self.loss_func = None
+        self.optimizer = None
+        self.experience_replay = []
+
+    def update_config(self, **kwargs) -> None:
+        self.config.update(kwargs)
+
+    def reset_target_weights(self) -> None:
+        self.q_net_target.load_state_dict(self.q_net.state_dict())
+
+    def init_models(self, state_num:int, action_num:int) -> None:
+        self.q_net = Atlas_Scheduler_QNet(state_num, action_num, 6)
+        self.q_net_target = Atlas_Scheduler_QNet(state_num, action_num, 6)
+        self.reset_target_weights()
+        self.loss_func = nn.MSELoss()
+        self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
+        self.state = self.generate_state()
+
+    def generate_state(self) -> torch.tensor:
+        window = self.history[-1*self.history_window:]
+        freq = collections.Counter(self.history)
+        m = [freq.get(i, 0) for i in range(1, self.agents+1)]
+        freq_min = min(m)
+        return [
+            *window,
+            *([0]*(self.history_window - len(window))),
+            *[i - freq_min for i in m]
+        ]
+
+    def schedule(self) -> int:
+        if self.q_net is None:
+            self.init_models(self.history_window + self.agents, self.agents)
+
+        if self.iteration < self.config['replay_buffer_size'] or random.random() < self.config['epsilon']:
+            chosen_agent = random.choice([*range(self.agents)])
+
+        else:
+            with torch.no_grad():
+                state = F.normalize(torch.tensor([[*map(float, self.state)]]))
+                chosen_agent = self.q_net(state).max(1)[1].item()
+
+        return chosen_agent
+
+    def schedule_train(self, chosen_agent:int, reward:float) -> None:
+
+        self.config['epsilon'] -= epsilon*self.config['epsilon_decay']
+
+        self.history.append(chosen_agent + 1)
+        self.experience_replay.append([
+            self.state, chosen_agent, reward, (new_state:=self.generate_state())
+        ])
+
+        self.state = new_state
+
+        if self.iteration >= self.config['replay_buffer_size']:
+            samples = random.sample(self.experience_replay, min(self.config['batch_sample_size'], len(self.experience_replay)))
+            _s, _a, _r, _s_prime = zip(*samples)
+            s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
+            a = torch.tensor([[i] for i in _a])
+            s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
+            r = F.normalize(torch.tensor([[float(i)] for i in _r], requires_grad = True))
+
+            #with torch.no_grad():
+            q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+            q_value = self.q_net(s).gather(1, a)
+            
+            target_q_value = r + self.config['gamma']*q_prime
+
+            loss = self.loss_func(q_value, target_q_value)
+
+            self.optimizer.zero_grad()
+            loss.backward()
+            self.optimizer.step()
+
+            if iteration and not iteration%self.config['weight_copy_interval']:
+                self.reset_target_weights()
+
+        self.iteration += 1
+
 
 def atlas_index_tune_ddpg() -> None:
     with Atlas_Index_Tune('tpcc100') as a:
@@ -1881,6 +2009,16 @@ class MARL_State_Share:
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.params})'
 
+class Agent:
+    def __init__(self, name:str, agent:typing.Union[Atlas_Index_Tune_DQN, 
+        Atlas_Knob_Tune], agent_stream:typing.Iterator) -> None:
+        
+        self.name = name
+        self.agent = agent
+        self.agent_stream = agent_stream
+
+    def __repr__(self) -> str:
+        return f'{self.__class__.__name__}({self.name})'
 
 def atlas_marl_tune(config:dict) -> None:
     database = config['database']
@@ -1889,6 +2027,7 @@ def atlas_marl_tune(config:dict) -> None:
 
     knob_tune_config = config['knob_tune_config']
     index_tune_config = config['index_tune_config']
+    scheduler_config = config['scheduler_config']
 
     c_cache = ClusterCache(f = config['cluster_f'], 
                 dist = config['cluster_dist'])
@@ -1901,306 +2040,106 @@ def atlas_marl_tune(config:dict) -> None:
 
     state_share = MARL_State_Share()
 
-    with Atlas_Index_Tune_DQN(database) as a_index:
-        with Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
-            #a_index.conn.reset_knob_configuration()
-            knob_activation_payload = {
-                'memory_size':(mem_size:=a_index.conn.memory_size('b')[a_index.conn.database]*4),
-                'memory_lower_bound':min(4294967168, mem_size)
-            }
-            state_share['selected_action'] = a_index.conn.default_selected_action(knob_activation_payload)
-            
-            knob_tune_config['state_share'] = state_share
-            index_tune_config['state_share'] = state_share
+    with Atlas_Index_Tune_DQN(database) as a_index, \
+        Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
+        #a_index.conn.reset_knob_configuration()
+        knob_activation_payload = {
+            'memory_size':(mem_size:=a_index.conn.memory_size('b')[a_index.conn.database]*4),
+            'memory_lower_bound':min(4294967168, mem_size)
+        }
+        state_share['selected_action'] = a_index.conn.default_selected_action(knob_activation_payload)
+        
+        knob_tune_config['state_share'] = state_share
+        index_tune_config['state_share'] = state_share
 
-            index_results, knob_results = [], []
-            db_stats = []
-            for _ in range(epochs):
-                a_index.update_config(**index_tune_config)
+        knob_tune_config['iterations'] = None
+        index_tune_config['iterations'] = None
 
-                a_index_prog = a_index.tune(index_tune_config['iterations'], 
-                    reward_func = index_tune_config['reward_func'], 
-                    reward_signal = index_tune_config['reward_signal'],
-                    from_buffer = index_tune_config['reward_buffer'], 
-                    reward_buffer_size = index_tune_config['reward_buffer_size'],
-                    is_epoch = index_tune_config['epochs'] > 1, 
-                    is_marl = index_tune_config['is_marl'])
+        AGENT_STATS = {
+            'index_results': [],
+            'knob_results': [],
+            'db_stats': [],
+            'scheduler_rewards': []
+        }
 
-                a_knob.update_config(**knob_tune_config)
+        a_index.update_config(**index_tune_config)
 
-                a_knob_prog = a_knob.tune(knob_tune_config['iterations'], 
-                    reward_func = knob_tune_config['reward_func'], 
-                    reward_signal = knob_tune_config['reward_signal'],
-                    is_marl = knob_tune_config['is_marl'],
-                    is_epoch = knob_tune_config['episodes'] > 1)
+        a_index_prog = a_index.tune(index_tune_config['iterations'], 
+            reward_func = index_tune_config['reward_func'], 
+            reward_signal = index_tune_config['reward_signal'],
+            from_buffer = index_tune_config['reward_buffer'], 
+            reward_buffer_size = index_tune_config['reward_buffer_size'],
+            is_epoch = index_tune_config['epochs'] > 1, 
+            is_marl = index_tune_config['is_marl'])
 
-                iteration_db_stats = []
-                halt_index = False
-                while True:
-                    if not halt_index:
-                        index_payload, index_flag = next(a_index_prog)
-                        ep = index_payload['experience_replay'][-1*marl_step:]
-                        print('last ep index', len(ep))
-                        iteration_db_stats.extend([i[-1] for i in ep])
+        a_knob.update_config(**knob_tune_config)
 
-                    if index_flag:
-                        halt_index = True
+        a_knob_prog = a_knob.tune(knob_tune_config['iterations'], 
+            reward_func = knob_tune_config['reward_func'], 
+            reward_signal = knob_tune_config['reward_signal'],
+            is_marl = knob_tune_config['is_marl'],
+            is_epoch = knob_tune_config['episodes'] > 1)
 
-                    knob_payload, knob_flag = next(a_knob_prog)
-                    ep = knob_payload['experience_replay'][-1*marl_step:]
-                    print('last ep knob', len(ep))
-                    iteration_db_stats.extend([i[-1] for i in ep])
-                   
-                    if knob_flag:
-                        index_results.append(index_payload)
-                        knob_results.append(knob_payload)
-                        break
+        iteration_db_stats = []
 
+        agents = [
+            Agent('index', a_index, a_index_prog),
+            Agent('knob', a_knob, a_knob_prog),
+        ]
 
-                db_stats.append(iteration_db_stats)
+        scheduler = Atlas_Scheduler(scheduler_config['history_window'], len(agents))
+        scheduler.update_config(**scheduler_config)
 
-            with open(output_file:=generate_marl_output_file(), 'a') as f:
-                json.dump({'index_results':index_results, 'knob_results':knob_results, 'db_stats':db_stats}, f)
+        for iteration in ITER_GEN(scheduler_config['iterations']):
+            chosen_agent = scheduler.schedule()
+            print('selected agent', chosen_agent)
+            payload, _ = next(agents[chosen_agent].agent_stream)
+            ep = payload['experience_replay'][-1*marl_step:]
+            iteration_db_stats.extend([i[-1] for i in ep])
+            reward = getattr(scheduler, scheduler_config['reward_func'])(ep, ep[-1][-1])
+            scheduler.schedule_train(chosen_agent, reward)
+            AGENT_STATS['scheduler_rewards'].append(reward)
 
-            print('marl tuning results saved to', output_file)
-            #display_marl_results(output_file)
-            #display_marl_results_v2(output_file)
+        AGENT_STATS['db_stats'].append(iteration_db_stats)
 
+    with open(output_file:=generate_marl_output_file(), 'a') as f:
+        json.dump(AGENT_STATS, f)
 
-def knob_tune_action_vis(output_file:str) -> None:
-    #'outputs/knob_tuning_data/rl_ddpg28.json'
-    with open(output_file) as f:
-        data = json.load(f)
+    print('marl tuning results saved to', output_file)
 
-    f_name = re.findall("\w+(?=\.json)", output_file)[0]
-    with open(f'outputs/action_vis/{f_name}.txt', 'w') as f:
-        f.write('\n'.join(f'{i}: {",".join(map(str,a[1]))} | {a[-1]["throughput"]}' for i, a in enumerate(data[0]['experience_replay'][1:], 1)))
+def tune_marl() -> None:
 
-
-def cluster(output_file:str, dist = 'cosine') -> None:
-    def normalize(v:typing.List[float]) -> typing.List[float]:
-        s = sum(v)
-        return [i/s for i in v]
-
-    def clip(v:typing.List[float]) -> typing.List[float]:
-        return [min(max(0, i), 1) for i in v]
-
-    def cosine(v1:typing.List[float], v2:typing.List[float]) -> float:
-        v1, v2 = normalize(clip(v1)), normalize(clip(v2))
-        return 1 - sum(a*b for a, b in zip(v1, v2))/(pow(sum(a**2 for a in v1), 0.5) * pow(sum(b**2 for b in v2), 0.5))
-
-    def euclidean(v1:typing.List[float], v2:typing.List[float]) -> float:
-        v1, v2 = normalize(clip(v1)), normalize(clip(v2))
-        return pow(sum((a - b)**2 for a, b in zip(v1, v2)), 0.5)
-
-    with open(output_file) as f:
-        data = json.load(f)
-
-    actions = [i[1] for i in data[0]['experience_replay'][1:]]
-
-    #print(cosine(actions[375], actions[373]))
-    #print(euclidean(actions[375], actions[373]))
-    '''
-    actions[369], actions[368] #similar
-    6.451746813018744e-06
-    0.0018070811865447459
-
-    actions[364], actions[373] #similar
-    0.0008159711495020483
-    0.02030111487558261
-
-    actions[375], actions[373] #disimilar
-    0.0022559732954188227
-    0.03337650973108767
-    '''
-    actions = actions
-    cq = ClusterQueue(dist = 0.001)
-    for i in actions:
-        cq.add_action(i)
-
-    m = dict(enumerate(actions))
-    clusters = []
-    while m:
-        v1 = m.pop(i:=random.choice([*m]))
-        c1 = [(i, v1)]
-        for j in [*m]:
-            if all(cosine(b, m[j]) <= 0.001 for _, b in c1):
-                c1.append((j, m.pop(j)))
-
-        clusters.append(c1)
-    
-    print([[j for j, _ in i] for i in clusters])
-    print('-'*40)
-    print([[j for j, _ in i] for i in cq.clusters])
-    #print(len(clusters), len(cq.clusters))
-    for _ in range(5):
-        print(cq.sample(50))
-
-
-def test_lr_annealing() -> None:
-    model = torch.nn.Linear(2, 1)
-    optimizer = torch.optim.Adam(model.parameters(), lr=100)
-    #scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.9)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lambda x:0.97 ** x)
-    #scheduler = torch.optim.lr_scheduler.MultiplicativeLR(optimizer, lr_lambda = lambda x: 0.999 ** x)
-    #scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=50, gamma=0.2)
-    lrs = []
-
-    for i in range(600):
-        optimizer.step()
-        lrs.append(optimizer.param_groups[0]["lr"])
-        scheduler.step()
-
-    plt.plot(lrs)
-    plt.show()
-
-
-if __name__ == '__main__':
-    '''
-    atlas_index_tune_dqn({
-        'database': 'sysbench_tune',
-        'weight_copy_interval': 10,
-        'epsilon': 1,
-        'lr': 0.0001,
-        'epsilon_decay': 0.005,
-        'marl_step': 50,
-        'iterations': 600,
-        'reward_func': 'compute_sysbench_reward_latency_scaled',
-        'reward_signal': 'sysbench_latency_throughput',
-        'atlas_state': 'state_indices_knobs',
-        'cluster_dist': 0.1,
-        'cluster_f': 'cosine',
-        'cache_workload': True,
-        'is_marl': True,
-        'epochs': 1,
-        'reward_buffer': None,
-        'reward_buffer_size':60,
-        'batch_sample_size':50
-    })
-    '''
-    '''
-    display_tuning_results('outputs/tuning_data/rl_dqn32.json', 
-        smoother = whittaker_smoother, legend_loc = {'latency': 'upper left', 'throughput': 'center'})
-    
-    '''
-    '''
-    atlas_knob_tune({
-        'database': 'sysbench_tune',
-        'episodes': 1,
-        'replay_size': 60,
-        'noise_scale': 0.5,
-        'noise_decay': 0.01,
-        'batch_size': 100,
-        'min_noise_scale': None,
-        'alr': 0.0001,
-        'clr': 0.0001,
-        'workload_exec_time': 10,
-        'marl_step': 50,
-        'iterations': 600,
-        'cluster_dist': 0.1,
-        'cluster_f': 'cosine',
-        'noise_eliminate': 300,
-        'terminate_after': 300,
-        'updates': 5,
-        'tau': 0.999,
-        'reward_func': 'compute_sysbench_reward_throughput_scaled',
-        'reward_signal': 'sysbench_latency_throughput',
-        'env_reset': None,
-        'is_marl': True,
-        'cache_workload': True,
-        'is_cc': True,
-        'atlas_state': 'state_indices_knobs',
-        'weight_decay': 0.001
-    })    
-    '''
-    '''
-    display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg78.json'
-        ], 
-        smoother = whittaker_smoother,
-        y_axis_lim = {
-            'reward': [-1, 1],
-            'latency': [0, 800],
-            'throughput': [0, 800]
-        }, 
-        plot_titles = {
-            'reward': 'Reward (Caching)',
-            'latency': 'Latency (Caching)',
-            'throughput': 'Throughput (Caching)'
-        },
-        title = 'Caching')
-    '''
-    '''
-    display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg78.json'
-        ], 
-        smoother = whittaker_smoother,
-        y_axis_lim = {
-            'reward': [-1, 1],
-            'latency': [0, 800],
-            'throughput': [0, 500]
-        }, 
-        plot_titles = {
-            'reward': 'Reward (Caching)',
-            'latency': 'Latency (Caching)',
-            'throughput': 'Throughput (Caching)'
-        },
-        title = 'Caching')
-    '''
-    '''
-    display_tuning_results([
-            'outputs/knob_tuning_data/rl_ddpg78.json'
-        ], 
-        smoother = whittaker_smoother)
-    
-    '''
-    #knob_tune_action_vis('outputs/knob_tuning_data/rl_ddpg82.json')
-    
-    '''
-    atlas_knob_tune_cdb({
-        'database': 'sysbench_tune',
-        'reward_func': 'compute_sysbench_reward_throughput_qtune',
-        'reward_signal': 'sysbench_latency_throughput',
-        'noisy': True,
-        'batch_size': 50,
-        'workload_exec_time': 10,
-        'iterations':200,
-        'is_marl': True
-    })
-    '''
-    
-    '''
-    with db.MySQL(database = "sysbench_tune") as conn:
-        s = Atlas_States(False)
-        print(s.state_indices_knobs({
-            'indices': db.MySQL.col_indices_to_list(conn.get_columns_from_database()),
-            'knobs': conn.get_knobs()
-        }, 'INDEX', conn))
-    '''
-    '''
     atlas_marl_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
-        'marl_step': 50,
+        'marl_step': 10,
         'cluster_dist': 0.1,
         'cluster_f': 'cosine',
+        'scheduler_config': {
+            'epsilon': 1,
+            'iterations': 100,
+            'history_window': 10
+            'replay_buffer_size': 50,
+            'reward_func': 'compute_sysbench_reward_throughput_scaled',
+            'epsilon_decay': 0.01
+        },
         'knob_tune_config': {
             'database': 'sysbench_tune',
             'episodes': 1,
-            'replay_size': 60,
+            'replay_size': 10,
             'noise_scale': 0.5,
-            'noise_decay': 0.002,
-            'batch_size': 100,
+            'noise_decay': 0.02,
+            'batch_size': 10,
             'min_noise_scale': None,
             'alr': 0.0001,
             'clr': 0.0001,
             'workload_exec_time': 10,
-            'marl_step': 50,
-            'iterations': 500,
+            'marl_step': 10,
+            'iterations': None,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
             'noise_eliminate': 400,
-            'terminate_after': 600,
+            'terminate_after': None,
             'updates': 5,
             'tau': 0.999,
             'reward_func': 'compute_sysbench_reward_throughput_scaled',
@@ -2217,9 +2156,9 @@ if __name__ == '__main__':
             'weight_copy_interval': 10,
             'epsilon': 1,
             'lr': 0.0001,
-            'epsilon_decay': 0.002,
-            'marl_step': 50,
-            'iterations': 500,
+            'epsilon_decay': 0.02,
+            'marl_step': 10,
+            'iterations': None,
             'reward_func': 'compute_sysbench_reward_throughput_scaled',
             'reward_signal': 'sysbench_latency_throughput',
             'atlas_state': 'state_indices_knobs',
@@ -2233,44 +2172,6 @@ if __name__ == '__main__':
             'batch_sample_size':200
         }
     })
-    '''
-    #TODO: run for 2000 iterations per piece
-    #TODO: with sysbench, preserve original primary key indexing scheme
-    #TODO: run on throughput maximization reward instead of latency!
-    #TODO: now, have index tuner explore more
-    #NOTE: index selector does not appear to be learning in this schema. Significantly more exploration is required, I think
-    #TODO: try without caching
-    #TODO: increase batch sample sizing for index selector
-    #TODO: try larger MARL steps over more iterations, so index tuner has more time to learn on a stable state
-    #TODO: try switching the order of index selection and knob tuning
-    #TODO TOMORROW: run marl on latency reward function
-    #TODO: perhaps DQN needs to explore for longer in each marl step?
-    #TODO: build MARL reward function
-    #display_marl_results('outputs/marl_tuning_data/marl35.json') #throughput
-    #display_marl_results('outputs/marl_tuning_data/marl36.json') #latency
-    #display_marl_results('outputs/marl_tuning_data/marl47.json')
-    #experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-10-3018:35:15077740.json
-    '''
-    with open('outputs/marl_tuning_data/marl35.json') as f:
-        data = json.load(f)
-        print([i[2] for i in data['index_results'][0]['experience_replay']])
-        print([i[2] for i in data['knob_results'][0]['experience_replay']])
-    
-    '''
-    '''
-    display_marl_results([([
-        'outputs/marl_tuning_data/marl47.json',
-        'outputs/marl_tuning_data/marl48.json',
-        'outputs/marl_tuning_data/marl49.json',
-        'outputs/marl_tuning_data/marl50.json'
-        ], 'MARL', 100),
-        ([
-            'outputs/marl_tuning_data/marl51.json',
-            'outputs/marl_tuning_data/marl52.json',
-        ], 'Non-MARL', 1000)], smoother=rolling_average, smoother_depth = 15
-    )
-    '''
-    display_marl_results(
-        [(['outputs/marl_tuning_data/marl54.json'], 'MARL', 50)],
-        splice_ep = False, smoother=rolling_average, smoother_depth = 15
-    )
+
+if __name__ == '__main__':
+    tune_marl()
