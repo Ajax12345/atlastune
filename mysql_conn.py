@@ -310,6 +310,12 @@ class MySQL:
         return [knobs[i] for i in sorted(self.__class__.KNOBS)]
 
     @DB_EXISTS(requires_db = False)
+    def get_knobs_as_dict(self) -> dict:
+        self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
+        knobs = {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
+        return {i:knobs[i] for i in sorted(self.__class__.KNOBS)}
+
+    @DB_EXISTS(requires_db = False)
     def get_knobs_scaled(self, knob_activation_payload:dict) -> list:
         self.cur.execute("show variables where variable_name in ({})".format(', '.join(f"'{i}'" for i in self.__class__.KNOBS)))
         knobs = {i['Variable_name']:i['Value'] if not i['Value'].isdigit() else int(i['Value']) for i in self.cur}
