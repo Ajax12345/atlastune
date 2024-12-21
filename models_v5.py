@@ -376,9 +376,49 @@ class Atlas_Rewards:
         t = self.scale_num(int(experience_replay[0][-1]['throughput']))
         return (self.scale_num(int(w2['throughput'])) - t)/t
 
+    def compute_sysbench_reward_throughput_scaled_action_penalty(self, 
+            experience_replay:typing.List[dict], w2:dict, 
+            action:int, do_nothing:bool) -> float:
+
+        if not do_nothing and experience_replay[-1][1] == action:
+            return -0.5
+        
+        return self.compute_sysbench_reward_throughput_scaled(experience_replay, w2)
+
     def compute_sysbench_reward_latency_scaled(self, experience_replay:typing.List[dict], w2:dict) -> float:
         t = self.scale_num(int(experience_replay[0][-1]['latency']))
         return (t - self.scale_num(int(w2['latency'])))/t
+
+    def compute_sysbench_reward_latency_scaled_action_penalty(self, 
+            experience_replay:typing.List[dict], w2:dict, 
+            action:int, do_nothing:bool) -> float:
+
+        if not do_nothing and experience_replay[-1][1] == action:
+            return -0.5
+        
+        return self.compute_sysbench_reward_latency_scaled(experience_replay, w2)
+
+    def compute_sysbench_reward_latency(self, experience_replay:typing.List[dict], w2:dict) -> float:
+        t = int(experience_replay[0][-1]['latency'])
+        return (t - int(w2['latency']))/t
+
+    def compute_sysbench_reward_latency_action_penalty(self, 
+            experience_replay:typing.List[dict], 
+            w2:dict, action:int, do_nothing:bool) -> float:
+            
+        if not do_nothing and experience_replay[-1][1] == action:
+            return -0.5
+        
+        return self.compute_sysbench_reward_latency(experience_replay, w2)
+
+    def compute_sysbench_reward_throughput_action_penalty(self, 
+            experience_replay:typing.List[dict], 
+            w2:dict, action:int, do_nothing:bool) -> float:
+
+        if not do_nothing and experience_replay[-1][1] == action:
+            return -0.5
+        
+        return self.compute_sysbench_reward_throughput(experience_replay, w2)
 
     def compute_sysbench_reward_marl_latency_discount(self, experience_replay:typing.List[dict], w2:dict) -> float:
         return 0.5*self.compute_sysbench_reward_latency_scaled(experience_replay, w2) + \
@@ -1289,13 +1329,13 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, ind, 
                     getattr(self, reward_func)(self.experience_replay,
-                            w2:=getattr(self, reward_signal)()), new_state, w2])
+                            w2:=getattr(self, reward_signal)(), ind, ind == len(_indices)), new_state, w2])
                 
                 c_cache.add_entry(c_c_payload, w2)
 
             else:
                 self.experience_replay.append([state, ind, 
-                    getattr(self, reward_func)(self.experience_replay, w2), new_state, w2])
+                    getattr(self, reward_func)(self.experience_replay, w2, ind, ind == len(_indices)), new_state, w2])
 
             indices = _indices
             state = new_state
@@ -1387,7 +1427,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
                 self.experience_replay.append([state, ind, 
                     reward:=getattr(self, reward_func)(self.experience_replay,
-                            w2:=getattr(self, reward_signal)()), 
+                            w2:=getattr(self, reward_signal)(), ind, ind == len(_indices)), 
                     new_state, w2])
                 
                 c_cache.add_entry(c_c_payload, w2)
@@ -1395,7 +1435,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
             else:
                 self.experience_replay.append([state, ind, 
                     reward:=getattr(self, reward_func)(self.experience_replay,
-                            w2), 
+                            w2, ind, ind == len(_indices)), 
                     new_state, w2])
 
             rewards.append(reward)
@@ -1517,7 +1557,7 @@ class Atlas_Scheduler(Atlas_Rewards):
 
     def schedule_train(self, chosen_agent:int, reward:float) -> None:
 
-        self.config['epsilon'] -= epsilon*self.config['epsilon_decay']
+        self.config['epsilon'] -= self.config['epsilon']*self.config['epsilon_decay']
 
         self.history.append(chosen_agent + 1)
         self.experience_replay.append([
@@ -1546,7 +1586,7 @@ class Atlas_Scheduler(Atlas_Rewards):
             loss.backward()
             self.optimizer.step()
 
-            if iteration and not iteration%self.config['weight_copy_interval']:
+            if self.iteration and not self.iteration%self.config['weight_copy_interval']:
                 self.reset_target_weights()
 
         self.iteration += 1
@@ -1974,9 +2014,9 @@ def display_marl_results(file_payload:typing.List[tuple],
 
 
     
-    a1.plot([*range(1, len(lt)+1)], baseline_lt+[baseline_lt[-1] for _ in range(len(lt) - len(baseline_lt))], label = 'latency (baseline)')
+    a1.plot([*range(1, len(lt)+1)], (baseline_lt+[baseline_lt[-1] for _ in range(len(lt) - len(baseline_lt))])[:len(lt)], label = 'latency (baseline)')
 
-    a2.plot([*range(1, len(th)+1)], baseline_th+[baseline_th[-1] for _ in range(len(th) - len(baseline_th))], label = 'throughput (baseline)')
+    a2.plot([*range(1, len(th)+1)], (baseline_th+[baseline_th[-1] for _ in range(len(th) - len(baseline_th))])[:len(th)], label = 'throughput (baseline)')
 
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
@@ -2117,11 +2157,12 @@ def tune_marl() -> None:
         'cluster_f': 'cosine',
         'scheduler_config': {
             'epsilon': 1,
-            'iterations': 100,
-            'history_window': 10
-            'replay_buffer_size': 50,
-            'reward_func': 'compute_sysbench_reward_throughput_scaled',
-            'epsilon_decay': 0.01
+            'iterations': 50,
+            'history_window': 10,
+            'replay_buffer_size': 5,
+            'reward_func': 'compute_sysbench_reward_throughput',
+            'epsilon_decay': 0.01,
+            'weight_copy_interval': 10,
         },
         'knob_tune_config': {
             'database': 'sysbench_tune',
@@ -2142,7 +2183,7 @@ def tune_marl() -> None:
             'terminate_after': None,
             'updates': 5,
             'tau': 0.999,
-            'reward_func': 'compute_sysbench_reward_throughput_scaled',
+            'reward_func': 'compute_sysbench_reward_throughput',
             'reward_signal': 'sysbench_latency_throughput',
             'env_reset': None,
             'is_marl': True,
@@ -2159,7 +2200,7 @@ def tune_marl() -> None:
             'epsilon_decay': 0.02,
             'marl_step': 10,
             'iterations': None,
-            'reward_func': 'compute_sysbench_reward_throughput_scaled',
+            'reward_func': 'compute_sysbench_reward_throughput_action_penalty',
             'reward_signal': 'sysbench_latency_throughput',
             'atlas_state': 'state_indices_knobs',
             'cluster_dist': 0.1,
@@ -2167,11 +2208,38 @@ def tune_marl() -> None:
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': None,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2021:41:20047808.json',
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
     })
 
+def tune_index() -> None:
+    atlas_index_tune_dqn({
+        'database': 'sysbench_tune',
+        'weight_copy_interval': 10,
+        'epsilon': 1,
+        'lr': 0.0001,
+        'epsilon_decay': 0.005,
+        'marl_step': 50,
+        'iterations': 600,
+        'reward_func': 'compute_sysbench_reward_latency_action_penalty',
+        'reward_signal': 'sysbench_latency_throughput',
+        'atlas_state': 'state_indices_knobs',
+        'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
+        'cache_workload': True,
+        'is_marl': False,
+        'epochs': 1,
+        'reward_buffer': None,
+        'reward_buffer_size':60,
+        'batch_sample_size':50
+    })
+
 if __name__ == '__main__':
-    tune_marl()
+    #outputs/tuning_data/rl_dqn35.json
+    #tune_marl()
+    display_marl_results(
+        [(['outputs/marl_tuning_data/marl55.json'], 'MARL', 50)],
+        splice_ep = False, smoother=rolling_average, smoother_depth = 15
+    )

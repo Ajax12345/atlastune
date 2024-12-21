@@ -145,7 +145,7 @@ class MySQL:
         'innodb_sync_array_size': ['integer', [1, 1024, 1]],
         'innodb_io_capacity': ['integer', [100, 2000000, 20000]],
         'innodb_adaptive_max_sleep_delay': ['integer', [0, 1000000, 150000]],
-        'innodb_adaptive_hash_index': ['boolean', ['ON', 'OFF']],
+        #'innodb_adaptive_hash_index': ['boolean', ['ON', 'OFF']],
     }
     KNOB_DEFAULTS = {
         "table_open_cache": 4000,
