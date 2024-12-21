@@ -253,13 +253,23 @@ https://dev.to/khairunnaharnowrin/generating-a-new-ssh-key-and-adding-it-to-the-
 
 Install github on instance, pull project repo, etc etc.
 
+Setting up Remote SSH on VS Code:
+    - click on "connect to..."
+    - "connect to host..."
+    - "configure ssh hosts..."
+    - edit settings with new IP
+
+To link CC to Github:
+    ssh-keygen
+    copy .pub contents (cat ...) to new SSH key on github
+
 Chameleon Cloud SSH:
     name: Knob Tuning
     Knob Tuning.pem
     Public Key: 
     ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCjYYXqPHCQNWbUCTTQ4kdnmSN7qQ2lOb50Z4wr9fuEdhoA+FH9vtIwaM75dAYi+/LBcu7e19F36/OrX5r5z7Q+xE1F57C3R+mZfPBDpSUB9CtTOu/apMT/ThHsV6fhKEACz6u5bfBTvCxOIv2xq9ameUBH63+wIHJyNGefvC693O5mHcFOo9nHb1ZEt1Z6vMZVyABIKsEfLsbfJv05/aua+lYxYj7Nj0VyAl1ucrwTfFdPyA0XZANGQw6LxLhZqILKVxGKFxKn6/qfjMKOfYpsxecQwYjdv3ojMQIghInQQhtQO8L9TU3aWuJOXjickeh3OlgHibTqAJT2o3cxeHLF Generated-by-Nova
     chmod 400 /Users/jamespetullo/Downloads/Knob\ Tuning.pem
-    ssh -i ~/.ssh/id_rsa_chameleon cc@129.114.109.248
+    ssh -i ~/.ssh/id_rsa_chameleon cc@129.114.108.5
 
     ssh -l jamespetullo@brandeis.edu -i .ssh/yourkey.pem public-ec2-host
 
@@ -287,7 +297,7 @@ Chameleon Cloud SSH:
     +----[SHA256]-----+
 
 
-    USE THIS: ssh -i ~/.ssh/id_rsa_chameleon cc@129.114.108.149
+    USE THIS: ssh -i ~/.ssh/id_rsa_chameleon cc@129.114.108.5
 
 
     ssh-keygen -t -C "jpetullo14@gmail.com"
