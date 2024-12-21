@@ -147,7 +147,9 @@ class MySQL:
         'innodb_adaptive_max_sleep_delay': ['integer', [0, 1000000, 150000]],
         #'innodb_adaptive_hash_index': ['boolean', ['ON', 'OFF']],
     }
+    '''
     KNOB_DEFAULTS = {
+        #KNOB SETTINGS MYSQL MAC
         "table_open_cache": 4000,
         "innodb_buffer_pool_size": 134217728,
         "innodb_buffer_pool_instances": 1,
@@ -175,6 +177,22 @@ class MySQL:
         #"innodb_log_buffer_size": 16777216,
         #"join_buffer_size": 262144,
         #"innodb_flushing_avg_loops": 30,
+    }
+    '''
+    KNOB_DEFAULTS = {
+        #KNOB DEFAULTS UBUNTU
+        "innodb_adaptive_max_sleep_delay": 150000,
+        "innodb_buffer_pool_instances": 1,
+        "innodb_buffer_pool_size": 134217728,
+        "innodb_io_capacity": 200,
+        "innodb_purge_threads": 4,
+        "innodb_read_io_threads": 4,
+        "innodb_sync_array_size": 1,
+        "innodb_thread_concurrency": 0,
+        "innodb_write_io_threads": 4,
+        "table_open_cache": 4000,
+        "thread_cache_size": 9,
+        "tmp_table_size": 16777216
     }
     knob_num = len(KNOBS)
 
@@ -860,8 +878,9 @@ if __name__ == '__main__':
         '''
         #print(conn.reset_knob_configuration())
         #print(conn.memory_size('gb')['sysbench_tune'])
-        d = conn._metrics()
-        print({i:d[i] for i in MySQL.VALUE_METRICS})
+        #d = conn._metrics()
+        #print({i:d[i] for i in MySQL.VALUE_METRICS})
+        print(json.dumps(conn.get_knobs_as_dict(), indent=4))
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
         
 
