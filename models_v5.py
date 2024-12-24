@@ -1410,39 +1410,44 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                     _indices = copy.deepcopy(indices)
                     if ind < len(_indices):
                         _indices[ind] = int(not _indices[ind])
+
+            if ind != self.experience_replay[-1][1]:
+                print(ind if ind < len(_indices) else 'do nothing')
+                self.conn.apply_index_configuration(_indices)
+                _indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
+                new_state = atlas_states.state(self.config['atlas_state'], {
+                        'indices': _indices
+                    }, 'INDEX', self.conn)
+
+                c_c_payload = {'direct': _indices}
+                if self.config['is_marl'] and (marl_state:=self.config.get('state_share')):
+                    c_c_payload['indirect'] = marl_state['selected_action']
+
+                print('index tune cc payload', c_c_payload)
+
+                if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
+                    self.experience_replay.append([state, ind, 
+                        reward:=getattr(self, reward_func)(self.experience_replay,
+                                w2:=getattr(self, reward_signal)(), ind, ind == len(_indices)), 
+                        new_state, w2])
+                    
+                    c_cache.add_entry(c_c_payload, w2)
+
+                else:
+                    self.experience_replay.append([state, ind, 
+                        reward:=getattr(self, reward_func)(self.experience_replay,
+                                w2, ind, ind == len(_indices)), 
+                        new_state, w2])
+
+                rewards.append(reward)
+                indices = _indices
+                state = new_state
                 
-            print(ind if ind < len(_indices) else 'do nothing')
-            self.conn.apply_index_configuration(_indices)
-            _indices = db.MySQL.col_indices_to_list(self.conn.get_columns_from_database())
-            new_state = atlas_states.state(self.config['atlas_state'], {
-                    'indices': _indices
-                }, 'INDEX', self.conn)
-
-            c_c_payload = {'direct': _indices}
-            if self.config['is_marl'] and (marl_state:=self.config.get('state_share')):
-                c_c_payload['indirect'] = marl_state['selected_action']
-
-            print('index tune cc payload', c_c_payload)
-
-            if (w2:=c_cache[c_c_payload]) is None or not self.config['cache_workload']:
-                self.experience_replay.append([state, ind, 
-                    reward:=getattr(self, reward_func)(self.experience_replay,
-                            w2:=getattr(self, reward_signal)(), ind, ind == len(_indices)), 
-                    new_state, w2])
-                
-                c_cache.add_entry(c_c_payload, w2)
-
-            else:
-                self.experience_replay.append([state, ind, 
-                    reward:=getattr(self, reward_func)(self.experience_replay,
-                            w2, ind, ind == len(_indices)), 
-                    new_state, w2])
-
-            rewards.append(reward)
-            indices = _indices
-            state = new_state
+                start_state = F.normalize(torch.tensor([[*map(float, state)]]))
             
-            start_state = F.normalize(torch.tensor([[*map(float, state)]]))
+            else:
+                print('skipping...')
+
             epsilon -= epsilon*self.config['epsilon_decay']
 
             inds = random.sample([*range(1,len(self.experience_replay))], min(self.config['batch_sample_size'], len(self.experience_replay)-1))
@@ -1523,8 +1528,8 @@ class Atlas_Scheduler(Atlas_Rewards):
         self.q_net_target.load_state_dict(self.q_net.state_dict())
 
     def init_models(self, state_num:int, action_num:int) -> None:
-        self.q_net = Atlas_Scheduler_QNet(state_num, action_num, 6)
-        self.q_net_target = Atlas_Scheduler_QNet(state_num, action_num, 6)
+        self.q_net = Atlas_Scheduler_QNet(state_num, action_num, 10)
+        self.q_net_target = Atlas_Scheduler_QNet(state_num, action_num, 10)
         self.reset_target_weights()
         self.loss_func = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
@@ -1547,17 +1552,23 @@ class Atlas_Scheduler(Atlas_Rewards):
 
         if self.iteration < self.config['replay_buffer_size'] or random.random() < self.config['epsilon']:
             chosen_agent = random.choice([*range(self.agents)])
+            print('random chosen schedule agent', chosen_agent)
 
         else:
             with torch.no_grad():
                 state = F.normalize(torch.tensor([[*map(float, self.state)]]))
                 chosen_agent = self.q_net(state).max(1)[1].item()
+                print('q_val chosen schedule agent', chosen_agent)
 
         return chosen_agent
 
     def schedule_train(self, chosen_agent:int, reward:float) -> None:
 
-        self.config['epsilon'] -= self.config['epsilon']*self.config['epsilon_decay']
+        if 'schedule_decay' in self.config:
+            self.config['epsilon'] = self.config['schedule_decay'](self.iteration, self.config['epsilon'])
+        
+        else:
+            self.config['epsilon'] -= self.config['epsilon']*self.config['epsilon_decay']
 
         self.history.append(chosen_agent + 1)
         self.experience_replay.append([
@@ -2132,7 +2143,7 @@ def atlas_marl_tune(config:dict) -> None:
 
         for iteration in ITER_GEN(scheduler_config['iterations']):
             chosen_agent = scheduler.schedule()
-            print('selected agent', chosen_agent)
+            print('selected agent', agents[chosen_agent].name)
             payload, _ = next(agents[chosen_agent].agent_stream)
             ep = payload['experience_replay'][-1*marl_step:]
             iteration_db_stats.extend([i[-1] for i in ep])
@@ -2147,39 +2158,45 @@ def atlas_marl_tune(config:dict) -> None:
 
     print('marl tuning results saved to', output_file)
 
+def schedule_decay(iteration:int, epsilon:float) -> float:
+    if iteration < 120:
+        return epsilon - epsilon * 0.0026
+    return epsilon - epsilon * 0.03
+
 def tune_marl() -> None:
 
     atlas_marl_tune({
         'database': 'sysbench_tune',
         'epochs': 1,
-        'marl_step': 10,
+        'marl_step': 25,
         'cluster_dist': 0.1,
         'cluster_f': 'cosine',
         'scheduler_config': {
             'epsilon': 1,
-            'iterations': 50,
-            'history_window': 10,
-            'replay_buffer_size': 5,
+            'iterations': 200,
+            'history_window': 20,
+            'replay_buffer_size': 20,
             'reward_func': 'compute_sysbench_reward_throughput',
-            'epsilon_decay': 0.01,
+            'epsilon_decay': 0.013,
+            'schedule_decay': schedule_decay,
             'weight_copy_interval': 10,
         },
         'knob_tune_config': {
             'database': 'sysbench_tune',
             'episodes': 1,
-            'replay_size': 10,
+            'replay_size': 50,
             'noise_scale': 0.5,
-            'noise_decay': 0.02,
-            'batch_size': 10,
+            'noise_decay': 0.001,
+            'batch_size': 100,
             'min_noise_scale': None,
             'alr': 0.0001,
             'clr': 0.0001,
             'workload_exec_time': 10,
-            'marl_step': 10,
+            'marl_step': 25,
             'iterations': None,
             'cluster_dist': 0.1,
             'cluster_f': 'cosine',
-            'noise_eliminate': 400,
+            'noise_eliminate': 800,
             'terminate_after': None,
             'updates': 5,
             'tau': 0.999,
@@ -2197,8 +2214,8 @@ def tune_marl() -> None:
             'weight_copy_interval': 10,
             'epsilon': 1,
             'lr': 0.0001,
-            'epsilon_decay': 0.02,
-            'marl_step': 10,
+            'epsilon_decay': 0.00099,
+            'marl_step': 25,
             'iterations': None,
             'reward_func': 'compute_sysbench_reward_throughput_action_penalty',
             'reward_signal': 'sysbench_latency_throughput',
@@ -2208,7 +2225,7 @@ def tune_marl() -> None:
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2021:41:20047808.json',
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2200:11:03336384.json',
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
@@ -2238,8 +2255,17 @@ def tune_index() -> None:
 
 if __name__ == '__main__':
     #outputs/tuning_data/rl_dqn35.json
-    #tune_marl()
+    tune_marl()
+    '''
     display_marl_results(
         [(['outputs/marl_tuning_data/marl55.json'], 'MARL', 50)],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
+    '''
+    '''
+    def test():
+        s = 1
+        for i in range(200):
+            print(i, s)
+            s = schedule_decay(i, s)
+    '''

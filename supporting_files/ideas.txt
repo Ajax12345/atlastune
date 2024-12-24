@@ -333,3 +333,23 @@ Postgres Knobs:
     https://web.archive.org/web/20240229172116/https://ottertune.com/blog/query-latency-vs-thoughput
 
     Do not forget to compute default knobs for CC cloud!
+
+    Idea: if DQN makes the same decision twice, simply skip its deployment
+    Custom annealing for scheduler
+
+    Feed global state into scheduler
+
+    Feed concatenated state into scheduler
+
+    Shape reward (+5 for increase, -5 for decrease)
+
+    decrease number of knobs?
+
+    go back to scaled reward functions
+
+    scale throughput reward by 1.8
+
+    Sum rewards over interval
+
+    https://www.flaticon.com/free-icon/artificial-intellegent_15218168?term=neural+network+brain&page=3&position=92&origin=search&related_id=15218168
+    https://www.flaticon.com/free-icon/meeting_17282193?term=scheduler&page=5&position=15&origin=search&related_id=17282193
