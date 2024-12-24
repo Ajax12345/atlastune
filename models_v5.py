@@ -1543,7 +1543,7 @@ class Atlas_Scheduler(Atlas_Rewards):
         return [
             *window,
             *([0]*(self.history_window - len(window))),
-            *[i - freq_min for i in m]
+            #*[i - freq_min for i in m]
         ]
 
     def schedule(self) -> int:
@@ -2113,6 +2113,29 @@ def atlas_marl_tune(config:dict) -> None:
             'scheduler_rewards': []
         }
 
+        def REWARD_KNOB(th:float) -> int:
+            if th > 0:
+                return 7
+
+            if th < 0:
+                return -2
+
+            return th
+
+        def REWARD_INDEX(th:float) -> int:
+            if th > 0:
+                return 4
+            
+            if th < 0:
+                return -5
+            
+            return th
+
+        REWARD_SCALES = {
+            0: REWARD_INDEX,
+            1: REWARD_KNOB
+        }
+
         a_index.update_config(**index_tune_config)
 
         a_index_prog = a_index.tune(index_tune_config['iterations'], 
@@ -2148,6 +2171,11 @@ def atlas_marl_tune(config:dict) -> None:
             ep = payload['experience_replay'][-1*marl_step:]
             iteration_db_stats.extend([i[-1] for i in ep])
             reward = getattr(scheduler, scheduler_config['reward_func'])(ep, ep[-1][-1])
+            
+            reward = REWARD_SCALES[int(chosen_agent)](reward)
+
+            print('scheduler reward', reward)
+
             scheduler.schedule_train(chosen_agent, reward)
             AGENT_STATS['scheduler_rewards'].append(reward)
 
@@ -2225,7 +2253,7 @@ def tune_marl() -> None:
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2200:11:03336384.json',
+            'reward_buffer': None,
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
