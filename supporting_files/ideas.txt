@@ -353,5 +353,11 @@ Postgres Knobs:
 
     change reward scale over time to reflect exploration
 
+    Simply give -5 or +5 for <0 or >0
+
+    - Feed metrics state
+    - Larger Q-val set
+    - Implement LSTM
+
     https://www.flaticon.com/free-icon/artificial-intellegent_15218168?term=neural+network+brain&page=3&position=92&origin=search&related_id=15218168
     https://www.flaticon.com/free-icon/meeting_17282193?term=scheduler&page=5&position=15&origin=search&related_id=17282193

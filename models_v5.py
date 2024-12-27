@@ -1500,6 +1500,7 @@ class Atlas_Scheduler(Atlas_Rewards):
     def __init__(self, 
         history_window:int, 
         agents:int,
+        conn = None,
         config = {
             'lr':0.0001,
             'gamma':0.9,
@@ -1520,6 +1521,8 @@ class Atlas_Scheduler(Atlas_Rewards):
         self.loss_func = None
         self.optimizer = None
         self.experience_replay = []
+        self.atlas_states = Atlas_States(True)
+        self.conn = conn
 
     def update_config(self, **kwargs) -> None:
         self.config.update(kwargs)
@@ -1528,14 +1531,18 @@ class Atlas_Scheduler(Atlas_Rewards):
         self.q_net_target.load_state_dict(self.q_net.state_dict())
 
     def init_models(self, state_num:int, action_num:int) -> None:
-        self.q_net = Atlas_Scheduler_QNet(state_num, action_num, 10)
-        self.q_net_target = Atlas_Scheduler_QNet(state_num, action_num, 10)
+        print('In INIT Models in Scheduler')
+        self.q_net = Atlas_Scheduler_QNet(state_num, action_num, 64)
+        self.q_net_target = Atlas_Scheduler_QNet(state_num, action_num, 64)
         self.reset_target_weights()
         self.loss_func = nn.MSELoss()
         self.optimizer = torch.optim.Adam(self.q_net.parameters(), lr = self.config['lr'])
+        self.conn.reset_knob_configuration()
+        self.conn.drop_all_indices()
         self.state = self.generate_state()
 
     def generate_state(self) -> torch.tensor:
+        '''
         window = self.history[-1*self.history_window:]
         freq = collections.Counter(self.history)
         m = [freq.get(i, 0) for i in range(1, self.agents+1)]
@@ -1545,10 +1552,16 @@ class Atlas_Scheduler(Atlas_Rewards):
             *([0]*(self.history_window - len(window))),
             #*[i - freq_min for i in m]
         ]
+        '''
+        return self.atlas_states.state(self.config['atlas_state'], 
+            {}, 'INDEX', self.conn)
 
     def schedule(self) -> int:
         if self.q_net is None:
-            self.init_models(self.history_window + self.agents, self.agents)
+            #self.init_models(self.history_window + self.agents, self.agents)
+            start_state = self.generate_state()
+            print('start state in scheduler', start_state)
+            self.init_models(len(start_state), self.agents)
 
         if self.iteration < self.config['replay_buffer_size'] or random.random() < self.config['epsilon']:
             chosen_agent = random.choice([*range(self.agents)])
@@ -1557,8 +1570,9 @@ class Atlas_Scheduler(Atlas_Rewards):
         else:
             with torch.no_grad():
                 state = F.normalize(torch.tensor([[*map(float, self.state)]]))
-                chosen_agent = self.q_net(state).max(1)[1].item()
+                chosen_agent = (OUT:=self.q_net(state)).max(1)[1].item()
                 print('q_val chosen schedule agent', chosen_agent)
+                print('q val here', OUT)
 
         return chosen_agent
 
@@ -1578,24 +1592,26 @@ class Atlas_Scheduler(Atlas_Rewards):
         self.state = new_state
 
         if self.iteration >= self.config['replay_buffer_size']:
-            samples = random.sample(self.experience_replay, min(self.config['batch_sample_size'], len(self.experience_replay)))
-            _s, _a, _r, _s_prime = zip(*samples)
-            s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
-            a = torch.tensor([[i] for i in _a])
-            s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
-            r = F.normalize(torch.tensor([[float(i)] for i in _r], requires_grad = True))
+            print("IN SCHEDULE TRAIN")
+            for _ in range(5):
+                samples = random.sample(self.experience_replay, min(self.config['batch_sample_size'], len(self.experience_replay)))
+                _s, _a, _r, _s_prime = zip(*samples)
+                s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
+                a = torch.tensor([[i] for i in _a])
+                s_prime = F.normalize(torch.tensor([[*map(float, i)] for i in _s_prime], requires_grad = True))
+                r = F.normalize(torch.tensor([[float(i)] for i in _r], requires_grad = True))
 
-            #with torch.no_grad():
-            q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
-            q_value = self.q_net(s).gather(1, a)
-            
-            target_q_value = r + self.config['gamma']*q_prime
+                #with torch.no_grad():
+                q_prime = self.q_net_target(s_prime).max(1)[0].unsqueeze(1)
+                q_value = self.q_net(s).gather(1, a)
+                
+                target_q_value = r + self.config['gamma']*q_prime
 
-            loss = self.loss_func(q_value, target_q_value)
+                loss = self.loss_func(q_value, target_q_value)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+                self.optimizer.zero_grad()
+                loss.backward()
+                self.optimizer.step()
 
             if self.iteration and not self.iteration%self.config['weight_copy_interval']:
                 self.reset_target_weights()
@@ -2115,16 +2131,16 @@ def atlas_marl_tune(config:dict) -> None:
 
         def REWARD_KNOB(th:float) -> int:
             if th > 0:
-                return 7
+                return 5
 
             if th < 0:
-                return -2
+                return -5
 
             return th
 
         def REWARD_INDEX(th:float) -> int:
             if th > 0:
-                return 4
+                return 5
             
             if th < 0:
                 return -5
@@ -2161,7 +2177,11 @@ def atlas_marl_tune(config:dict) -> None:
             Agent('knob', a_knob, a_knob_prog),
         ]
 
-        scheduler = Atlas_Scheduler(scheduler_config['history_window'], len(agents))
+        scheduler = Atlas_Scheduler(
+            scheduler_config['history_window'], 
+            len(agents),
+            conn = a_index.conn
+        )
         scheduler.update_config(**scheduler_config)
 
         for iteration in ITER_GEN(scheduler_config['iterations']):
@@ -2188,8 +2208,11 @@ def atlas_marl_tune(config:dict) -> None:
 
 def schedule_decay(iteration:int, epsilon:float) -> float:
     if iteration < 120:
-        return epsilon - epsilon * 0.0026
+        return epsilon - epsilon * 0.006
     return epsilon - epsilon * 0.03
+
+def schedule_decay_steep(iteration:int, epsilon:float) -> float:
+    return epsilon - epsilon * 0.02
 
 def tune_marl() -> None:
 
@@ -2206,6 +2229,7 @@ def tune_marl() -> None:
             'replay_buffer_size': 20,
             'reward_func': 'compute_sysbench_reward_throughput',
             'epsilon_decay': 0.013,
+            'atlas_state': 'state_indices_knobs',
             'schedule_decay': schedule_decay,
             'weight_copy_interval': 10,
         },
@@ -2253,7 +2277,7 @@ def tune_marl() -> None:
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': None,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2617:13:59188676.json',
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
@@ -2286,7 +2310,8 @@ if __name__ == '__main__':
     tune_marl()
     '''
     display_marl_results(
-        [(['outputs/marl_tuning_data/marl55.json'], 'MARL', 50)],
+        [(['outputs/marl_tuning_data/marl59.json', 
+            'outputs/marl_tuning_data/marl60.json'], 'MARL', 50)],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
     '''
@@ -2297,3 +2322,8 @@ if __name__ == '__main__':
             print(i, s)
             s = schedule_decay(i, s)
     '''
+    #outputs/marl_tuning_data/marl58.json hard-coded rewards
+
+    #outputs/marl_tuning_data/marl59.json th diff rewards
+    #outputs/marl_tuning_data/marl60.json th diff rewards
+    
