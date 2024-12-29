@@ -880,8 +880,9 @@ if __name__ == '__main__':
         #print(conn.memory_size('gb')['sysbench_tune'])
         #d = conn._metrics()
         #print({i:d[i] for i in MySQL.VALUE_METRICS})
-        print(json.dumps(conn.get_knobs_as_dict(), indent=4))
+        #print(json.dumps(conn.get_knobs_as_dict(), indent=4))
         #print(MySQL.col_indices_to_list(conn.get_columns_from_database()))
+        print(conn.metrics(5,1))
         
 
         

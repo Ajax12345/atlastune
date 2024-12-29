@@ -7,6 +7,8 @@ rm -rf /opt/homebrew/bin/mysql
 
 /opt/homebrew/bin/mysql.server
 
+sudo chmod -R 777 /opt/homebrew/Cellar/mysql/9.0.1_9/bin/mysqld_safe
+
 ps aux | grep mysqld
 
 /opt/homebrew/var/mysql/localhost.log
