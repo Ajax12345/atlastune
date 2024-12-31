@@ -1546,21 +1546,24 @@ class Atlas_Scheduler(Atlas_Rewards):
         self.state = self.generate_state()
 
     def generate_state(self) -> torch.tensor:
-        '''
         window = self.history[-1*self.history_window:]
         freq = collections.Counter(self.history)
         m = [freq.get(i, 0) for i in range(1, self.agents+1)]
         freq_min = min(m)
+        base_state = self.atlas_states.state(self.config['atlas_state'], 
+            {}, 'INDEX', self.conn)
+        
         return [
             *window,
             *([0]*(self.history_window - len(window))),
+            *base_state,
             #*[i - freq_min for i in m]
         ]
-        '''
         
+        '''
         return self.atlas_states.state(self.config['atlas_state'], 
             {}, 'INDEX', self.conn)
-        
+        '''
         #return db.MySQL.metrics_to_list(self.conn.metrics(5,1))
         
     def schedule(self) -> int:
@@ -1600,7 +1603,7 @@ class Atlas_Scheduler(Atlas_Rewards):
 
         if self.iteration >= self.config['replay_buffer_size']:
             print("IN SCHEDULE TRAIN")
-            for _ in range(5):
+            for _ in range(70):
                 samples = random.sample(self.experience_replay, min(self.config['batch_sample_size'], len(self.experience_replay)))
                 _s, _a, _r, _s_prime = zip(*samples)
                 s = F.normalize(torch.tensor([[*map(float, i)] for i in _s], requires_grad = True))
@@ -1625,6 +1628,81 @@ class Atlas_Scheduler(Atlas_Rewards):
 
         self.iteration += 1
 
+class Atlas_Scheduler_Similarity(Atlas_Scheduler):
+    def _generate_state(self, history:typing.List[int]) -> typing.List:
+        window = history[-1*self.history_window:]
+        freq = collections.Counter(self.history)
+        m = [freq.get(i, 0) for i in range(1, self.agents+1)]
+        freq_min = min(m)
+        return [
+            *window,
+            *([0]*(self.history_window - len(window))),
+            #*[i - freq_min for i in m]
+        ]
+
+    def generate_state(self) -> torch.tensor:
+        window = self.history[-1*self.history_window:]
+        freq = collections.Counter(self.history[-50:])
+        m = [freq.get(i, 0) for i in range(1, self.agents+1)]
+        freq_min = min(m)
+        return [
+            *window,
+            *([0]*(self.history_window - len(window))),
+            #*[i - freq_min for i in m]
+        ]
+    
+    def schedule(self) -> int:
+
+        if self.iteration < self.config['replay_buffer_size'] or random.random() < self.config['epsilon']:
+            chosen_agent = random.choice([*range(self.agents)])
+            print('random chosen schedule agent', chosen_agent)
+
+        else:
+            
+            cos = nn.CosineSimilarity(dim=0)
+            agent_estimates = []
+            for agent in range(1, self.agents + 1):
+                s_prime = torch.tensor(self._generate_state(self.history + [agent]))
+                #print(s_prime)
+                targets = [(1 - cos(s_prime, torch.tensor([*map(float, s)])).item(), s, r) 
+                    for s, r in self.experience_replay]
+                
+                if (window:=[r for score, _, r in targets if score <= self.config['cosine_score']]):
+                    agent_estimates.append((agent, sum(window)/len(window)))
+            
+            if not agent_estimates:
+                chosen_agent = random.choice([*range(self.agents)])
+                print('no q estimates found, exploring', chosen_agent)
+
+            else:
+                _chosen_agent, _ = max(agent_estimates, key=lambda x:x[1])
+                chosen_agent = _chosen_agent - 1
+                print('q estimate agent', chosen_agent)            
+
+        return chosen_agent
+
+    def schedule_train(self, chosen_agent:int, reward:float) -> None:
+
+        if 'schedule_decay' in self.config:
+            self.config['epsilon'] = self.config['schedule_decay'](self.iteration, self.config['epsilon'])
+        
+        else:
+            self.config['epsilon'] -= self.config['epsilon']*self.config['epsilon_decay']
+
+        self.history.append(chosen_agent + 1)
+        self.experience_replay.append([
+            (new_state:=self.generate_state()), reward
+        ])
+        self.state = new_state
+        self.iteration += 1
+
+        with open('similarity_model_buffer.json', 'w') as f:
+            json.dump({
+                'epsilon': self.config['epsilon'],
+                'iteration': self.iteration,
+                'state': self.state,
+                'experience_replay': self.experience_replay
+            }, f)
 
 def atlas_index_tune_ddpg() -> None:
     with Atlas_Index_Tune('tpcc100') as a:
@@ -2199,7 +2277,7 @@ def atlas_marl_tune(config:dict) -> None:
             iteration_db_stats.extend([i[-1] for i in ep])
             reward = getattr(scheduler, scheduler_config['reward_func'])(ep, ep[-1][-1])
             
-            reward = REWARD_SCALES[int(chosen_agent)](reward)
+            #reward = REWARD_SCALES[int(chosen_agent)](reward)
 
             print('scheduler reward', reward)
 
@@ -2237,7 +2315,8 @@ def tune_marl() -> None:
             'reward_func': 'compute_sysbench_reward_throughput',
             'epsilon_decay': 0.013,
             'atlas_state': 'state_indices_knobs',
-            'schedule_decay': schedule_decay,
+            'schedule_decay': schedule_decay_steep,
+            'cosine_score': 0.2,
             'weight_copy_interval': 10,
         },
         'knob_tune_config': {
@@ -2284,7 +2363,7 @@ def tune_marl() -> None:
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2717:46:01997915.json',
+            'reward_buffer': None,
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
@@ -2317,8 +2396,7 @@ if __name__ == '__main__':
     tune_marl()
     '''
     display_marl_results(
-        [(['outputs/marl_tuning_data/marl59.json', 
-            'outputs/marl_tuning_data/marl60.json'], 'MARL', 50)],
+        [(['outputs/marl_tuning_data/marl61.json'], 'MARL', 50)],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
     '''
@@ -2353,3 +2431,24 @@ if __name__ == '__main__':
         chosen_agent = scheduler.schedule()
         scheduler.schedule_train(chosen_agent, random.choice([-1,0,1]))
     '''
+    '''
+    scheduler = Atlas_Scheduler_Similarity(10, 2)
+    scheduler.update_config(**{
+            'epsilon': 1,
+            'iterations': 200,
+            'history_window': 20,
+            'replay_buffer_size': 20,
+            'reward_func': 'compute_sysbench_reward_throughput',
+            'epsilon_decay': 0.013,
+            'atlas_state': 'state_indices_knobs',
+            'schedule_decay': schedule_decay_steep,
+            'cosine_score': 0.03,
+            'weight_copy_interval': 10,
+        })
+    
+    for _ in range(200):
+        agent = scheduler.schedule()
+        scheduler.schedule_train(agent, random.choice([-2, -1, 0, 1, 2]))
+    '''
+
+    #outputs/marl_tuning_data/marl61.json scheduler similarity
