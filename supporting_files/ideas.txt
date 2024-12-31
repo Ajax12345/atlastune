@@ -7,7 +7,15 @@ rm -rf /opt/homebrew/bin/mysql
 
 /opt/homebrew/bin/mysql.server
 
-sudo chmod -R 777 /opt/homebrew/Cellar/mysql/9.0.1_9/bin/mysqld_safe
+To Fix PID error:
+    sudo chmod -R 777 /opt/homebrew/Cellar/mysql/9.0.1_9/bin/mysqld_safe
+    sudo chmod -R 777 /opt/homebrew/var/mysql/localhost.err
+
+Stopping MySQL ID:
+
+brew services stop mysql
+sudo mysqld stop
+sudo killall mysqld
 
 ps aux | grep mysqld
 
@@ -229,11 +237,7 @@ So far:
 
     https://stackoverflow.com/questions/11091414/how-to-stop-mysqld
 
-Stopping MySQL ID:
 
-brew services stop mysql
-sudo mysqld stop
-sudo killall mysqld
 
 
 

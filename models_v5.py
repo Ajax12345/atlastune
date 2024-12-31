@@ -694,6 +694,19 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         self.loss_criterion = None
         self.tuning_log = None
         self.experience_replay = []
+        self.iteration = 0
+        self.AGENT_STATE = {
+            'noise_scale': 0,
+            'noise_decay': 0,
+            'cache_hit': 0,
+        }
+
+    def agent_state(self) -> typing.List:
+        return [
+            self.AGENT_STATE['noise_scale'],
+            self.AGENT_STATE['noise_decay'],
+            self.AGENT_STATE['cache_hit']/(self.iteration + 1),
+        ]
 
     def mount_entities(self) -> None:
         if self.conn is None:
@@ -788,6 +801,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
         skip_experience = self.config['replay_size']
         noise_scale = self.config['noise_scale']
         for i in ITER_GEN(None if iterations is None else iterations + self.config['replay_size']):
+            self.iteration = i
             if self.config.get('terminate_after') is not None and self.config['noise_eliminate'] + self.config['replay_size'] + self.config['terminate_after'] <= i:
                 print('terimate_after reached, training halted')
                 break
@@ -809,6 +823,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                 'memory_lower_bound':min(4294967168, mem_size)
             }
 
+            self.AGENT_STATE['noise_scale'] = noise_scale
             clipped_noise_scale = max(noise_scale, noise_scale if (mns:=self.config.get('min_noise_scale')) is None else mns)
             self.actor.eval()
             [selected_action] = Normalize.add_noise(self.actor(start_state).tolist(), clipped_noise_scale)
@@ -836,6 +851,7 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
                 c_cache.add_entry(c_c_payload, w2)
 
             else:
+                self.AGENT_STATE['cache_hit'] += 1
                 self.experience_replay.append([state, selected_action, 
                     reward:=getattr(self, reward_func)(self.experience_replay, w2),
                     new_state, w2
@@ -843,6 +859,8 @@ class Atlas_Knob_Tune(Atlas_Rewards, Atlas_Reward_Signals,
             
             rewards.append(reward)
             state = new_state
+
+            self.AGENT_STATE['noise_decay'] = self.config['noise_decay']
 
             if (noise_eliminate:=self.config.get('noise_eliminate')) is None or i < noise_eliminate:
                 noise_scale -= noise_scale*self.config['noise_decay']
@@ -1260,6 +1278,21 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         self.loss_func = None
         self.optimizer = None
         self.experience_replay = []
+        self.iteration = 0
+        self.AGENT_STATE = {
+            'epsilon': 0,
+            'noise_decay': 0,
+            'cache_hit': 0,
+            'q_hit': 0,
+        }
+
+    def agent_state(self) -> typing.List:
+        return [
+            self.AGENT_STATE['epsilon'],
+            self.AGENT_STATE['noise_decay'],
+            self.AGENT_STATE['cache_hit']/(self.iteration + 1),
+            self.AGENT_STATE['q_hit']/(self.iteration + 1)
+        ]
 
     def update_config(self, **kwargs) -> None:
         self.config.update(kwargs)
@@ -1402,6 +1435,10 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
         rewards = []
         epsilon = self.config['epsilon']
         for iteration in ITER_GEN(iterations):
+            self.iteration = iteration
+            self.AGENT_STATE['epsilon'] = epsilon
+            self.AGENT_STATE['noise_decay'] = self.config['epsilon_decay']
+
             print('state here', state)
             if random.random() < epsilon:
                 print('random')
@@ -1409,6 +1446,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
 
             else:
                 print('q_val')
+                self.AGENT_STATE['q_hit'] += 1
                 with torch.no_grad():
                     ind = self.q_net(start_state).max(1)[1].item()
                     _indices = copy.deepcopy(indices)
@@ -1438,6 +1476,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
                     c_cache.add_entry(c_c_payload, w2)
 
                 else:
+                    self.AGENT_STATE['cache_hit'] += 1
                     self.experience_replay.append([state, ind, 
                         reward:=getattr(self, reward_func)(self.experience_replay,
                                 w2, ind, ind == len(_indices)), 
@@ -2169,6 +2208,9 @@ class Agent:
         self.agent = agent
         self.agent_stream = agent_stream
 
+    def agent_state(self) -> list:
+        return self.agent.agent_state()
+
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.name})'
 
@@ -2270,6 +2312,7 @@ def atlas_marl_tune(config:dict) -> None:
         scheduler.update_config(**scheduler_config)
 
         for iteration in ITER_GEN(scheduler_config['iterations']):
+            print('agent states', [i.agent_state() for i in agents])
             chosen_agent = scheduler.schedule()
             print('selected agent', agents[chosen_agent].name)
             payload, _ = next(agents[chosen_agent].agent_stream)
@@ -2277,6 +2320,11 @@ def atlas_marl_tune(config:dict) -> None:
             iteration_db_stats.extend([i[-1] for i in ep])
             reward = getattr(scheduler, scheduler_config['reward_func'])(ep, ep[-1][-1])
             
+            '''
+            windows = [[*b] for _, b in itertools.groupby(scheduler.history + [chosen_agent + 1])]
+            if windows and len(windows[-1]) >= 10:
+                reward = -5
+            '''
             #reward = REWARD_SCALES[int(chosen_agent)](reward)
 
             print('scheduler reward', reward)
