@@ -3603,3 +3603,85 @@ MARL Experiment Ideas:
     })
 
     experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2024-12-2615:14:58471506.json
+
+
+01/01/2025 @ 9:00 AM
+    atlas_marl_tune({
+        'database': 'sysbench_tune',
+        'epochs': 1,
+        'marl_step': 25,
+        'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
+        'scheduler_config': {
+            'epsilon': 1,
+            'iterations': 200,
+            'history_window': 20,
+            'replay_buffer_size': 20,
+            'reward_func': 'compute_sysbench_reward_throughput',
+            'epsilon_decay': 0.013,
+            'atlas_state': 'state_indices_knobs',
+            'schedule_decay': schedule_decay_steep,
+            'cosine_score': 0.2,
+            'weight_copy_interval': 10,
+        },
+        'knob_tune_config': {
+            'database': 'sysbench_tune',
+            'episodes': 1,
+            'replay_size': 50,
+            'noise_scale': 0.5,
+            'noise_decay': 0.001,
+            'batch_size': 100,
+            'min_noise_scale': None,
+            'alr': 0.0001,
+            'clr': 0.0001,
+            'workload_exec_time': 10,
+            'marl_step': 25,
+            'iterations': None,
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'noise_eliminate': 800,
+            'terminate_after': None,
+            'updates': 5,
+            'tau': 0.999,
+            'reward_func': 'compute_sysbench_reward_throughput',
+            'reward_signal': 'sysbench_latency_throughput',
+            'env_reset': None,
+            'is_marl': True,
+            'cache_workload': True,
+            'is_cc': True,
+            'atlas_state': 'state_indices_knobs',
+            'weight_decay': 0.001
+        },
+        'index_tune_config': {
+            'database': 'sysbench_tune',
+            'weight_copy_interval': 10,
+            'epsilon': 1,
+            'lr': 0.0001,
+            'epsilon_decay': 0.00099,
+            'marl_step': 25,
+            'iterations': None,
+            'reward_func': 'compute_sysbench_reward_throughput_action_penalty',
+            'reward_signal': 'sysbench_latency_throughput',
+            'atlas_state': 'state_indices_knobs',
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'cache_workload': True,
+            'is_marl': True,
+            'epochs': 1,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2025-01-0114:40:33978759.json',
+            'reward_buffer_size':60,
+            'batch_sample_size':200
+        }
+    })
+
+    New Scheduler with Agent Metric State and Window:
+
+    Outputs:
+
+        outputs/marl_tuning_data/marl62.json updated state (first of 3)
+        outputs/marl_tuning_data/marl63.json updated state (second of 3)
+        outputs/marl_tuning_data/marl65.json updated state (third of 3)
+
+    Can be used in conjunction with:
+        outputs/marl_tuning_data/marl59.json
+        outputs/marl_tuning_data/marl60.json

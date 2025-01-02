@@ -1542,7 +1542,7 @@ class Atlas_Index_Tune_DQN(Atlas_Index_Tune,
 class Atlas_Scheduler(Atlas_Rewards):
     def __init__(self, 
         history_window:int, 
-        agents:int,
+        agents:list,
         conn = None,
         config = {
             'lr':0.0001,
@@ -1587,7 +1587,7 @@ class Atlas_Scheduler(Atlas_Rewards):
     def generate_state(self) -> torch.tensor:
         window = self.history[-1*self.history_window:]
         freq = collections.Counter(self.history)
-        m = [freq.get(i, 0) for i in range(1, self.agents+1)]
+        m = [freq.get(i, 0) for i in range(1, len(self.agents)+1)]
         freq_min = min(m)
         base_state = self.atlas_states.state(self.config['atlas_state'], 
             {}, 'INDEX', self.conn)
@@ -1595,7 +1595,7 @@ class Atlas_Scheduler(Atlas_Rewards):
         return [
             *window,
             *([0]*(self.history_window - len(window))),
-            *base_state,
+            *[j for k in self.agents for j in k.agent_state()],
             #*[i - freq_min for i in m]
         ]
         
@@ -1610,10 +1610,10 @@ class Atlas_Scheduler(Atlas_Rewards):
             #self.init_models(self.history_window + self.agents, self.agents)
             start_state = self.generate_state()
             print('start state in scheduler', start_state)
-            self.init_models(len(start_state), self.agents)
+            self.init_models(len(start_state), len(self.agents))
 
         if self.iteration < self.config['replay_buffer_size'] or random.random() < self.config['epsilon']:
-            chosen_agent = random.choice([*range(self.agents)])
+            chosen_agent = random.choice([*range(len(self.agents))])
             print('random chosen schedule agent', chosen_agent)
 
         else:
@@ -2134,7 +2134,8 @@ def display_marl_results(file_payload:typing.List[tuple],
 
     def run_smoother(x, *args, **kwargs) -> typing.List[float]:
         for _ in range(smoother_depth):
-            x = smoother(x, *args, **kwargs)
+            if smoother is not None:
+                x = smoother(x, *args, **kwargs)
         
         return x
 
@@ -2151,7 +2152,7 @@ def display_marl_results(file_payload:typing.List[tuple],
     if 'throughput' in y_axis_lim:
         a2.set_ylim(y_axis_lim['throughput'])
 
-    with open('outputs/comparison_results/default_b_600.json') as f:
+    with open('outputs/comparison_results/default_600_10_01012025.json') as f:
         baseline = json.load(f)
 
     baseline_lt = run_smoother([i['latency'] for i in baseline], f = max)
@@ -2306,10 +2307,13 @@ def atlas_marl_tune(config:dict) -> None:
 
         scheduler = Atlas_Scheduler(
             scheduler_config['history_window'], 
-            len(agents),
+            agents,
             conn = a_index.conn
         )
         scheduler.update_config(**scheduler_config)
+
+        output_file = generate_marl_output_file()
+        print('marl tuning results saved to', output_file)
 
         for iteration in ITER_GEN(scheduler_config['iterations']):
             print('agent states', [i.agent_state() for i in agents])
@@ -2332,10 +2336,10 @@ def atlas_marl_tune(config:dict) -> None:
             scheduler.schedule_train(chosen_agent, reward)
             AGENT_STATS['scheduler_rewards'].append(reward)
 
-        AGENT_STATS['db_stats'].append(iteration_db_stats)
+            AGENT_STATS['db_stats'] = [iteration_db_stats]
 
-    with open(output_file:=generate_marl_output_file(), 'a') as f:
-        json.dump(AGENT_STATS, f)
+            with open(output_file, 'w') as f:
+                json.dump(AGENT_STATS, f)
 
     print('marl tuning results saved to', output_file)
 
@@ -2411,7 +2415,7 @@ def tune_marl() -> None:
             'cache_workload': True,
             'is_marl': True,
             'epochs': 1,
-            'reward_buffer': None,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2025-01-0114:40:33978759.json',
             'reward_buffer_size':60,
             'batch_sample_size':200
         }
@@ -2441,13 +2445,19 @@ def tune_index() -> None:
 
 if __name__ == '__main__':
     #outputs/tuning_data/rl_dqn35.json
-    tune_marl()
-    '''
+    #tune_marl()
+    
     display_marl_results(
-        [(['outputs/marl_tuning_data/marl61.json'], 'MARL', 50)],
+        [([
+        'outputs/marl_tuning_data/marl59.json',
+        'outputs/marl_tuning_data/marl60.json',
+        'outputs/marl_tuning_data/marl62.json',
+        'outputs/marl_tuning_data/marl63.json',
+        #'outputs/marl_tuning_data/marl65.json'
+        ], 'MARL', 50)],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
-    '''
+    
     '''
     def test():
         s = 1
@@ -2500,3 +2510,7 @@ if __name__ == '__main__':
     '''
 
     #outputs/marl_tuning_data/marl61.json scheduler similarity
+
+    #outputs/marl_tuning_data/marl62.json updated state (first of 3)
+    #outputs/marl_tuning_data/marl63.json updated state (second of 3)
+    #outputs/marl_tuning_data/marl65.json updated state (third of 3)

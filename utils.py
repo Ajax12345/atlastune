@@ -24,11 +24,11 @@ def run_default_baseline(database:str, iterations:int, seconds:int, name:str) ->
                     'throughput': d['throughput']
                 }
             })
-            time.sleep(1)
+            #time.sleep(1)
 
         with open(f'outputs/comparison_results/{name}.json', 'a') as f:
             json.dump(results, f)
 
 if __name__ == '__main__':
-    run_default_baseline('sysbench_tune', 600, 10, 'default_600_10_12212024')
+    run_default_baseline('sysbench_tune', 500, 10, 'default_600_10_01012025')
         
