@@ -2215,6 +2215,91 @@ class Agent:
     def __repr__(self) -> str:
         return f'{self.__class__.__name__}({self.name})'
 
+def atlas_marl_tune_interleaved(config:dict) -> None:
+    database = config['database']
+    marl_step = config['marl_step']
+    epochs = config['epochs']
+
+    knob_tune_config = config['knob_tune_config']
+    index_tune_config = config['index_tune_config']
+    scheduler_config = config['scheduler_config']
+
+    c_cache = ClusterCache(f = config['cluster_f'], 
+                dist = config['cluster_dist'])
+
+    knob_tune_config['cluster_cache'] = c_cache
+    index_tune_config['cluster_cache'] = c_cache
+
+    knob_tune_config['marl_step'] = marl_step
+    index_tune_config['marl_step'] = marl_step
+
+    state_share = MARL_State_Share()
+
+    with Atlas_Index_Tune_DQN(database) as a_index, \
+        Atlas_Knob_Tune(database, conn = a_index.conn) as a_knob:
+        #a_index.conn.reset_knob_configuration()
+        knob_activation_payload = {
+            'memory_size':(mem_size:=a_index.conn.memory_size('b')[a_index.conn.database]*4),
+            'memory_lower_bound':min(4294967168, mem_size)
+        }
+        state_share['selected_action'] = a_index.conn.default_selected_action(knob_activation_payload)
+        
+        knob_tune_config['state_share'] = state_share
+        index_tune_config['state_share'] = state_share
+
+        knob_tune_config['iterations'] = None
+        index_tune_config['iterations'] = None
+
+        AGENT_STATS = {
+            'index_results': [],
+            'knob_results': [],
+            'db_stats': [],
+            'scheduler_rewards': []
+        }
+
+        a_index.update_config(**index_tune_config)
+
+        a_index_prog = a_index.tune(index_tune_config['iterations'], 
+            reward_func = index_tune_config['reward_func'], 
+            reward_signal = index_tune_config['reward_signal'],
+            from_buffer = index_tune_config['reward_buffer'], 
+            reward_buffer_size = index_tune_config['reward_buffer_size'],
+            is_epoch = index_tune_config['epochs'] > 1, 
+            is_marl = index_tune_config['is_marl'])
+
+        a_knob.update_config(**knob_tune_config)
+
+        a_knob_prog = a_knob.tune(knob_tune_config['iterations'], 
+            reward_func = knob_tune_config['reward_func'], 
+            reward_signal = knob_tune_config['reward_signal'],
+            is_marl = knob_tune_config['is_marl'],
+            is_epoch = knob_tune_config['episodes'] > 1)
+
+        iteration_db_stats = []
+
+        agents = [
+            Agent('index', a_index, a_index_prog),
+            Agent('knob', a_knob, a_knob_prog),
+        ]
+
+
+        output_file = generate_marl_output_file()
+        print('marl tuning results saved to', output_file)
+
+        for iteration in ITER_GEN(scheduler_config['iterations']):
+            print('SCHEDULER ITERATION', iteration)
+            chosen_agent = iteration%len(agents)
+            print('selected agent', agents[chosen_agent].name)
+            payload, _ = next(agents[chosen_agent].agent_stream)
+            ep = payload['experience_replay'][-1*marl_step:]
+            iteration_db_stats.extend([i[-1] for i in ep])
+            AGENT_STATS['db_stats'] = [iteration_db_stats]
+
+            with open(output_file, 'w') as f:
+                json.dump(AGENT_STATS, f)
+
+    print('marl tuning results saved to', output_file)
+
 def atlas_marl_tune(config:dict) -> None:
     database = config['database']
     marl_step = config['marl_step']
@@ -2443,10 +2528,80 @@ def tune_index() -> None:
         'batch_sample_size':50
     })
 
+def tune_marl_interleaved() -> None:
+    atlas_marl_tune_interleaved({
+        'database': 'sysbench_tune',
+        'epochs': 1,
+        'marl_step': 25,
+        'cluster_dist': 0.1,
+        'cluster_f': 'cosine',
+        'scheduler_config': {
+            'epsilon': 1,
+            'iterations': 100,
+            'history_window': 20,
+            'replay_buffer_size': 20,
+            'reward_func': 'compute_sysbench_reward_throughput',
+            'epsilon_decay': 0.013,
+            'atlas_state': 'state_indices_knobs',
+            'schedule_decay': schedule_decay_steep,
+            'cosine_score': 0.2,
+            'weight_copy_interval': 10,
+        },
+        'knob_tune_config': {
+            'database': 'sysbench_tune',
+            'episodes': 1,
+            'replay_size': 50,
+            'noise_scale': 0.5,
+            'noise_decay': 0.001,
+            'batch_size': 100,
+            'min_noise_scale': None,
+            'alr': 0.0001,
+            'clr': 0.0001,
+            'workload_exec_time': 10,
+            'marl_step': 25,
+            'iterations': None,
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'noise_eliminate': 800,
+            'terminate_after': None,
+            'updates': 5,
+            'tau': 0.999,
+            'reward_func': 'compute_sysbench_reward_throughput',
+            'reward_signal': 'sysbench_latency_throughput',
+            'env_reset': None,
+            'is_marl': True,
+            'cache_workload': True,
+            'is_cc': True,
+            'atlas_state': 'state_indices_knobs',
+            'weight_decay': 0.001
+        },
+        'index_tune_config': {
+            'database': 'sysbench_tune',
+            'weight_copy_interval': 10,
+            'epsilon': 1,
+            'lr': 0.0001,
+            'epsilon_decay': 0.00099,
+            'marl_step': 25,
+            'iterations': None,
+            'reward_func': 'compute_sysbench_reward_throughput_action_penalty',
+            'reward_signal': 'sysbench_latency_throughput',
+            'atlas_state': 'state_indices_knobs',
+            'cluster_dist': 0.1,
+            'cluster_f': 'cosine',
+            'cache_workload': True,
+            'is_marl': True,
+            'epochs': 1,
+            'reward_buffer': 'experience_replay/dqn_index_tune/experience_replay_sysbench_tune_2025-01-0114:40:33978759.json',
+            'reward_buffer_size':60,
+            'batch_sample_size':200
+        }
+    })
+
 if __name__ == '__main__':
     #outputs/tuning_data/rl_dqn35.json
     #tune_marl()
-    
+    tune_marl_interleaved()
+    '''
     display_marl_results(
         [([
         'outputs/marl_tuning_data/marl59.json',
@@ -2454,10 +2609,12 @@ if __name__ == '__main__':
         'outputs/marl_tuning_data/marl62.json',
         'outputs/marl_tuning_data/marl63.json',
         #'outputs/marl_tuning_data/marl65.json'
-        ], 'MARL', 50)],
+        ], 'MARL', 50),
+        (['outputs/marl_tuning_data/marl68.json', 'outputs/marl_tuning_data/marl69.json'], 'non-MARL', 50)
+        ],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
-    
+    '''
     '''
     def test():
         s = 1
@@ -2508,9 +2665,3 @@ if __name__ == '__main__':
         agent = scheduler.schedule()
         scheduler.schedule_train(agent, random.choice([-2, -1, 0, 1, 2]))
     '''
-
-    #outputs/marl_tuning_data/marl61.json scheduler similarity
-
-    #outputs/marl_tuning_data/marl62.json updated state (first of 3)
-    #outputs/marl_tuning_data/marl63.json updated state (second of 3)
-    #outputs/marl_tuning_data/marl65.json updated state (third of 3)
