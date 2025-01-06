@@ -2599,16 +2599,17 @@ def tune_marl_interleaved() -> None:
 
 if __name__ == '__main__':
     #outputs/tuning_data/rl_dqn35.json
-    tune_marl()
+    #tune_marl()
     #tune_marl_interleaved()
-    '''
+    
     display_marl_results(
         [([
         #'outputs/marl_tuning_data/marl59.json',
-        'outputs/marl_tuning_data/marl60.json',
-        'outputs/marl_tuning_data/marl62.json',
-        'outputs/marl_tuning_data/marl63.json',
+        #'outputs/marl_tuning_data/marl60.json',
+        #'outputs/marl_tuning_data/marl62.json',
+        #'outputs/marl_tuning_data/marl63.json',
         #'outputs/marl_tuning_data/marl65.json'
+        'outputs/marl_tuning_data/marl76.json'
         ], 'MARL', 50),
         ([
             #'outputs/marl_tuning_data/marl68.json',
@@ -2620,7 +2621,7 @@ if __name__ == '__main__':
         ],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
-    '''
+    
     '''
     def test():
         s = 1
