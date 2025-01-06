@@ -2606,17 +2606,17 @@ if __name__ == '__main__':
         [([
         #'outputs/marl_tuning_data/marl59.json',
         #'outputs/marl_tuning_data/marl60.json',
-        #'outputs/marl_tuning_data/marl62.json',
+        'outputs/marl_tuning_data/marl62.json',
         #'outputs/marl_tuning_data/marl63.json',
-        #'outputs/marl_tuning_data/marl65.json'
+        #'outputs/marl_tuning_data/marl65.json',
         'outputs/marl_tuning_data/marl76.json'
         ], 'MARL', 50),
         ([
             #'outputs/marl_tuning_data/marl68.json',
             #'outputs/marl_tuning_data/marl69.json',
             #'outputs/marl_tuning_data/marl71.json', 
-            #'outputs/marl_tuning_data/marl74.json', 
-            'outputs/marl_tuning_data/marl75.json'
+            'outputs/marl_tuning_data/marl74.json', 
+            #'outputs/marl_tuning_data/marl75.json'
             ], 'non-MARL', 50)
         ],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
