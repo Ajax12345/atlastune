@@ -8,7 +8,9 @@ rm -rf /opt/homebrew/bin/mysql
 /opt/homebrew/bin/mysql.server
 
 To Fix PID error:
-    sudo chmod -R 777 /opt/homebrew/Cellar/mysql/9.0.1_9/bin/mysqld_safe
+    DO NOT RUN brew services start mysql
+    chmod -R 777 /opt/homebrew/var/mysql
+    sudo chmod -R 777 /opt/homebrew/Cellar/mysql/9.1.0/bin/mysqld_safe
     sudo chmod -R 777 /opt/homebrew/var/mysql/localhost.err
 
 Stopping MySQL ID:
