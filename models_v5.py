@@ -2122,15 +2122,18 @@ def marl_lt_th(files:typing.List[str], splice_ep:bool, lb:str, marl_step:int) ->
                 d['latency'].append([j['latency'] for j in data])
                 d['throughput'].append([j['throughput'] for j in data])
 
+    #return d['latency'], d['throughput']
     return [sum(i)/len(i) for i in zip(*d['latency'])], [sum(i)/len(i) for i in zip(*d['throughput'])]
     
-    
-def display_marl_results(file_payload:typing.List[tuple], 
+def display_marl_results_seaborn(file_payload:typing.List[tuple], 
     y_axis_lim:dict = {},
     marl_step:int = 100,
     splice_ep:bool = True,
     smoother_depth:int = 1,
     smoother = whittaker_smoother) -> None:
+
+    import seaborn as sns
+    import pandas as pd
 
     def run_smoother(x, *args, **kwargs) -> typing.List[float]:
         for _ in range(smoother_depth):
@@ -2139,15 +2142,59 @@ def display_marl_results(file_payload:typing.List[tuple],
         
         return x
 
+    final_data = []
+    for data, lb, marl_step in file_payload:
+        lt, th = marl_lt_th(data, False, lb, marl_step)
+        for j in th:
+            final_data.extend([{'type': lb, 'th': a, 'iteration': i} for i, a in enumerate(j)])
     
-    fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
+    print(pd.DataFrame(final_data))
+    sns.relplot(
+        data=pd.DataFrame(final_data), x="iteration", y="th",
+        hue="type", style="type", kind="line",
+    )
+    plt.show()
+    
+def display_marl_results(file_payload:typing.List[tuple], 
+    y_axis_lim:dict = {},
+    marl_step:int = 100,
+    splice_ep:bool = True,
+    smoother_depth:int = 1,
+    smoother = whittaker_smoother) -> None:
 
+    '''
+    size=15
+    params = {'legend.fontsize': size,
+            #'figure.figsize': (20,8),
+            'axes.labelsize': size,
+            'axes.titlesize': size,
+            'xtick.labelsize': size*0.75,
+            'ytick.labelsize': size*0.75,
+            'axes.titlepad': 40}
 
+    plt.rcParams.update(params)
+    '''
+
+    def run_smoother(x, *args, **kwargs) -> typing.List[float]:
+        for _ in range(smoother_depth):
+            if smoother is not None:
+                x = smoother(x, *args, **kwargs)
+        
+        return x
+
+    def offset(x:typing.List[float], l:int) -> typing.List[float]:
+        return x+[x[-1] for _ in range(max(0, l-len(x)))]
+    
+    #fig, [a1, a2] = plt.subplots(nrows=1, ncols=2)
+    fig, a2 = plt.subplots(nrows=1, ncols=1)
+
+    LINEWIDTH = 3
     #print(lt)
     
     if 'latency' in y_axis_lim:
+        '''
         a1.set_ylim(y_axis_lim['latency'])
-    
+        '''
 
     if 'throughput' in y_axis_lim:
         a2.set_ylim(y_axis_lim['throughput'])
@@ -2158,18 +2205,19 @@ def display_marl_results(file_payload:typing.List[tuple],
     baseline_lt = run_smoother([i['latency'] for i in baseline], f = max)
     baseline_th = run_smoother([i['throughput'] for i in baseline], f = min)
 
-    
+    OFFSET_RANGE = 6000
     for data, lb, marl_step in file_payload:
         lt, th = marl_lt_th(data, splice_ep, lb, marl_step)
-        a1.plot([*range(1, len(lt)+1)], run_smoother(lt, f = max) if smoother is not None else lt, label = f'latency ({lb})')
-        a2.plot([*range(1, len(th)+1)], run_smoother(th, f = min) if smoother is not None else th, label = f'throughput ({lb})')
+        #a1.plot(offset(run_smoother(lt, f = max) if smoother is not None else lt, 10000), label = f'latency ({lb})')
+        a2.plot(offset(run_smoother(th, f = min) if smoother is not None else th, OFFSET_RANGE), linewidth = LINEWIDTH, label = f'{lb}')
 
 
     
-    a1.plot([*range(1, len(lt)+1)], (baseline_lt+[baseline_lt[-1] for _ in range(len(lt) - len(baseline_lt))])[:len(lt)], label = 'latency (baseline)')
+    #a1.plot(offset((baseline_lt+[baseline_lt[-1] for _ in range(len(lt) - len(baseline_lt))])[:len(lt)], 10000), label = 'latency (baseline)')
 
-    a2.plot([*range(1, len(th)+1)], (baseline_th+[baseline_th[-1] for _ in range(len(th) - len(baseline_th))])[:len(th)], label = 'throughput (baseline)')
+    a2.plot(offset((baseline_th+[baseline_th[-1] for _ in range(len(th) - len(baseline_th))])[:len(th)], OFFSET_RANGE), linewidth = LINEWIDTH, label = 'No learning')
 
+    '''
     a1.title.set_text("Latency")
     a1.legend(loc="upper right")
 
@@ -2177,13 +2225,15 @@ def display_marl_results(file_payload:typing.List[tuple],
 
     a1.set_xlabel("iteration")
     a1.set_ylabel("latency")
+    '''
 
+    a2.set_title("Overall Performance Improvement",fontsize=22)
+    a2.legend(loc="lower right", fontsize=18)
 
-    a2.title.set_text("Throughput")
-    a2.legend(loc="lower right")
+    a2.set_xlabel("iteration", fontsize=18)
+    a2.set_ylabel("throughput (qps)", fontsize=18)
 
-    a2.set_xlabel("iteration")
-    a2.set_ylabel("throughput")
+    
 
     plt.show()
 
@@ -2601,7 +2651,7 @@ if __name__ == '__main__':
     #outputs/tuning_data/rl_dqn35.json
     #tune_marl()
     #tune_marl_interleaved()
-    
+
     display_marl_results(
         [([
         #'outputs/marl_tuning_data/marl59.json',
@@ -2610,18 +2660,37 @@ if __name__ == '__main__':
         #'outputs/marl_tuning_data/marl63.json',
         #'outputs/marl_tuning_data/marl65.json',
         'outputs/marl_tuning_data/marl76.json'
-        ], 'MARL', 50),
+        ], 'AtlasTune', 25),
         ([
             #'outputs/marl_tuning_data/marl68.json',
             #'outputs/marl_tuning_data/marl69.json',
             #'outputs/marl_tuning_data/marl71.json', 
             'outputs/marl_tuning_data/marl74.json', 
             #'outputs/marl_tuning_data/marl75.json'
-            ], 'non-MARL', 50)
+            ], 'Conventional', 25)
         ],
         splice_ep = False, smoother=rolling_average, smoother_depth = 15
     )
     
+    '''
+    display_marl_results_seaborn(
+        [([
+        #'outputs/marl_tuning_data/marl59.json',
+        #'outputs/marl_tuning_data/marl60.json',
+        'outputs/marl_tuning_data/marl62.json',
+        #'outputs/marl_tuning_data/marl63.json',
+        #'outputs/marl_tuning_data/marl65.json',
+        'outputs/marl_tuning_data/marl76.json'
+        ], 'MARL', 25),
+        ([
+            #'outputs/marl_tuning_data/marl68.json',
+            #'outputs/marl_tuning_data/marl69.json',
+            #'outputs/marl_tuning_data/marl71.json', 
+            'outputs/marl_tuning_data/marl74.json', 
+            #'outputs/marl_tuning_data/marl75.json'
+            ], 'non-MARL', 25)
+        ], splice_ep = False, smoother=rolling_average, smoother_depth = 15)
+    '''
     '''
     def test():
         s = 1
